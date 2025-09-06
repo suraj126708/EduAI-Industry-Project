@@ -31,26 +31,26 @@ function App() {
             <Route
               path="/home"
               element={
-                <ProtectedRoute>
+                // <ProtectedRoute>
                   <Home />
-                </ProtectedRoute>
+                // </ProtectedRoute>
               }
             />
             <Route
               path="/upload"
               element={
-                <ProtectedRoute>
+                // <ProtectedRoute>
                   <ExamPlatformUpload />
-                </ProtectedRoute>
+                // </ProtectedRoute>
               }
             />
 
             <Route
               path="/question-paper-generation"
               element={
-                <ProtectedRoute>
+                // <ProtectedRoute>
                   <QuestionPaperForm />{" "}
-                </ProtectedRoute>
+                // </ProtectedRoute>
               }
             />
 
@@ -58,9 +58,9 @@ function App() {
             <Route
               path="/admin"
               element={
-                <ProtectedRoute requiredRole="admin">
+                // <ProtectedRoute requiredRole="admin">
                   <AdminDashboard />
-                </ProtectedRoute>
+                // </ProtectedRoute>
               }
             />
 
