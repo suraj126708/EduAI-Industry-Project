@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
-import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaGoogle, FaEye, FaEyeSlash, FaGraduationCap } from "react-icons/fa";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -58,12 +58,12 @@ const Login = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl mb-6 shadow-lg">
-            <span className="text-white text-2xl">🔥</span>
+            <FaGraduationCap className="text-white text-2xl" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back
+            Welcome to ExamFlow
           </h1>
-          <p className="text-gray-600">Sign in to your account to continue</p>
+          <p className="text-gray-600">Sign in to your teacher account</p>
         </div>
 
         {/* Form Container */}

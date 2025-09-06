@@ -14,6 +14,10 @@ import {
   FaEdit,
   FaTrash,
   FaEye,
+  FaGraduationCap,
+  FaSchool,
+  FaBookOpen,
+  FaClipboardList,
 } from "react-icons/fa";
 
 const AdminDashboard = () => {
@@ -21,7 +25,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
-  const [users, setUsers] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
@@ -32,7 +36,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
-    loadUsers();
+    loadTeachers();
   }, []);
 
   const loadDashboardData = async () => {
@@ -46,15 +50,15 @@ const AdminDashboard = () => {
     }
   };
 
-  const loadUsers = async () => {
+  const loadTeachers = async () => {
     try {
       setLoading(true);
-      const result = await adminService.getUsers(filters);
+      const result = await adminService.getTeachers(filters);
       if (result.success) {
-        setUsers(result.data.users);
+        setTeachers(result.data.teachers);
       }
     } catch (error) {
-      console.error("Error loading users:", error);
+      console.error("Error loading teachers:", error);
     } finally {
       setLoading(false);
     }
@@ -88,15 +92,15 @@ const AdminDashboard = () => {
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="h-8 w-8 bg-red-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">👑</span>
+                  <FaGraduationCap className="text-white text-sm" />
                 </div>
               </div>
               <div className="ml-4">
                 <h1 className="text-xl font-semibold text-gray-900">
-                  Admin Dashboard
+                  ExamFlow Admin Dashboard
                 </h1>
                 <p className="text-sm text-gray-500">
-                  Welcome back, {userProfile.displayName || userProfile.email}
+                  Welcome back, {userProfile.name || userProfile.email}
                 </p>
               </div>
             </div>
@@ -134,10 +138,10 @@ const AdminDashboard = () => {
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">
-                          Total Users
+                          Total Teachers
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {dashboardData.statistics.totalUsers}
+                          {dashboardData.statistics.totalTeachers}
                         </dd>
                       </dl>
                     </div>
@@ -154,10 +158,10 @@ const AdminDashboard = () => {
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">
-                          Active Users
+                          Active Teachers
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {dashboardData.statistics.activeUsers}
+                          {dashboardData.statistics.activeTeachers}
                         </dd>
                       </dl>
                     </div>
@@ -169,15 +173,15 @@ const AdminDashboard = () => {
                 <div className="p-5">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <FaUserShield className="h-6 w-6 text-blue-400" />
+                      <FaSchool className="h-6 w-6 text-blue-400" />
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">
-                          Admins
+                          Total Schools
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {dashboardData.statistics.adminCount}
+                          {dashboardData.statistics.totalSchools}
                         </dd>
                       </dl>
                     </div>
@@ -189,15 +193,15 @@ const AdminDashboard = () => {
                 <div className="p-5">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <FaChartLine className="h-6 w-6 text-purple-400" />
+                      <FaClipboardList className="h-6 w-6 text-purple-400" />
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">
-                          Growth Rate
+                          Total Exams
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {dashboardData.statistics.growthRate}%
+                          {dashboardData.statistics.totalExams || 0}
                         </dd>
                       </dl>
                     </div>
@@ -208,16 +212,16 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* User Management Section */}
+        {/* Teacher Management Section */}
         <div className="px-4 py-6 sm:px-0">
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  User Management
+                  Teacher Management
                 </h3>
                 <button
-                  onClick={() => loadUsers()}
+                  onClick={() => loadTeachers()}
                   className="flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                 >
                   <FaDownload className="mr-2 h-4 w-4" />
@@ -225,22 +229,22 @@ const AdminDashboard = () => {
                 </button>
               </div>
 
-              {/* Users Table */}
+              {/* Teachers Table */}
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        User
+                        Teacher
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Role
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                        School
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Created
+                        Joined
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -248,24 +252,24 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {users.map((user) => (
-                      <tr key={user._id}>
+                    {teachers.map((teacher) => (
+                      <tr key={teacher._id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10">
                               <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
                                 <span className="text-sm font-medium text-gray-700">
-                                  {user.displayName?.charAt(0) ||
-                                    user.email.charAt(0).toUpperCase()}
+                                  {teacher.name?.charAt(0) ||
+                                    teacher.email.charAt(0).toUpperCase()}
                                 </span>
                               </div>
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">
-                                {user.displayName || "No name"}
+                                {teacher.name || "No name"}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {user.email}
+                                {teacher.email}
                               </div>
                             </div>
                           </div>
@@ -273,31 +277,21 @@ const AdminDashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              user.role === "admin"
+                              teacher.role === "admin"
                                 ? "bg-red-100 text-red-800"
-                                : user.role === "moderator"
-                                ? "bg-yellow-100 text-yellow-800"
+                                : teacher.role === "principal"
+                                ? "bg-purple-100 text-purple-800"
                                 : "bg-green-100 text-green-800"
                             }`}
                           >
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              user.status === "active"
-                                ? "bg-green-100 text-green-800"
-                                : user.status === "suspended"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {user.status}
+                            {teacher.role}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(user.createdAt).toLocaleDateString()}
+                          {teacher.schoolId ? "Linked" : "Not Linked"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(teacher.joinedAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">

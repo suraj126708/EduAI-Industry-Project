@@ -24,7 +24,7 @@ export const getAllTeachers = async (req, res) => {
     }
 
     const teachers = await Teacher.find(filter)
-      .populate("schoolId", "name")
+      .populate('schoolId', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -63,10 +63,8 @@ export const getAllTeachers = async (req, res) => {
 // @access  Private
 export const getTeacherById = async (req, res) => {
   try {
-    const teacher = await Teacher.findById(req.params.id).populate(
-      "schoolId",
-      "name address contact"
-    );
+    const teacher = await Teacher.findById(req.params.id)
+      .populate('schoolId', 'name address contact');
 
     if (!teacher) {
       return res.status(404).json({
@@ -117,10 +115,7 @@ export const updateTeacher = async (req, res) => {
     }
 
     // Check if user can update this teacher (own profile or admin)
-    if (
-      req.teacher._id.toString() !== teacher._id.toString() &&
-      req.teacher.role !== "admin"
-    ) {
+    if (req.teacher._id.toString() !== teacher._id.toString() && req.teacher.role !== "admin") {
       return res.status(403).json({
         success: false,
         message: "Not authorized to update this teacher",
@@ -129,7 +124,7 @@ export const updateTeacher = async (req, res) => {
 
     const updateData = req.body;
     const allowedUpdates = ["name", "role", "phone"];
-
+    
     allowedUpdates.forEach((field) => {
       if (updateData[field] !== undefined) {
         teacher[field] = updateData[field];

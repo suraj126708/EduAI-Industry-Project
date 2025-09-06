@@ -1,5 +1,8 @@
 // controllers/adminController.js
-import User from "../models/User.js";
+import Teacher from "../models/Teacher.js";
+import School from "../models/School.js";
+import Class from "../models/Class.js";
+import Subject from "../models/Subject.js";
 import { validationResult } from "express-validator";
 import admin from "../config/firebase.js";
 
@@ -8,29 +11,38 @@ import admin from "../config/firebase.js";
 // @access  Private (Admin)
 export const getAdminDashboard = async (req, res) => {
   try {
-    // Get user statistics
-    const totalUsers = await User.countDocuments();
-    const activeUsers = await User.countDocuments({ status: "active" });
-    const inactiveUsers = await User.countDocuments({ status: "inactive" });
-    const suspendedUsers = await User.countDocuments({ status: "suspended" });
+    // Get teacher statistics
+    const totalTeachers = await Teacher.countDocuments();
+    const activeTeachers = await Teacher.countDocuments({ status: "active" });
+    const inactiveTeachers = await Teacher.countDocuments({
+      status: "inactive",
+    });
+    const suspendedTeachers = await Teacher.countDocuments({
+      status: "suspended",
+    });
 
     // Get role statistics
-    const userCount = await User.countDocuments({ role: "user" });
-    const moderatorCount = await User.countDocuments({ role: "moderator" });
-    const adminCount = await User.countDocuments({ role: "admin" });
+    const teacherCount = await Teacher.countDocuments({ role: "teacher" });
+    const moderatorCount = await Teacher.countDocuments({ role: "moderator" });
+    const adminCount = await Teacher.countDocuments({ role: "admin" });
+
+    // Get school statistics
+    const totalSchools = await School.countDocuments();
+    const totalClasses = await Class.countDocuments();
+    const totalSubjects = await Subject.countDocuments();
 
     // Get recent activity
-    const recentUsers = await User.find()
+    const recentTeachers = await Teacher.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .select("email displayName role status createdAt");
+      .select("email name role status createdAt");
 
-    const recentlyActiveUsers = await User.find()
-      .sort({ lastActiveAt: -1 })
+    const recentlyActiveTeachers = await Teacher.find()
+      .sort({ lastLoginAt: -1 })
       .limit(5)
-      .select("email displayName role lastActiveAt");
+      .select("email name role lastLoginAt");
 
-    // Get monthly user growth
+    // Get monthly teacher growth
     const currentDate = new Date();
     const lastMonth = new Date(
       currentDate.getFullYear(),
@@ -43,11 +55,11 @@ export const getAdminDashboard = async (req, res) => {
       1
     );
 
-    const usersThisMonth = await User.countDocuments({
+    const teachersThisMonth = await Teacher.countDocuments({
       createdAt: { $gte: thisMonth },
     });
 
-    const usersLastMonth = await User.countDocuments({
+    const teachersLastMonth = await Teacher.countDocuments({
       createdAt: { $gte: lastMonth, $lt: thisMonth },
     });
 
@@ -56,26 +68,30 @@ export const getAdminDashboard = async (req, res) => {
       message: "Admin dashboard data retrieved successfully",
       data: {
         statistics: {
-          totalUsers,
-          activeUsers,
-          inactiveUsers,
-          suspendedUsers,
-          userCount,
+          totalTeachers,
+          activeTeachers,
+          inactiveTeachers,
+          suspendedTeachers,
+          teacherCount,
           moderatorCount,
           adminCount,
-          usersThisMonth,
-          usersLastMonth,
+          totalSchools,
+          totalClasses,
+          totalSubjects,
+          teachersThisMonth,
+          teachersLastMonth,
           growthRate:
-            usersLastMonth > 0
+            teachersLastMonth > 0
               ? (
-                  ((usersThisMonth - usersLastMonth) / usersLastMonth) *
+                  ((teachersThisMonth - teachersLastMonth) /
+                    teachersLastMonth) *
                   100
                 ).toFixed(2)
               : 0,
         },
         recentActivity: {
-          newUsers: recentUsers,
-          activeUsers: recentlyActiveUsers,
+          newTeachers: recentTeachers,
+          activeTeachers: recentlyActiveTeachers,
         },
       },
     });
@@ -97,22 +113,19 @@ export const getAdminDashboard = async (req, res) => {
 // @access  Private (Admin)
 export const getSystemStats = async (req, res) => {
   try {
-    const stats = await User.aggregate([
+    const stats = await Teacher.aggregate([
       {
         $group: {
           _id: null,
-          totalUsers: { $sum: 1 },
-          activeUsers: {
+          totalTeachers: { $sum: 1 },
+          activeTeachers: {
             $sum: { $cond: [{ $eq: ["$status", "active"] }, 1, 0] },
-          },
-          verifiedUsers: {
-            $sum: { $cond: ["$isEmailVerified", 1, 0] },
           },
         },
       },
     ]);
 
-    const roleStats = await User.aggregate([
+    const roleStats = await Teacher.aggregate([
       {
         $group: {
           _id: "$role",
@@ -121,7 +134,7 @@ export const getSystemStats = async (req, res) => {
       },
     ]);
 
-    const statusStats = await User.aggregate([
+    const statusStats = await Teacher.aggregate([
       {
         $group: {
           _id: "$status",
@@ -135,9 +148,8 @@ export const getSystemStats = async (req, res) => {
       message: "System statistics retrieved successfully",
       data: {
         overview: stats[0] || {
-          totalUsers: 0,
-          activeUsers: 0,
-          verifiedUsers: 0,
+          totalTeachers: 0,
+          activeTeachers: 0,
         },
         roles: roleStats,
         statuses: statusStats,
@@ -156,10 +168,10 @@ export const getSystemStats = async (req, res) => {
   }
 };
 
-// @desc    Get all users with advanced filtering (Admin only)
-// @route   GET /api/admin/users
+// @desc    Get all teachers with advanced filtering (Admin only)
+// @route   GET /api/admin/teachers
 // @access  Private (Admin)
-export const getAllUsers = async (req, res) => {
+export const getAllTeachers = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -178,12 +190,11 @@ export const getAllUsers = async (req, res) => {
     const filter = {};
     if (req.query.status) filter.status = req.query.status;
     if (req.query.role) filter.role = req.query.role;
+    if (req.query.schoolId) filter.schoolId = req.query.schoolId;
     if (req.query.search) {
       filter.$or = [
         { email: { $regex: req.query.search, $options: "i" } },
-        { displayName: { $regex: req.query.search, $options: "i" } },
-        { "profile.firstName": { $regex: req.query.search, $options: "i" } },
-        { "profile.lastName": { $regex: req.query.search, $options: "i" } },
+        { name: { $regex: req.query.search, $options: "i" } },
       ];
     }
 
@@ -192,33 +203,33 @@ export const getAllUsers = async (req, res) => {
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
     const sort = { [sortBy]: sortOrder };
 
-    const users = await User.find(filter)
+    const teachers = await Teacher.find(filter)
+      .populate("schoolId", "name")
       .sort(sort)
       .skip(skip)
-      .limit(limit)
-      .select("-preferences -__v");
+      .limit(limit);
 
-    const totalUsers = await User.countDocuments(filter);
+    const totalTeachers = await Teacher.countDocuments(filter);
 
     res.status(200).json({
       success: true,
-      message: "Users retrieved successfully",
+      message: "Teachers retrieved successfully",
       data: {
-        users,
+        teachers,
         pagination: {
           currentPage: page,
-          totalPages: Math.ceil(totalUsers / limit),
-          totalUsers,
-          hasNext: page < Math.ceil(totalUsers / limit),
+          totalPages: Math.ceil(totalTeachers / limit),
+          totalTeachers,
+          hasNext: page < Math.ceil(totalTeachers / limit),
           hasPrev: page > 1,
         },
       },
     });
   } catch (error) {
-    console.error("Get all users error:", error);
+    console.error("Get all teachers error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve users",
+      message: "Failed to retrieve teachers",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
@@ -227,10 +238,10 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
-// @desc    Get user by ID (Admin only)
-// @route   GET /api/admin/users/:id
+// @desc    Get teacher by ID (Admin only)
+// @route   GET /api/admin/teachers/:id
 // @access  Private (Admin)
-export const getUserById = async (req, res) => {
+export const getTeacherById = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -241,25 +252,28 @@ export const getUserById = async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.params.id);
+    const teacher = await Teacher.findById(req.params.id).populate(
+      "schoolId",
+      "name address contact"
+    );
 
-    if (!user) {
+    if (!teacher) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "Teacher not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "User retrieved successfully",
-      data: { user },
+      message: "Teacher retrieved successfully",
+      data: { teacher },
     });
   } catch (error) {
-    console.error("Get user by ID error:", error);
+    console.error("Get teacher by ID error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve user",
+      message: "Failed to retrieve teacher",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
@@ -268,10 +282,10 @@ export const getUserById = async (req, res) => {
   }
 };
 
-// @desc    Update user role (Admin only)
-// @route   PUT /api/admin/users/:id/role
+// @desc    Update teacher role (Admin only)
+// @route   PUT /api/admin/teachers/:id/role
 // @access  Private (Admin)
-export const updateUserRole = async (req, res) => {
+export const updateTeacherRole = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -283,33 +297,33 @@ export const updateUserRole = async (req, res) => {
     }
 
     const { role, reason } = req.body;
-    const userId = req.params.id;
+    const teacherId = req.params.id;
 
     // Prevent admin from changing their own role
-    if (userId === req.user._id) {
+    if (teacherId === req.teacher._id) {
       return res.status(400).json({
         success: false,
         message: "You cannot change your own role",
       });
     }
 
-    const user = await User.findById(userId);
+    const teacher = await Teacher.findById(teacherId);
 
-    if (!user) {
+    if (!teacher) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "Teacher not found",
       });
     }
 
-    const oldRole = user.role;
-    user.role = role;
+    const oldRole = teacher.role;
+    teacher.role = role;
 
     // Update Firebase custom claims if needed
     try {
-      await admin.auth().setCustomUserClaims(user.firebaseUid, {
+      await admin.auth().setCustomUserClaims(teacher.firebaseUid, {
         role: role,
-        updatedBy: req.user._id,
+        updatedBy: req.teacher._id,
         updatedAt: new Date().toISOString(),
       });
     } catch (firebaseError) {
@@ -317,30 +331,30 @@ export const updateUserRole = async (req, res) => {
       // Continue with database update even if Firebase fails
     }
 
-    await user.save();
+    await teacher.save();
 
     console.log(
-      `🔧 Admin ${req.user.email} changed user ${user.email} role from ${oldRole} to ${role}`
+      `🔧 Admin ${req.teacher.email} changed teacher ${teacher.email} role from ${oldRole} to ${role}`
     );
 
     res.status(200).json({
       success: true,
-      message: "User role updated successfully",
+      message: "Teacher role updated successfully",
       data: {
-        user: {
-          _id: user._id,
-          email: user.email,
-          role: user.role,
+        teacher: {
+          _id: teacher._id,
+          email: teacher.email,
+          role: teacher.role,
           oldRole,
         },
         reason,
       },
     });
   } catch (error) {
-    console.error("Update user role error:", error);
+    console.error("Update teacher role error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to update user role",
+      message: "Failed to update teacher role",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
@@ -349,10 +363,10 @@ export const updateUserRole = async (req, res) => {
   }
 };
 
-// @desc    Update user status (Admin only)
-// @route   PUT /api/admin/users/:id/status
+// @desc    Update teacher status (Admin only)
+// @route   PUT /api/admin/teachers/:id/status
 // @access  Private (Admin)
-export const updateUserStatus = async (req, res) => {
+export const updateTeacherStatus = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -364,52 +378,52 @@ export const updateUserStatus = async (req, res) => {
     }
 
     const { status, reason } = req.body;
-    const userId = req.params.id;
+    const teacherId = req.params.id;
 
     // Prevent admin from changing their own status
-    if (userId === req.user._id) {
+    if (teacherId === req.teacher._id) {
       return res.status(400).json({
         success: false,
         message: "You cannot change your own status",
       });
     }
 
-    const user = await User.findById(userId);
+    const teacher = await Teacher.findById(teacherId);
 
-    if (!user) {
+    if (!teacher) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "Teacher not found",
       });
     }
 
-    const oldStatus = user.status;
-    user.status = status;
+    const oldStatus = teacher.status;
+    teacher.status = status;
 
-    await user.save();
+    await teacher.save();
 
     console.log(
-      `🔧 Admin ${req.user.email} changed user ${user.email} status from ${oldStatus} to ${status}`
+      `🔧 Admin ${req.teacher.email} changed teacher ${teacher.email} status from ${oldStatus} to ${status}`
     );
 
     res.status(200).json({
       success: true,
-      message: "User status updated successfully",
+      message: "Teacher status updated successfully",
       data: {
-        user: {
-          _id: user._id,
-          email: user.email,
-          status: user.status,
+        teacher: {
+          _id: teacher._id,
+          email: teacher.email,
+          status: teacher.status,
           oldStatus,
         },
         reason,
       },
     });
   } catch (error) {
-    console.error("Update user status error:", error);
+    console.error("Update teacher status error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to update user status",
+      message: "Failed to update teacher status",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
@@ -418,10 +432,10 @@ export const updateUserStatus = async (req, res) => {
   }
 };
 
-// @desc    Delete user (Admin only)
-// @route   DELETE /api/admin/users/:id
+// @desc    Delete teacher (Admin only)
+// @route   DELETE /api/admin/teachers/:id
 // @access  Private (Admin)
-export const deleteUser = async (req, res) => {
+export const deleteTeacher = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -432,52 +446,54 @@ export const deleteUser = async (req, res) => {
       });
     }
 
-    const userId = req.params.id;
+    const teacherId = req.params.id;
 
     // Prevent admin from deleting themselves
-    if (userId === req.user._id) {
+    if (teacherId === req.teacher._id) {
       return res.status(400).json({
         success: false,
         message: "You cannot delete your own account",
       });
     }
 
-    const user = await User.findById(userId);
+    const teacher = await Teacher.findById(teacherId);
 
-    if (!user) {
+    if (!teacher) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "Teacher not found",
       });
     }
 
     // Delete from Firebase (optional - you might want to keep Firebase user)
     try {
-      await admin.auth().deleteUser(user.firebaseUid);
+      await admin.auth().deleteUser(teacher.firebaseUid);
     } catch (firebaseError) {
-      console.error("Firebase user deletion error:", firebaseError);
+      console.error("Firebase teacher deletion error:", firebaseError);
       // Continue with database deletion even if Firebase fails
     }
 
-    await User.findByIdAndDelete(userId);
+    await Teacher.findByIdAndDelete(teacherId);
 
-    console.log(`🗑️ Admin ${req.user.email} deleted user ${user.email}`);
+    console.log(
+      `🗑️ Admin ${req.teacher.email} deleted teacher ${teacher.email}`
+    );
 
     res.status(200).json({
       success: true,
-      message: "User deleted successfully",
+      message: "Teacher deleted successfully",
       data: {
-        deletedUser: {
-          _id: user._id,
-          email: user.email,
+        deletedTeacher: {
+          _id: teacher._id,
+          email: teacher.email,
         },
       },
     });
   } catch (error) {
-    console.error("Delete user error:", error);
+    console.error("Delete teacher error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to delete user",
+      message: "Failed to delete teacher",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
@@ -486,10 +502,10 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// @desc    Bulk update users (Admin only)
-// @route   POST /api/admin/users/bulk-update
+// @desc    Bulk update teachers (Admin only)
+// @route   POST /api/admin/teachers/bulk-update
 // @access  Private (Admin)
-export const bulkUpdateRoles = async (req, res) => {
+export const bulkUpdateTeachers = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -500,7 +516,7 @@ export const bulkUpdateRoles = async (req, res) => {
       });
     }
 
-    const { userIds, updates } = req.body;
+    const { teacherIds, updates } = req.body;
 
     // Remove sensitive fields that shouldn't be bulk updated
     const safeUpdates = { ...updates };
@@ -508,13 +524,13 @@ export const bulkUpdateRoles = async (req, res) => {
     delete safeUpdates.firebaseUid;
     delete safeUpdates.email;
 
-    const result = await User.updateMany(
-      { _id: { $in: userIds } },
+    const result = await Teacher.updateMany(
+      { _id: { $in: teacherIds } },
       { $set: safeUpdates }
     );
 
     console.log(
-      `🔧 Admin ${req.user.email} bulk updated ${result.modifiedCount} users`
+      `🔧 Admin ${req.teacher.email} bulk updated ${result.modifiedCount} teachers`
     );
 
     res.status(200).json({
@@ -522,14 +538,14 @@ export const bulkUpdateRoles = async (req, res) => {
       message: "Bulk update completed successfully",
       data: {
         updatedCount: result.modifiedCount,
-        totalRequested: userIds.length,
+        totalRequested: teacherIds.length,
       },
     });
   } catch (error) {
-    console.error("Bulk update users error:", error);
+    console.error("Bulk update teachers error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to bulk update users",
+      message: "Failed to bulk update teachers",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
@@ -538,10 +554,10 @@ export const bulkUpdateRoles = async (req, res) => {
   }
 };
 
-// @desc    Export users data (Admin only)
-// @route   GET /api/admin/users/export
+// @desc    Export teachers data (Admin only)
+// @route   GET /api/admin/teachers/export
 // @access  Private (Admin)
-export const exportUsers = async (req, res) => {
+export const exportTeachers = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -552,53 +568,56 @@ export const exportUsers = async (req, res) => {
       });
     }
 
-    const { format = "json", role, status } = req.query;
+    const { format = "json", role, status, schoolId } = req.query;
 
     // Build filter query
     const filter = {};
     if (role) filter.role = role;
     if (status) filter.status = status;
+    if (schoolId) filter.schoolId = schoolId;
 
-    const users = await User.find(filter)
-      .select("-preferences -__v")
+    const teachers = await Teacher.find(filter)
+      .populate("schoolId", "name")
       .sort({ createdAt: -1 });
 
     if (format === "csv") {
       // Convert to CSV format
       const csvHeaders =
-        "Email,Display Name,Role,Status,Created At,Last Active\n";
-      const csvData = users
+        "Email,Name,Role,Status,School,Created At,Last Login\n";
+      const csvData = teachers
         .map(
-          (user) =>
-            `"${user.email}","${user.displayName || ""}","${user.role}","${
-              user.status
-            }","${user.createdAt}","${user.lastActiveAt}"`
+          (teacher) =>
+            `"${teacher.email}","${teacher.name || ""}","${teacher.role}","${
+              teacher.status
+            }","${teacher.schoolId?.name || ""}","${teacher.createdAt}","${
+              teacher.lastLoginAt
+            }"`
         )
         .join("\n");
 
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(
         "Content-Disposition",
-        "attachment; filename=users-export.csv"
+        "attachment; filename=teachers-export.csv"
       );
       res.send(csvHeaders + csvData);
     } else {
       // JSON format
       res.status(200).json({
         success: true,
-        message: "Users exported successfully",
+        message: "Teachers exported successfully",
         data: {
           format: "json",
-          totalUsers: users.length,
-          users,
+          totalTeachers: teachers.length,
+          teachers,
         },
       });
     }
   } catch (error) {
-    console.error("Export users error:", error);
+    console.error("Export teachers error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to export users",
+      message: "Failed to export teachers",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
@@ -607,8 +626,8 @@ export const exportUsers = async (req, res) => {
   }
 };
 
-// @desc    Promote user to admin (Admin only)
-// @route   POST /api/admin/users/:id/promote
+// @desc    Demote teacher from admin (Admin only)
+// @route   POST /api/admin/teachers/:id/demote
 // @access  Private (Admin)
 export const demoteFromAdmin = async (req, res) => {
   try {
@@ -621,34 +640,34 @@ export const demoteFromAdmin = async (req, res) => {
       });
     }
 
-    const userId = req.params.id;
+    const teacherId = req.params.id;
     const { role: newRole = "moderator", reason } = req.body;
 
     // Prevent admin from demoting themselves
-    if (userId === req.user._id) {
+    if (teacherId === req.teacher._id) {
       return res.status(400).json({
         success: false,
         message: "You cannot demote your own admin privileges",
       });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "Teacher not found",
       });
     }
 
-    if (user.role !== "admin") {
+    if (teacher.role !== "admin") {
       return res.status(400).json({
         success: false,
-        message: "Target user is not an admin",
+        message: "Target teacher is not an admin",
       });
     }
 
     // Ensure we don't remove the last admin
-    const adminCount = await User.countDocuments({ role: "admin" });
+    const adminCount = await Teacher.countDocuments({ role: "admin" });
     if (adminCount <= 1) {
       return res.status(400).json({
         success: false,
@@ -656,14 +675,14 @@ export const demoteFromAdmin = async (req, res) => {
       });
     }
 
-    const oldRole = user.role;
-    user.role = newRole;
+    const oldRole = teacher.role;
+    teacher.role = newRole;
 
     // Update Firebase custom claims (best-effort)
     try {
-      await admin.auth().setCustomUserClaims(user.firebaseUid, {
+      await admin.auth().setCustomUserClaims(teacher.firebaseUid, {
         role: newRole,
-        updatedBy: req.user._id,
+        updatedBy: req.teacher._id,
         updatedAt: new Date().toISOString(),
       });
     } catch (firebaseError) {
@@ -671,21 +690,21 @@ export const demoteFromAdmin = async (req, res) => {
       // Continue even if Firebase update fails
     }
 
-    await user.save();
+    await teacher.save();
 
     console.log(
-      `🔧 Admin ${req.user.email} demoted user ${user.email} from ${oldRole} to ${newRole}`
+      `🔧 Admin ${req.teacher.email} demoted teacher ${teacher.email} from ${oldRole} to ${newRole}`
     );
 
     res.status(200).json({
       success: true,
-      message: "User demoted successfully",
+      message: "Teacher demoted successfully",
       data: {
-        user: {
-          _id: user._id,
-          email: user.email,
+        teacher: {
+          _id: teacher._id,
+          email: teacher.email,
           oldRole,
-          role: user.role,
+          role: teacher.role,
         },
         reason,
       },
@@ -694,7 +713,7 @@ export const demoteFromAdmin = async (req, res) => {
     console.error("Demote from admin error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to demote user from admin",
+      message: "Failed to demote teacher from admin",
       error:
         process.env.NODE_ENV === "development"
           ? error.message

@@ -2,13 +2,16 @@
 import express from "express";
 import { body, param } from "express-validator";
 import {
-  getAllUsers,
-  getUserById,
-  updateUserRole,
-  updateUserStatus,
-  deleteUser,
+  getAdminDashboard,
+  getSystemStats,
+  getAllTeachers,
+  getTeacherById,
+  updateTeacherRole,
+  updateTeacherStatus,
+  deleteTeacher,
   demoteFromAdmin,
-  bulkUpdateRoles,
+  bulkUpdateTeachers,
+  exportTeachers,
 } from "../controllers/adminController.js";
 import {
   authenticateFirebaseToken,
@@ -20,127 +23,151 @@ import {
 const router = express.Router();
 
 // Validation middleware
-const userIdValidation = [
+const teacherIdValidation = [
   param("id")
     .notEmpty()
-    .withMessage("User ID is required")
-    .isLength({ min: 1 })
-    .withMessage("Invalid user ID format"),
+    .withMessage("Teacher ID is required")
+    .isMongoId()
+    .withMessage("Invalid teacher ID format"),
 ];
 
 const roleValidation = [
   body("role")
     .notEmpty()
     .withMessage("Role is required")
-    .isIn(["user", "admin", "moderator", "editor"])
-    .withMessage("Role must be user, admin, moderator, or editor"),
+    .isIn(["teacher", "admin", "moderator", "editor"])
+    .withMessage("Role must be teacher, admin, moderator, or editor"),
 ];
 
 const statusValidation = [
   body("status")
     .notEmpty()
     .withMessage("Status is required")
-    .isIn(["active", "inactive", "suspended", "pending"])
-    .withMessage("Status must be active, inactive, suspended, or pending"),
+    .isIn(["active", "inactive", "suspended"])
+    .withMessage("Status must be active, inactive, or suspended"),
 ];
 
-const bulkRoleValidation = [
-  body("userIds")
+const bulkTeacherValidation = [
+  body("teacherIds")
     .isArray({ min: 1 })
-    .withMessage("User IDs must be a non-empty array"),
-  body("role")
-    .isIn(["user", "admin", "moderator", "editor"])
-    .withMessage("Invalid role"),
+    .withMessage("Teacher IDs must be a non-empty array"),
+  body("updates").isObject().withMessage("Updates must be an object"),
 ];
 
 // 🔥 RBAC Protected Routes
 
-// @route   GET /api/admin/users/stats
-// @desc    Get user statistics (Admin only)
+// @route   GET /api/admin/dashboard
+// @desc    Get admin dashboard data
 // @access  Private (Admin)
+router.get(
+  "/dashboard",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  getAdminDashboard
+);
 
-// @route   GET /api/admin/users
-// @desc    Get all users with pagination and filtering
+// @route   GET /api/admin/stats
+// @desc    Get system statistics
+// @access  Private (Admin)
+router.get(
+  "/stats",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  getSystemStats
+);
+
+// @route   GET /api/admin/teachers
+// @desc    Get all teachers with pagination and filtering
 // @access  Private (Admin, Moderator with read permission)
 router.get(
-  "/users",
+  "/teachers",
   authenticateFirebaseToken,
   authorizeMultiple({
     admin: true,
     moderator: ["read"],
   }),
-  getAllUsers
+  getAllTeachers
 );
 
-// @route   GET /api/admin/users/:id
-// @desc    Get user by ID
+// @route   GET /api/admin/teachers/:id
+// @desc    Get teacher by ID
 // @access  Private (Admin, Moderator)
 router.get(
-  "/users/:id",
+  "/teachers/:id",
   authenticateFirebaseToken,
   authorize("admin", "moderator"),
-  userIdValidation,
-  getUserById
+  teacherIdValidation,
+  getTeacherById
 );
 
-// @route   PUT /api/admin/users/:id/role
-// @desc    Update user role (Admin only)
+// @route   PUT /api/admin/teachers/:id/role
+// @desc    Update teacher role (Admin only)
 // @access  Private (Admin)
 router.put(
-  "/users/:id/role",
+  "/teachers/:id/role",
   authenticateFirebaseToken,
   checkPermissions("manage_roles"),
-  userIdValidation,
+  teacherIdValidation,
   roleValidation,
-  updateUserRole
+  updateTeacherRole
 );
 
-// @route   PUT /api/admin/users/:id/status
-// @desc    Update user status
+// @route   PUT /api/admin/teachers/:id/status
+// @desc    Update teacher status
 // @access  Private (Admin, Moderator with manage_users permission)
 router.put(
-  "/users/:id/status",
+  "/teachers/:id/status",
   authenticateFirebaseToken,
   authorizeMultiple({
     admin: true,
     moderator: ["manage_users"],
   }),
-  userIdValidation,
+  teacherIdValidation,
   statusValidation,
-  updateUserStatus
+  updateTeacherStatus
 );
 
-// @route   POST /api/admin/users/:id/demote
-// @desc    Demote admin to user (Super Admin only)
+// @route   POST /api/admin/teachers/:id/demote
+// @desc    Demote admin to teacher (Super Admin only)
 // @access  Private (Admin with manage_roles permission)
 router.post(
-  "/users/:id/demote",
+  "/teachers/:id/demote",
   authenticateFirebaseToken,
   checkPermissions("manage_roles"),
-  userIdValidation,
+  teacherIdValidation,
   demoteFromAdmin
 );
 
-// @route   PUT /api/admin/users/bulk-role
-// @desc    Bulk update user roles (Admin only)
+// @route   POST /api/admin/teachers/bulk-update
+// @desc    Bulk update teachers (Admin only)
 // @access  Private (Admin)
-router.put(
-  "/users/bulk-role",
+router.post(
+  "/teachers/bulk-update",
   authenticateFirebaseToken,
   authorize("admin"),
-  bulkRoleValidation,
-  bulkUpdateRoles
+  bulkTeacherValidation,
+  bulkUpdateTeachers
 );
 
-// @route   DELETE /api/admin/users/:id
-// @desc    Delete user (Admin only)
+// @route   GET /api/admin/teachers/export
+// @desc    Export teachers data (Admin only)
 // @access  Private (Admin)
-router.delete(
-  "/users/:id",
+router.get(
+  "/teachers/export",
   authenticateFirebaseToken,
   authorize("admin"),
-  userIdValidation,
-  deleteUser
+  exportTeachers
+);
+
+// @route   DELETE /api/admin/teachers/:id
+// @desc    Delete teacher (Admin only)
+// @access  Private (Admin)
+router.delete(
+  "/teachers/:id",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  teacherIdValidation,
+  deleteTeacher
 );
 
 export default router;

@@ -3,16 +3,24 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
-import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
+import {
+  FaGoogle,
+  FaEye,
+  FaEyeSlash,
+  FaGraduationCap,
+  FaSchool,
+  FaUserTie,
+} from "react-icons/fa";
 
 const Register = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     confirmPassword: "",
-    displayName: "",
-    firstName: "",
-    lastName: "",
+    name: "",
+    role: "teacher",
+    phone: "",
+    schoolId: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -45,6 +53,16 @@ const Register = () => {
       return;
     }
 
+    if (!formData.name.trim()) {
+      setError("Please enter your full name");
+      return;
+    }
+
+    if (!formData.phone.trim()) {
+      setError("Please enter your phone number");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -52,28 +70,19 @@ const Register = () => {
       const result = await signUp(
         formData.email,
         formData.password,
-        formData.displayName
+        formData.name
       );
 
       if (result.success) {
-        // Complete registration with backend if additional data provided
-        if (formData.firstName || formData.lastName) {
-          const profileData = {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            preferences: {
-              theme: "light",
-              notifications: {
-                email: true,
-                push: true,
-                sms: false,
-              },
-            },
-          };
+        // Complete registration with backend
+        const profileData = {
+          name: formData.name,
+          role: formData.role,
+          phone: formData.phone,
+          schoolId: formData.schoolId || null,
+        };
 
-          await completeRegistration(profileData);
-        }
-
+        await completeRegistration(profileData);
         navigate("/home");
       } else {
         setError(result.error);
@@ -109,12 +118,14 @@ const Register = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl mb-6 shadow-lg">
-            <span className="text-white text-2xl">🔥</span>
+            <FaGraduationCap className="text-white text-2xl" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Create account
+            Join ExamFlow
           </h1>
-          <p className="text-gray-600">Join us and start your journey today</p>
+          <p className="text-gray-600">
+            Create your teacher account and start automating exams
+          </p>
         </div>
 
         {/* Form Container */}
@@ -127,61 +138,84 @@ const Register = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label
-                  htmlFor="firstName"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  First name
-                </label>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:bg-white"
-                  placeholder="First name"
-                />
-              </div>
-              <div className="space-y-2">
-                <label
-                  htmlFor="lastName"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Last name
-                </label>
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:bg-white"
-                  placeholder="Last name"
-                />
-              </div>
-            </div>
-
-            {/* Display Name */}
+            {/* Full Name */}
             <div className="space-y-2">
               <label
-                htmlFor="displayName"
+                htmlFor="name"
                 className="block text-sm font-medium text-gray-700"
               >
-                Display name *
+                Full Name *
               </label>
               <input
-                id="displayName"
-                name="displayName"
+                id="name"
+                name="name"
                 type="text"
                 required
-                value={formData.displayName}
+                value={formData.name}
                 onChange={handleChange}
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:bg-white"
-                placeholder="How others will see you"
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            {/* Role Selection */}
+            <div className="space-y-2">
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Role *
+              </label>
+              <select
+                id="role"
+                name="role"
+                required
+                value={formData.role}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:bg-white"
+              >
+                <option value="teacher">Teacher</option>
+                <option value="admin">Admin</option>
+                <option value="principal">Principal</option>
+              </select>
+            </div>
+
+            {/* Phone Number */}
+            <div className="space-y-2">
+              <label
+                htmlFor="phone"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Phone Number *
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                required
+                value={formData.phone}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:bg-white"
+                placeholder="Enter your phone number"
+              />
+            </div>
+
+            {/* School ID (Optional) */}
+            <div className="space-y-2">
+              <label
+                htmlFor="schoolId"
+                className="block text-sm font-medium text-gray-700"
+              >
+                School ID (Optional)
+              </label>
+              <input
+                id="schoolId"
+                name="schoolId"
+                type="text"
+                value={formData.schoolId}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:bg-white"
+                placeholder="Enter your school ID if available"
               />
             </div>
 
@@ -305,7 +339,7 @@ const Register = () => {
                   Creating account...
                 </div>
               ) : (
-                "Create account"
+                "Create Teacher Account"
               )}
             </button>
 

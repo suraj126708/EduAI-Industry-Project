@@ -8,7 +8,7 @@ import morgan from "morgan";
 
 // Import routes
 import authRoutes from "./routes/authRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
+import teacherRoutes from "./routes/teacherRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 
 // Import database connection
@@ -60,7 +60,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
-    message: "Firebase MERN Backend is running!",
+    message: "Teacher Management System Backend is running!",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
   });
@@ -68,7 +68,7 @@ app.get("/api/health", (req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
+app.use("/api/teachers", teacherRoutes);
 app.use("/api/admin", adminRoutes);
 
 // ✅ NEW (Works in Express v5)

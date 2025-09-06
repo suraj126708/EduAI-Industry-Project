@@ -13,6 +13,8 @@ import Register from "./Pages/Register";
 import Home from "./Pages/Home";
 import AdminDashboard from "./Pages/AdminDashboard";
 import Unauthorized from "./Pages/Unauthorized";
+import QuestionPaperForm from "./Pages/QuestionPaperGeneration";
+import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
 
 function App() {
   return (
@@ -31,6 +33,23 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Home />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/upload"
+              element={
+                <ProtectedRoute>
+                  <ExamPlatformUpload />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/question-paper-generation"
+              element={
+                <ProtectedRoute>
+                  <QuestionPaperForm />{" "}
                 </ProtectedRoute>
               }
             />

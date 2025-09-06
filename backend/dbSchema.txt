@@ -1,0 +1,137 @@
+Table School {
+  id int [pk, increment]
+  name varchar
+  address varchar
+  contact varchar
+  created_at datetime
+}
+
+Table Class {
+  id int [pk, increment]
+  school_id int [ref: > School.id]
+  name varchar                 // e.g., Grade 10
+}
+
+Table Subject {
+  id int [pk, increment]
+  school_id int [ref: > School.id]
+  name varchar
+  code varchar
+}
+
+Table Teacher {
+  id int [pk, increment]
+  school_id int [ref: > School.id]
+  name varchar
+  role varchar
+  email varchar
+  phone varchar
+  password varchar
+  joined_at datetime
+}
+
+Table TeacherClassSubject {
+  id int [pk, increment]
+  teacher_id int [ref: > Teacher.id]
+  class_id int [ref: > Class.id]
+  subject_id int [ref: > Subject.id]
+  assigned_at datetime
+}
+
+Table Book {
+  id int [pk, increment]
+  school_id int [ref: > School.id]
+  class_id int [ref : > Class.id]
+  uploaded_by int [ref: > Teacher.id]
+  title varchar
+  author varchar
+  year int
+  file_url varchar
+  processed_status varchar           // e.g., 'pending', 'processed'
+  created_at datetime
+}
+
+Table BookSubjectClass {
+  id int [pk, increment]
+  book_id int [ref: > Book.id]
+  subject_id int [ref: > Subject.id]
+  class_id int [ref: > Class.id]
+}
+
+Table QuestionPaper {
+  id int [pk, increment]
+  school_id int [ref: > School.id]
+  created_by int [ref: > Teacher.id]
+  book_id int [ref: > Book.id]
+  subject_id int [ref: > Subject.id]
+  class_id int [ref: > Class.id]
+  title varchar
+  exam_date datetime
+  status varchar                     // e.g., 'draft', 'finalized'
+  created_at datetime
+  llm_prompt json                   // LLM prompt or generation params
+}
+
+Table Question {
+  id int [pk, increment]
+  question_paper_id int [ref: > QuestionPaper.id]
+  type varchar                      // MCQ, short answer, etc.
+  units varchar                    // Syllabus topics/units
+  marks int
+  text text
+  options text                     // For MCQs
+  correct_answer text
+  generated_by_llm boolean
+  llm_metadata json
+}
+
+Table AnswerSheet {
+  id int [pk, increment]
+  question_paper_id int [ref: > QuestionPaper.id]
+  submitted_by int [ref: > Teacher.id]    // Or student ID if applicable
+  submitted_at datetime
+  file_url varchar
+  ocr_text text
+  status varchar                 // e.g., 'pending', 'evaluated'
+  evaluation_metadata json
+}
+
+Table Answer {
+  id int [pk, increment]
+  answer_sheet_id int [ref: > AnswerSheet.id]
+  question_id int [ref: > Question.id]
+  answer_text text
+  marks_awarded int
+  feedback text
+  evaluation_by_llm boolean
+  vector_match_score float
+  llm_metadata json
+}
+
+Table Marksheet {
+  id int [pk, increment]
+  answer_sheet_id int [ref: > AnswerSheet.id]
+  total_marks int
+  grade varchar
+  report text
+  insights json
+  generated_at datetime
+}
+
+Table AnswerChunkVector {
+  id int [pk, increment]
+  question_paper_id int [ref: > QuestionPaper.id]
+  question_id int [ref: > Question.id]
+  chunk_index array                 // Index of chunk within chapter
+  chapter varchar                 // Chapter/Section name for chapter-wise indexing
+  source_type varchar            // e.g. 'answer_key', 'reference_passage'
+  llm_metadata json
+}
+
+Table VectorMetadataBook {
+  id int [pk, increment]
+  book_id int [ref: > Book.id]
+  chunk_id int                   // Chunk index or unique chunk ID
+  chapter varchar                // Chapter/Section name
+  llm_metadata json
+}
