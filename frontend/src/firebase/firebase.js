@@ -12,15 +12,15 @@ import {
 } from "firebase/auth";
 import axios from "axios";
 
-// Firebase configuration
+// Firebase configuration, read from Vite env variables
 const firebaseConfig = {
-  apiKey: "AIzaSyBLcEbP-5jf5D1avpPzfisFrhR5h4SnuHY",
-  authDomain: "odoohackathon-1b9aa.firebaseapp.com",
-  projectId: "odoohackathon-1b9aa",
-  storageBucket: "odoohackathon-1b9aa.firebasestorage.app",
-  messagingSenderId: "1018676005477",
-  appId: "1:1018676005477:web:a7dfc65c5fa5a68025148c",
-  measurementId: "G-CDKBW8E75L",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -306,7 +306,8 @@ class AuthService {
         console.error("Get dashboard error:", error);
         return {
           success: false,
-          error: error.response?.data?.message || "Failed to get dashboard data",
+          error:
+            error.response?.data?.message || "Failed to get dashboard data",
         };
       }
     },
@@ -315,7 +316,7 @@ class AuthService {
     async getUsers(filters = {}) {
       try {
         const params = new URLSearchParams();
-        Object.keys(filters).forEach(key => {
+        Object.keys(filters).forEach((key) => {
           if (filters[key]) params.append(key, filters[key]);
         });
 
@@ -385,7 +386,8 @@ class AuthService {
         console.error("Update user status error:", error);
         return {
           success: false,
-          error: error.response?.data?.message || "Failed to update user status",
+          error:
+            error.response?.data?.message || "Failed to update user status",
         };
       }
     },
@@ -411,11 +413,13 @@ class AuthService {
     async exportUsers(filters = {}) {
       try {
         const params = new URLSearchParams();
-        Object.keys(filters).forEach(key => {
+        Object.keys(filters).forEach((key) => {
           if (filters[key]) params.append(key, filters[key]);
         });
 
-        const response = await axios.get(`/admin/users/export?${params.toString()}`);
+        const response = await axios.get(
+          `/admin/users/export?${params.toString()}`
+        );
         return {
           success: true,
           data: response.data,

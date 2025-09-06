@@ -7,8 +7,6 @@ import {
   updateUserRole,
   updateUserStatus,
   deleteUser,
-  getUserStats,
-  promoteToAdmin,
   demoteFromAdmin,
   bulkUpdateRoles,
 } from "../controllers/adminController.js";
@@ -17,7 +15,7 @@ import {
   authorize,
   checkPermissions,
   authorizeMultiple,
-} from "../middlewares/authMiddleware.js";
+} from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -60,12 +58,6 @@ const bulkRoleValidation = [
 // @route   GET /api/admin/users/stats
 // @desc    Get user statistics (Admin only)
 // @access  Private (Admin)
-router.get(
-  "/users/stats",
-  authenticateFirebaseToken,
-  authorize("admin"),
-  getUserStats
-);
 
 // @route   GET /api/admin/users
 // @desc    Get all users with pagination and filtering
@@ -116,17 +108,6 @@ router.put(
   userIdValidation,
   statusValidation,
   updateUserStatus
-);
-
-// @route   POST /api/admin/users/:id/promote
-// @desc    Promote user to admin (Super Admin only)
-// @access  Private (Admin with manage_roles permission)
-router.post(
-  "/users/:id/promote",
-  authenticateFirebaseToken,
-  checkPermissions("manage_roles"),
-  userIdValidation,
-  promoteToAdmin
 );
 
 // @route   POST /api/admin/users/:id/demote

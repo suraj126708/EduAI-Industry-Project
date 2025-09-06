@@ -489,7 +489,7 @@ export const deleteUser = async (req, res) => {
 // @desc    Bulk update users (Admin only)
 // @route   POST /api/admin/users/bulk-update
 // @access  Private (Admin)
-export const bulkUpdateUsers = async (req, res) => {
+export const bulkUpdateRoles = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -599,6 +599,102 @@ export const exportUsers = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to export users",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Something went wrong",
+    });
+  }
+};
+
+// @desc    Promote user to admin (Admin only)
+// @route   POST /api/admin/users/:id/promote
+// @access  Private (Admin)
+export const demoteFromAdmin = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation errors",
+        errors: errors.array(),
+      });
+    }
+
+    const userId = req.params.id;
+    const { role: newRole = "moderator", reason } = req.body;
+
+    // Prevent admin from demoting themselves
+    if (userId === req.user._id) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot demote your own admin privileges",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.role !== "admin") {
+      return res.status(400).json({
+        success: false,
+        message: "Target user is not an admin",
+      });
+    }
+
+    // Ensure we don't remove the last admin
+    const adminCount = await User.countDocuments({ role: "admin" });
+    if (adminCount <= 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot demote the last remaining admin",
+      });
+    }
+
+    const oldRole = user.role;
+    user.role = newRole;
+
+    // Update Firebase custom claims (best-effort)
+    try {
+      await admin.auth().setCustomUserClaims(user.firebaseUid, {
+        role: newRole,
+        updatedBy: req.user._id,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (firebaseError) {
+      console.error("Firebase custom claims update error:", firebaseError);
+      // Continue even if Firebase update fails
+    }
+
+    await user.save();
+
+    console.log(
+      `🔧 Admin ${req.user.email} demoted user ${user.email} from ${oldRole} to ${newRole}`
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "User demoted successfully",
+      data: {
+        user: {
+          _id: user._id,
+          email: user.email,
+          oldRole,
+          role: user.role,
+        },
+        reason,
+      },
+    });
+  } catch (error) {
+    console.error("Demote from admin error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to demote user from admin",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
