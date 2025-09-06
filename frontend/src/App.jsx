@@ -32,7 +32,7 @@ function App() {
               path="/home"
               element={
                 // <ProtectedRoute>
-                  <Home />
+                <Home />
                 // </ProtectedRoute>
               }
             />
@@ -40,7 +40,7 @@ function App() {
               path="/upload"
               element={
                 // <ProtectedRoute>
-                  <ExamPlatformUpload />
+                <ExamPlatformUpload />
                 // </ProtectedRoute>
               }
             />
@@ -49,7 +49,7 @@ function App() {
               path="/question-paper-generation"
               element={
                 // <ProtectedRoute>
-                  <QuestionPaperForm />{" "}
+                <QuestionPaperForm />
                 // </ProtectedRoute>
               }
             />
@@ -59,7 +59,7 @@ function App() {
               path="/admin"
               element={
                 // <ProtectedRoute requiredRole="admin">
-                  <AdminDashboard />
+                <AdminDashboard />
                 // </ProtectedRoute>
               }
             />
