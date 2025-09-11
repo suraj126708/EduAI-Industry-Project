@@ -90,23 +90,20 @@ function AnswerSheetBulkUpload() {
   };
 
   return (
-    <div className="container py-5">
-      <div
-        className="bg-white rounded p-4 shadow-sm"
-        style={{ maxWidth: 1000, margin: "0 auto" }}
-      >
-        <div className="text-center mb-4">
-          <h2 className="fw-bold">Answer Sheet Upload</h2>
-          <div className="text-muted">
+    <div className="container mx-auto py-8 px-4">
+      <div className="bg-white rounded-lg p-6 shadow-sm max-w-4xl mx-auto">
+        <div className="text-center mb-6">
+          <h2 className="font-bold text-2xl">Answer Sheet Upload</h2>
+          <div className="text-gray-500">
             Set section details once, then upload sheets for each student
           </div>
         </div>
         {!filterConfirmed ? (
           <>
-            <div className="row g-3 mb-3">
-              <div className="col-md-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
                 <select
-                  className="form-select"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={selectedClass}
                   onChange={handleClassChange}
                 >
@@ -116,9 +113,9 @@ function AnswerSheetBulkUpload() {
                   ))}
                 </select>
               </div>
-              <div className="col-md-4">
+              <div>
                 <select
-                  className="form-select"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={selectedDivision}
                   onChange={handleDivisionChange}
                 >
@@ -128,9 +125,9 @@ function AnswerSheetBulkUpload() {
                   ))}
                 </select>
               </div>
-              <div className="col-md-4">
+              <div>
                 <select
-                  className="form-select"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={selectedExam}
                   onChange={handleExamChange}
                 >
@@ -142,51 +139,66 @@ function AnswerSheetBulkUpload() {
               </div>
             </div>
             <div className="text-center">
-              <button className="btn btn-primary" onClick={handleConfirm}>
+              <button
+                className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                onClick={handleConfirm}
+              >
                 Show Student List
               </button>
             </div>
           </>
         ) : (
           <>
-            <div className="mb-2 d-flex justify-content-between align-items-center">
+            <div className="mb-4 flex justify-between items-center">
               <div>
-                <span className="me-3">
+                <span className="mr-4">
                   <b>Class:</b> {selectedClass}
                 </span>
-                <span className="me-3">
+                <span className="mr-4">
                   <b>Division:</b> {selectedDivision}
                 </span>
-                <span className="me-3">
+                <span className="mr-4">
                   <b>Exam:</b> {selectedExam}
                 </span>
               </div>
               <button
-                className="btn btn-sm btn-outline-secondary"
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200"
                 onClick={handleResetFilter}
               >
                 Change Section
               </button>
             </div>
-            <table className="table align-middle table-bordered">
-              <thead className="table-light">
+            <table className="w-full border-collapse border border-gray-300">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th>Roll No.</th>
-                  <th>Name</th>
-                  <th>Upload Answer Sheet</th>
-                  <th>Status</th>
+                  <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+                    Roll No.
+                  </th>
+                  <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+                    Name
+                  </th>
+                  <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+                    Upload Answer Sheet
+                  </th>
+                  <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {mockStudents.map((student) => (
-                  <tr key={student.rollNo}>
-                    <td>{student.rollNo}</td>
-                    <td>{student.name}</td>
-                    <td>
+                  <tr key={student.rollNo} className="hover:bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-2">
+                      {student.rollNo}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {student.name}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
                       <input
                         type="file"
                         accept="image/*,application/pdf"
-                        style={{ maxWidth: 170, display: "inline-block" }}
+                        className="max-w-[170px] inline-block px-2 py-1 border border-gray-300 rounded text-sm"
                         onChange={(e) =>
                           handleFileChange(student.rollNo, e.target.files[0])
                         }
@@ -195,7 +207,7 @@ function AnswerSheetBulkUpload() {
                         }
                       />
                       <button
-                        className="btn btn-success btn-sm ms-2"
+                        className="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded ml-2 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
                         disabled={
                           !uploads[student.rollNo]?.file ||
                           uploads[student.rollNo]?.status === "Uploaded"
@@ -205,25 +217,31 @@ function AnswerSheetBulkUpload() {
                         Upload
                       </button>
                       {errors[student.rollNo] && (
-                        <div className="small text-danger">
+                        <div className="text-xs text-red-500 mt-1">
                           {errors[student.rollNo]}
                         </div>
                       )}
                     </td>
-                    <td>
+                    <td className="border border-gray-300 px-4 py-2">
                       {uploads[student.rollNo]?.status === "Uploaded" && (
-                        <span className="badge bg-success">Uploaded</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Uploaded
+                        </span>
                       )}
                       {uploads[student.rollNo]?.status === "Uploading" && (
-                        <span className="badge bg-warning text-dark">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                           Uploading...
                         </span>
                       )}
                       {uploads[student.rollNo]?.status === "Ready" && (
-                        <span className="badge bg-info text-dark">Ready</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Ready
+                        </span>
                       )}
                       {!uploads[student.rollNo]?.status && (
-                        <span className="badge bg-secondary">Pending</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          Pending
+                        </span>
                       )}
                     </td>
                   </tr>
