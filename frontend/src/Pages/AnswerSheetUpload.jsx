@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
 
 // Mock data for demonstration; replace with backend/API calls
 const mockClasses = ["Class 1", "Class 2", "Class 3"];
