@@ -115,6 +115,16 @@ const Home = () => {
             </h2>
           </div>
 
+          {/* answer sheet upload */}
+          <div
+            onClick={() => navigate("/answer-sheet-upload")}
+            className="bg-white rounded-lg shadow-md p-6 cursor-pointer"
+          >
+            <h2 className="text-lg font-semibold text-gray-900">
+              Answer Sheet Upload
+            </h2>
+          </div>
+
           {/* admin panel */}
           <div
             onClick={() => navigate("/admin")}

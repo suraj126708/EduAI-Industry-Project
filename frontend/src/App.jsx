@@ -15,6 +15,7 @@ import AdminDashboard from "./Pages/AdminDashboard";
 import Unauthorized from "./Pages/Unauthorized";
 import QuestionPaperForm from "./Pages/QuestionPaperGeneration";
 import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
+import AnswerSheetUpload from "./Pages/AnswerSheetUpload";
 
 function App() {
   return (
@@ -44,7 +45,14 @@ function App() {
                 // </ProtectedRoute>
               }
             />
-
+            <Route
+              path="/answer-sheet-upload"
+              element={
+                // <ProtectedRoute>
+                <AnswerSheetUpload />
+                // </ProtectedRoute>
+              }
+            />
             <Route
               path="/question-paper-generation"
               element={
