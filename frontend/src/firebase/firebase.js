@@ -219,7 +219,12 @@ class AuthService {
   // Get user profile from backend
   async getUserProfile() {
     try {
-      const response = await axios.get("/auth/profile");
+      const response = await axios.get("/auth/profile", {
+        headers: {
+          Authorization: `Bearer ${this.firebaseUser?.firebase?.idToken}`,
+        },
+      });
+
       return {
         success: true,
         data: response.data.data,
