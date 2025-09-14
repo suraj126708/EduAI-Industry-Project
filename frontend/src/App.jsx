@@ -1,4 +1,3 @@
-// src/App.jsx
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -11,11 +10,17 @@ import ProtectedRoute from "./Pages/ProtectedRoute";
 import Login from "./Pages/Login";
 import Register from "./Pages/Register";
 import Home from "./Pages/Home";
-import AdminDashboard from "./Pages/AdminDashboard";
 import Unauthorized from "./Pages/Unauthorized";
 import QuestionPaperForm from "./Pages/QuestionPaperGeneration";
 import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
 import AnswerSheetUpload from "./Pages/AnswerSheetUpload";
+
+// Admin imports
+import AdminLayout from "./Pages/Admin/AdminLayout";
+import AdminDashboard from "./Pages/Admin/Dashboard";
+import AdminUsers from "./Pages/Admin/Users";
+import AdminPapers from "./Pages/Admin/Papers";
+import AdminResults from "./Pages/Admin/Results";
 
 function App() {
   return (
@@ -29,52 +34,28 @@ function App() {
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* Protected routes */}
-            <Route
-              path="/home"
-              element={
-                // <ProtectedRoute>
-                <Home />
-                // </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/upload"
-              element={
-                // <ProtectedRoute>
-                <ExamPlatformUpload />
-                // </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/answer-sheet-upload"
-              element={
-                // <ProtectedRoute>
-                <AnswerSheetUpload />
-                // </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/question-paper-generation"
-              element={
-                // <ProtectedRoute>
-                <QuestionPaperForm />
-                // </ProtectedRoute>
-              }
-            />
+            <Route path="/home" element={<Home />} />
+            <Route path="/upload" element={<ExamPlatformUpload />} />
+            <Route path="/answer-sheet-upload" element={<AnswerSheetUpload />} />
+            <Route path="/question-paper-generation" element={<QuestionPaperForm />} />
 
-            {/* Admin routes - require admin role */}
+            {/* Admin routes (protected) */}
             <Route
-              path="/admin"
+              path="/admin/*"
               element={
-                // <ProtectedRoute requiredRole="admin">
-                <AdminDashboard />
-                // </ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout />
+                </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="papers" element={<AdminPapers />} />
+              <Route path="results" element={<AdminResults />} />
+            </Route>
 
-            {/* Redirect root to home */}
+            {/* Redirect root to /home */}
             <Route path="/" element={<Navigate to="/home" replace />} />
-
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
