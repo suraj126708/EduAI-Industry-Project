@@ -219,9 +219,13 @@ class AuthService {
   // Get user profile from backend
   async getUserProfile() {
     try {
+      // Get the latest ID token from Firebase Auth
+      const user = auth.currentUser;
+      const idToken = user ? await user.getIdToken() : null;
+
       const response = await axios.get("/auth/profile", {
         headers: {
-          Authorization: `Bearer ${this.firebaseUser?.firebase?.idToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
       });
 
@@ -302,7 +306,13 @@ class AuthService {
     // Get admin dashboard data
     async getDashboard() {
       try {
-        const response = await axios.get("/admin/dashboard");
+        const user = auth.currentUser;
+        const idToken = user ? await user.getIdToken() : null;
+        const response = await axios.get("/api/admin/dashboard", {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
         return {
           success: true,
           data: response.data.data,
@@ -325,7 +335,9 @@ class AuthService {
           if (filters[key]) params.append(key, filters[key]);
         });
 
-        const response = await axios.get(`/admin/users?${params.toString()}`);
+        const response = await axios.get(
+          `/admin/teachers?${params.toString()}`
+        );
         return {
           success: true,
           data: response.data.data,
@@ -342,7 +354,7 @@ class AuthService {
     // Get user by ID
     async getUserById(userId) {
       try {
-        const response = await axios.get(`/admin/users/${userId}`);
+        const response = await axios.get(`/admin/teachers/${userId}`);
         return {
           success: true,
           data: response.data.data,
@@ -359,7 +371,7 @@ class AuthService {
     // Update user role
     async updateUserRole(userId, role, reason = "") {
       try {
-        const response = await axios.put(`/admin/users/${userId}/role`, {
+        const response = await axios.put(`/admin/teachers/${userId}/role`, {
           role,
           reason,
         });
@@ -379,7 +391,7 @@ class AuthService {
     // Update user status
     async updateUserStatus(userId, status, reason = "") {
       try {
-        const response = await axios.put(`/admin/users/${userId}/status`, {
+        const response = await axios.put(`/admin/teachers/${userId}/status`, {
           status,
           reason,
         });
@@ -400,7 +412,7 @@ class AuthService {
     // Delete user
     async deleteUser(userId) {
       try {
-        const response = await axios.delete(`/admin/users/${userId}`);
+        const response = await axios.delete(`/admin/teachers/${userId}`);
         return {
           success: true,
           data: response.data.data,
@@ -423,7 +435,7 @@ class AuthService {
         });
 
         const response = await axios.get(
-          `/admin/users/export?${params.toString()}`
+          `/admin/teachers/export?${params.toString()}`
         );
         return {
           success: true,
