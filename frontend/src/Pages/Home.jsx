@@ -29,7 +29,7 @@ const Home = () => {
   const navigate = useNavigate();
   return (
     <div>
-      <h1 className="text-4xl font-extrabold mb-8 text-indigo-800">ExamFlow Platform</h1>
+      <h1 className="text-4xl text-center font-extrabold mb-8 text-indigo-800">EduAI Question Generation & Answer Evaluation Platform</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-2xl mx-auto">
         {homeCards.map((card) => (
           <button
