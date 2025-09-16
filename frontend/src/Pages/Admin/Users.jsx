@@ -7,7 +7,7 @@ const AdminUsers = () => {
 
   useEffect(() => {
     adminService.getUsers().then((res) => {
-      if (res.success) setUsers(res.data.users || []);
+      if (res.success) setUsers(res.data.teachers || []);
     });
   }, [adminService]);
 

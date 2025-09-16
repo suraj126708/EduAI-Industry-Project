@@ -308,7 +308,7 @@ class AuthService {
       try {
         const user = auth.currentUser;
         const idToken = user ? await user.getIdToken() : null;
-        const response = await axios.get("/api/admin/dashboard", {
+        const response = await axios.get("/admin/dashboard", {
           headers: {
             Authorization: `Bearer ${idToken}`,
           },

@@ -23,7 +23,7 @@ const AdminLayout = () => (
       <nav className="flex flex-col gap-3">
         {navItems.map((item) => (
           <NavLink
-            to={item.path}
+            to={item.name === "Dashboard" ? "/admin/dashboard" : item.path}
             key={item.name}
             className={({ isActive }) =>
               `flex items-center px-4 py-2 rounded hover:bg-indigo-50 ${

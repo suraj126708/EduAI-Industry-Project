@@ -36,22 +36,29 @@ function App() {
             {/* Protected routes */}
             <Route path="/home" element={<Home />} />
             <Route path="/upload" element={<ExamPlatformUpload />} />
-            <Route path="/answer-sheet-upload" element={<AnswerSheetUpload />} />
-            <Route path="/question-paper-generation" element={<QuestionPaperForm />} />
+            <Route
+              path="/answer-sheet-upload"
+              element={<AnswerSheetUpload />}
+            />
+            <Route
+              path="/question-paper-generation"
+              element={<QuestionPaperForm />}
+            />
 
             {/* Admin routes (protected) */}
             <Route
               path="/admin/*"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={["admin"]}>
                   <AdminLayout />
                 </ProtectedRoute>
               }
             >
-              <Route index element={<AdminDashboard />} />
-              <Route path="users" element={<AdminUsers />} />
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="teachers" element={<AdminUsers />} />
               <Route path="papers" element={<AdminPapers />} />
-              <Route path="results" element={<AdminResults />} />
+              <Route path="stats" element={<AdminResults />} />
             </Route>
 
             {/* Redirect root to /home */}
