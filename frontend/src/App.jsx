@@ -45,7 +45,6 @@ function App() {
               element={<QuestionPaperForm />}
             />
 
-            {/* Admin routes (protected) */}
             <Route
               path="/admin/*"
               element={
