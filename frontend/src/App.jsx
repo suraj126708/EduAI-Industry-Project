@@ -14,6 +14,7 @@ import Unauthorized from "./Pages/Unauthorized";
 import QuestionPaperForm from "./Pages/QuestionPaperGeneration";
 import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
 import AnswerSheetUpload from "./Pages/AnswerSheetUpload";
+import PaperFormat from "./Pages/PaperFormat";
 
 // Admin imports
 import AdminLayout from "./Pages/Admin/AdminLayout";
@@ -62,7 +63,7 @@ function App() {
 
             {/* Redirect root to /home */}
             <Route path="/" element={<Navigate to="/home" replace />} />
-            {/* Fallback route */}
+            <Route path="paper" element={<PaperFormat />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </div>

@@ -2,6 +2,8 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { FaBook, FaFileUpload, FaFileAlt, FaCogs } from "react-icons/fa";
 
+import { IoNewspaperOutline } from "react-icons/io5";
+
 const homeCards = [
   {
     title: "Question Paper Generation",
@@ -23,14 +25,21 @@ const homeCards = [
     icon: <FaCogs className="text-pink-500 w-8 h-8 mb-2" />,
     route: "/admin",
   },
+  {
+    title: "Question paper format",
+    icon: <IoNewspaperOutline className="text-blue-500 w-8 h-8 mb-2" />,
+    route: "/paper",
+  },
 ];
 
 const Home = () => {
   const navigate = useNavigate();
   return (
     <div>
-      <h1 className="text-4xl text-center font-extrabold mb-8 text-indigo-800">EduAI Question Generation & Answer Evaluation Platform</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-2xl mx-auto">
+      <h1 className="text-4xl text-center font-extrabold mb-8 mt-8 text-indigo-800">
+        EduAI Question Generation & Answer Evaluation Platform
+      </h1>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-15 max-w-2xl my-10 mx-auto">
         {homeCards.map((card) => (
           <button
             key={card.title}
@@ -38,7 +47,9 @@ const Home = () => {
             onClick={() => navigate(card.route)}
           >
             {card.icon}
-            <span className="mt-2 font-semibold text-lg text-gray-700">{card.title}</span>
+            <span className="mt-2 font-semibold text-lg text-gray-700">
+              {card.title}
+            </span>
           </button>
         ))}
       </div>
