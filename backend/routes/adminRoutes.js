@@ -12,6 +12,9 @@ import {
   demoteFromAdmin,
   bulkUpdateTeachers,
   exportTeachers,
+  getStudentsByClassDivision,
+  uploadStudentExcel,
+  downloadStudentExcel,
 } from "../controllers/adminController.js";
 import {
   authenticateFirebaseToken,
@@ -19,6 +22,8 @@ import {
   checkPermissions,
   authorizeMultiple,
 } from "../middleware/authMiddleware.js";
+
+import upload from "../middleware/multerMiddleware.js";
 
 const router = express.Router();
 
@@ -168,6 +173,52 @@ router.delete(
   authorize("admin"),
   teacherIdValidation,
   deleteTeacher
+);
+
+// Students routes
+
+// Get students filtered by class & division
+router.get(
+  "/students",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  async (req, res, next) => {
+    // Simple validation
+    if (!req.query.class || !req.query.div) {
+      return res
+        .status(400)
+        .json({ success: false, message: "class and div are required" });
+    }
+    next();
+  },
+  getStudentsByClassDivision
+);
+
+// Upload student details via Excel (file in form-data under 'file' key)
+router.post(
+  "/students/upload",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  upload.single("file"),
+  uploadStudentExcel
+);
+
+// Bulk promote students (e.g., after academic year)
+router.put(
+  "/students/promote",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  async (req, res, next) => {
+    const { fromClass, toClass, div } = req.body;
+    if (!fromClass || !toClass || !div) {
+      return res.status(400).json({
+        success: false,
+        message: "fromClass, toClass and div are required",
+      });
+    }
+    next();
+  },
+  bulkPromoteStudents
 );
 
 export default router;

@@ -86,7 +86,6 @@ function AnswerSheetBulkUpload() {
       }));
       return;
     }
-    const count = (fileInputs[rollNo] || []).length;
     const newFile = new File(
       [file],
       getRenamedFileName(

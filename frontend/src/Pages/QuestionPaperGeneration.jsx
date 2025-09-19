@@ -47,6 +47,8 @@ const subjectOptions = [
   "Business Studies",
 ];
 
+const examTypeOptions = ["Unit Test", "Midterm", "Final"];
+
 const availableTopics = {
   mathematics: {
     "Number Systems": [
@@ -120,6 +122,7 @@ export default function MinimalQuestionPaperForm() {
   const [paperName, setPaperName] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedExamType, setSelectedExamType] = useState("");
   const [questions, setQuestions] = useState(initialQuestions);
   const [result, setResult] = useState(null);
   const [openDropdowns, setOpenDropdowns] = useState({});
@@ -257,7 +260,12 @@ export default function MinimalQuestionPaperForm() {
   };
 
   const handleGenerate = () => {
-    if (!paperName.trim() || !selectedClass || !selectedSubject) {
+    if (
+      !paperName.trim() ||
+      !selectedClass ||
+      !selectedSubject ||
+      !selectedExamType
+    ) {
       alert("Please fill in all paper details");
       return;
     }
@@ -279,6 +287,7 @@ export default function MinimalQuestionPaperForm() {
       paperName,
       class: selectedClass,
       subject: selectedSubject,
+      examType: selectedExamType,
       questions,
     });
   };
@@ -352,6 +361,24 @@ export default function MinimalQuestionPaperForm() {
                     {subjectOptions.map((subject) => (
                       <option key={subject} value={subject}>
                         {subject}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <select
+                    value={selectedExamType}
+                    onChange={(e) => setSelectedExamType(e.target.value)}
+                    className="px-4 py-3 border-b-2 border-gray-200   focus:outline-none bg-gray-50  text-gray-900 min-w-[140px] appearance-none cursor-pointer transition-all duration-200"
+                  >
+                    <option value="">Select exam</option>
+                    {examTypeOptions.map((examType) => (
+                      <option key={examType} value={examType}>
+                        {examType}
                       </option>
                     ))}
                   </select>
@@ -721,6 +748,10 @@ export default function MinimalQuestionPaperForm() {
                     <div className="flex justify-between py-2 border-b border-gray-100">
                       <span className="text-gray-600">Subject:</span>
                       <span className="font-medium">{result.subject}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-gray-100">
+                      <span className="text-gray-600">Exam Type:</span>
+                      <span className="font-medium">{result.examType}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-gray-100">
                       <span className="text-gray-600">Total Questions:</span>

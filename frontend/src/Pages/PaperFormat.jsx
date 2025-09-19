@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { saveAs } from "file-saver";
 
 function ExamPaperGenerator() {
   const [paperData, setPaperData] = useState({
@@ -146,6 +147,7 @@ function ExamPaperGenerator() {
   });
 
   const [editMode, setEditMode] = useState(false);
+  const [savedMessage, setSavedMessage] = useState("");
 
   const handleInputChange = (field, value) => {
     setPaperData((prev) => ({
@@ -192,39 +194,11 @@ function ExamPaperGenerator() {
     }, 0);
   };
 
-  const generateDocxContent = () => {
-    let docxContent = `${paperData.collegeName}\n\n`;
-    docxContent += `${paperData.testName}\n`;
-    docxContent += `${paperData.subject} - ${paperData.className}\n\n`;
-    docxContent += `Date: ${paperData.date}    Semester: ${
-      paperData.semester
-    }    Max. Marks: ${calculateTotalMarks()}    Time: ${
-      paperData.timeAllowed
-    }\n\n`;
-
-    docxContent += "General Instructions:\n";
-    paperData.instructions.forEach((instruction, index) => {
-      docxContent += `${index + 1}. ${instruction}\n`;
-    });
-    docxContent += "\n";
-
-    paperData.sections.forEach((section) => {
-      docxContent += `${section.sectionName}: ${section.sectionTitle}\n`;
-      docxContent += `${section.description}\n\n`;
-
-      section.questions.forEach((question) => {
-        docxContent += `Q.${question.questionNo} ${question.question} (${question.marks} marks)\n`;
-        if (question.options) {
-          question.options.forEach((option) => {
-            docxContent += `${option}\n`;
-          });
-        }
-        docxContent += "\n";
-      });
-      docxContent += "\n";
-    });
-
-    return docxContent;
+  const saveChanges = () => {
+    setSavedMessage("Changes saved successfully!");
+    setTimeout(() => {
+      setSavedMessage("");
+    }, 3000);
   };
 
   const downloadPDF = () => {
@@ -274,21 +248,202 @@ function ExamPaperGenerator() {
   };
 
   const downloadDOCX = () => {
-    const content = generateDocxContent();
-    const blob = new Blob([content], {
-      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${paperData.subject}_${paperData.testName.replace(
-      /\s+/g,
-      "_"
-    )}.docx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      // Create HTML content that Word can open
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="utf-8">
+            <meta name="ProgId" content="Word.Document">
+            <meta name="Generator" content="Microsoft Word 15">
+            <meta name="Originator" content="Microsoft Word 15">
+            <style>
+              body { 
+                font-family: 'Times New Roman', serif; 
+                margin: 1in; 
+                line-height: 1.15; 
+                color: #000;
+                font-size: 12pt;
+              }
+              .header { 
+                text-align: center; 
+                border-bottom: 2px solid #000; 
+                padding-bottom: 10px; 
+                margin-bottom: 20px; 
+              }
+              .college-name { 
+                font-size: 18pt; 
+                font-weight: bold; 
+                margin-bottom: 8px; 
+              }
+              .test-name { 
+                font-size: 14pt; 
+                font-weight: bold; 
+                margin-bottom: 8px; 
+              }
+              .subject-class { 
+                font-size: 12pt; 
+                margin-bottom: 8px; 
+              }
+              .exam-details { 
+                background: #f0f0f0; 
+                padding: 10px; 
+                margin-bottom: 20px; 
+                font-size: 10pt;
+              }
+              .instructions { 
+                border: 1px solid #000; 
+                padding: 15px; 
+                background: #f9f9f9; 
+                margin-bottom: 20px; 
+              }
+              .instructions h3 { 
+                font-weight: bold; 
+                margin-bottom: 10px; 
+                font-size: 12pt;
+              }
+              table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-bottom: 20px; 
+              }
+              th, td { 
+                border: 1px solid #000; 
+                padding: 8px; 
+                text-align: left; 
+                vertical-align: top;
+              }
+              th { 
+                background-color: #e0e0e0; 
+                font-weight: bold; 
+              }
+              .section-header { 
+                background-color: #d0d0d0; 
+                font-weight: bold; 
+              }
+              .question-cell { 
+                vertical-align: top; 
+              }
+              .marks-cell { 
+                text-align: center; 
+                vertical-align: top; 
+                width: 60px; 
+              }
+              .question-no { 
+                text-align: center; 
+                vertical-align: top; 
+                width: 50px; 
+              }
+              .options { 
+                margin-top: 8px; 
+                font-size: 11pt; 
+              }
+              .page-break {
+                page-break-before: always;
+              }
+            </style>
+          </head>
+          <body>
+            <!-- Header -->
+            <div class="header">
+              <div class="college-name">${paperData.collegeName}</div>
+              <div class="test-name">${paperData.testName}</div>
+              <div class="subject-class">${paperData.subject} - ${
+        paperData.className
+      }</div>
+              <div class="exam-details">
+                <strong>Date:</strong> ${paperData.date} &nbsp;&nbsp;&nbsp;
+                <strong>Semester:</strong> ${
+                  paperData.semester
+                } &nbsp;&nbsp;&nbsp;
+                <strong>Max. Marks:</strong> ${calculateTotalMarks()} &nbsp;&nbsp;&nbsp;
+                <strong>Time:</strong> ${paperData.timeAllowed}
+              </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="instructions">
+              <h3>General Instructions:</h3>
+              <ol>
+                ${paperData.instructions
+                  .map((instruction) => `<li>${instruction}</li>`)
+                  .join("")}
+              </ol>
+            </div>
+
+            <!-- Questions Table -->
+            <table>
+              <thead>
+                <tr>
+                  <th class="question-no">Q. No.</th>
+                  <th>Questions</th>
+                  <th class="marks-cell">Marks</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${paperData.sections
+                  .map(
+                    (section) => `
+                  <tr>
+                    <td colspan="3" class="section-header">
+                      <strong>${section.sectionName}: ${
+                      section.sectionTitle
+                    }</strong><br>
+                      <em>${section.description}</em>
+                    </td>
+                  </tr>
+                  ${section.questions
+                    .map(
+                      (question) => `
+                    <tr>
+                      <td class="question-no">${question.questionNo}</td>
+                      <td class="question-cell">
+                        ${question.question}
+                        ${
+                          question.options
+                            ? `
+                          <div class="options">
+                            ${question.options
+                              .map((option) => `<div>${option}</div>`)
+                              .join("")}
+                          </div>
+                        `
+                            : ""
+                        }
+                      </td>
+                      <td class="marks-cell">${question.marks}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+
+            <div style="margin-top: 30px; text-align: center; font-size: 10pt; color: #666;">
+              Total Marks: ${calculateTotalMarks()}
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Create blob and download
+      const blob = new Blob([htmlContent], {
+        type: "application/msword",
+      });
+
+      const fileName = `${paperData.subject}_${paperData.testName.replace(
+        /\s+/g,
+        "_"
+      )}.doc`;
+      saveAs(blob, fileName);
+    } catch (error) {
+      console.error("Error generating DOCX:", error);
+      alert("Error generating DOC file. Please try again.");
+    }
   };
 
   const PaperView = () => (
@@ -523,9 +678,28 @@ function ExamPaperGenerator() {
   const EditView = () => (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          Edit Paper Details
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">
+            Edit Paper Details
+          </h2>
+          <div className="flex items-center gap-4">
+            {savedMessage && (
+              <div className="text-green-600 font-medium">{savedMessage}</div>
+            )}
+            <button
+              onClick={saveChanges}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              Save Changes
+            </button>
+            <button
+              onClick={() => console.log("Current paperData:", paperData)}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              Debug State
+            </button>
+          </div>
+        </div>
 
         {/* Basic Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -748,7 +922,7 @@ function ExamPaperGenerator() {
               onClick={downloadDOCX}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-lg font-medium transition-colors"
             >
-              Download DOCX
+              Download DOC
             </button>
           </>
         )}

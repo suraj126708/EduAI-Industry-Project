@@ -9,9 +9,10 @@ import {
 
 const navItems = [
   { name: "Dashboard", path: "/admin/dashboard", icon: <FaTachometerAlt /> },
-  { name: "Users", path: "/admin/teachers", icon: <FaUsers /> },
+  { name: "Teachers", path: "/admin/teachers", icon: <FaUsers /> },
   { name: "Question Papers", path: "/admin/papers", icon: <FaFileAlt /> },
   { name: "Results", path: "/admin/stats", icon: <FaChartBar /> },
+  { name: "Students", path: "/admin/students", icon: <FaUsers /> },
 ];
 
 const AdminLayout = () => (

@@ -3,8 +3,13 @@ import Teacher from "../models/Teacher.js";
 import School from "../models/School.js";
 import Class from "../models/Class.js";
 import Subject from "../models/Subject.js";
+import Student from "../models/Student.js";
 import { validationResult } from "express-validator";
 import admin from "../config/firebase.js";
+import XLSX from "xlsx";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 // @desc    Get admin dashboard data
 // @route   GET /api/admin/dashboard
@@ -718,6 +723,112 @@ export const demoteFromAdmin = async (req, res) => {
         process.env.NODE_ENV === "development"
           ? error.message
           : "Something went wrong",
+    });
+  }
+};
+
+// For file uploads (Excel)
+const excelUpload = multer({ dest: "uploads/" });
+
+// @desc    Get students by class and division
+// @route   GET /api/admin/students
+// @access  Private (Admin)
+export const getStudentsByClassDivision = async (req, res) => {
+  try {
+    const { class: cls, div } = req.query;
+    if (!cls || !div) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Class and Division required" });
+    }
+    const students = await Student.find({ class: cls, div }).sort({
+      rollNo: 1,
+    });
+    if (!students || students.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No students found" });
+    }
+    res.json({ success: true, data: students });
+  } catch (error) {
+    console.error("Get students error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve students",
+      error: error.message,
+    });
+  }
+};
+
+// @desc Bulk upload students via Excel file
+// @route POST /api/admin/students/upload
+// @access Private (Admin)
+export const uploadStudentExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Excel file required" });
+    }
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    // Map Excel columns to Student data shape
+    const studentsToInsert = jsonData.map((r) => ({
+      name: r.name || r.Name || "",
+      class: r.class || r.Class || "",
+      div: r.div || r.Div || "",
+      rollNo: r.rollNo || r["Roll No"] || 0,
+      parentContact: r.parentContact || r["Parent Contact No"] || "",
+      parentEmail: r.parentEmail || r["Parent Email"] || "",
+    }));
+
+    await Student.insertMany(studentsToInsert, { ordered: false });
+
+    // Remove temporary file
+    fs.unlinkSync(req.file.path);
+
+    res.json({
+      success: true,
+      message: `${studentsToInsert.length} students uploaded successfully.`,
+    });
+  } catch (error) {
+    console.error("Excel upload error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload students from Excel.",
+      error: error.message,
+    });
+  }
+};
+
+// @desc Bulk update student classes (e.g., promote after academic year)
+// @route PUT /api/admin/students/promote
+// @access Private (Admin)
+export const bulkPromoteStudents = async (req, res) => {
+  try {
+    const { fromClass, toClass, div } = req.body;
+    if (!fromClass || !toClass || !div) {
+      return res.status(400).json({
+        success: false,
+        message: "fromClass, toClass, and div are required",
+      });
+    }
+    const result = await Student.updateMany(
+      { class: fromClass, div },
+      { $set: { class: toClass } }
+    );
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} students promoted from ${fromClass} to ${toClass} in division ${div}.`,
+    });
+  } catch (error) {
+    console.error("Promote students error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to promote students.",
+      error: error.message,
     });
   }
 };

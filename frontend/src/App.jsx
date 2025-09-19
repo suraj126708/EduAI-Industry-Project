@@ -10,7 +10,7 @@ import ProtectedRoute from "./Pages/ProtectedRoute";
 import Login from "./Pages/Login";
 import Register from "./Pages/Register";
 import Home from "./Pages/Home";
-import Unauthorized from "./Pages/Unauthorized";
+import Unauthorized from "./components/Unauthorized";
 import QuestionPaperForm from "./Pages/QuestionPaperGeneration";
 import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
 import AnswerSheetUpload from "./Pages/AnswerSheetUpload";
@@ -22,6 +22,7 @@ import AdminDashboard from "./Pages/Admin/Dashboard";
 import AdminUsers from "./Pages/Admin/Users";
 import AdminPapers from "./Pages/Admin/Papers";
 import AdminResults from "./Pages/Admin/Results";
+import AdminStudents from "./Pages/Admin/Students";
 
 function App() {
   return (
@@ -59,6 +60,7 @@ function App() {
               <Route path="teachers" element={<AdminUsers />} />
               <Route path="papers" element={<AdminPapers />} />
               <Route path="stats" element={<AdminResults />} />
+              <Route path="students" element={<AdminStudents />} />
             </Route>
 
             {/* Redirect root to /home */}
