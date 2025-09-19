@@ -14,17 +14,20 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // Accept only Excel and CSV files
+  // Accept Excel, CSV, and PDF files
   if (
     file.mimetype ===
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
     file.mimetype === "application/vnd.ms-excel" ||
-    file.mimetype === "text/csv"
+    file.mimetype === "text/csv" ||
+    file.mimetype === "application/pdf"
   ) {
     cb(null, true);
   } else {
     cb(
-      new Error("Invalid file type. Only Excel and CSV files are allowed."),
+      new Error(
+        "Invalid file type. Only Excel, CSV, and PDF files are allowed."
+      ),
       false
     );
   }
@@ -36,4 +39,21 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // Limit 5MB
 });
 
+// PDF-specific upload middleware with larger file size limit
+const pdfFileFilter = (req, file, cb) => {
+  // Accept only PDF files
+  if (file.mimetype === "application/pdf") {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type. Only PDF files are allowed."), false);
+  }
+};
+
+const pdfUpload = multer({
+  storage,
+  fileFilter: pdfFileFilter,
+  limits: { fileSize: 50 * 1024 * 1024 }, // Limit 50MB for PDFs
+});
+
+export { pdfUpload };
 export default upload;

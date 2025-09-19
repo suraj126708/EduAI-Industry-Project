@@ -117,4 +117,94 @@ export const getCurrentUser = () => {
   return auth.currentUser;
 };
 
+// Book API functions
+export const bookAPI = {
+  // Upload book PDF
+  uploadBook: async (formData) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("User not authenticated");
+
+      const idToken = await user.getIdToken();
+
+      const response = await fetch(`${local_api}books/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Upload failed");
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Upload book error:", error);
+      throw error;
+    }
+  },
+
+  // Get all books
+  getAllBooks: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams(params);
+      const response = await api.get(`books?${queryParams}`);
+      return response.data;
+    } catch (error) {
+      console.error("Get all books error:", error);
+      throw error;
+    }
+  },
+
+  // Get book by ID
+  getBookById: async (bookId) => {
+    try {
+      const response = await api.get(`books/${bookId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Get book by ID error:", error);
+      throw error;
+    }
+  },
+
+  // Get books by filter (class and subject)
+  getBooksByFilter: async (classValue, subjectValue) => {
+    try {
+      const response = await api.get(
+        `books/filter?classValue=${classValue}&subjectValue=${subjectValue}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Get books by filter error:", error);
+      throw error;
+    }
+  },
+
+  // Update book status
+  updateBookStatus: async (bookId, status) => {
+    try {
+      const response = await api.put(`books/${bookId}/status`, { status });
+      return response.data;
+    } catch (error) {
+      console.error("Update book status error:", error);
+      throw error;
+    }
+  },
+
+  // Delete book
+  deleteBook: async (bookId) => {
+    try {
+      const response = await api.delete(`books/${bookId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Delete book error:", error);
+      throw error;
+    }
+  },
+};
+
 export default api;

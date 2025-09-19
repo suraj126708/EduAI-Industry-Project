@@ -11,7 +11,9 @@ import {
   Trash2,
   Database,
   Brain,
+  AlertCircle,
 } from "lucide-react";
+import { bookAPI } from "../utils/api.js";
 
 const ExamPlatformUpload = () => {
   // Each row now has a status property: "pending" or "processed"
@@ -21,6 +23,8 @@ const ExamPlatformUpload = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState([]);
+  const [uploadResults, setUploadResults] = useState([]);
+  const [error, setError] = useState(null);
 
   const classes = [
     { value: "01", label: "Class 01" },
@@ -57,12 +61,12 @@ const ExamPlatformUpload = () => {
       description: "Uploading PDFs to secure server",
       icon: Upload,
     },
-    {
-      id: "validation",
-      title: "Content Validation",
-      description: "Validating PDF structure and content",
-      icon: FileCheck,
-    },
+    // {
+    //   id: "validation",
+    //   title: "Content Validation",
+    //   description: "Validating PDF structure and content",
+    //   icon: FileCheck,
+    // },
     {
       id: "extraction",
       title: "Text Extraction",
@@ -144,36 +148,110 @@ const ExamPlatformUpload = () => {
     completedSteps.length === processingSteps.length && !isProcessing;
 
   // When processing completes, mark rows as processed and clear processed rows
-  const handleProcessingComplete = () => {
-    setDocumentRows((prev) =>
-      // Mark matching validRows as processed but keep them in the list
-      prev.map((row) =>
-        validRows.some((vrow) => vrow.id === row.id)
-          ? { ...row, status: "processed" }
-          : row
-      )
-    );
-    setCompletedSteps([]);
-    setCurrentStep(0);
-    setIsProcessing(false);
-  };
+  // const handleProcessingComplete = () => {
+  //   setDocumentRows((prev) =>
+  //     // Mark matching validRows as processed but keep them in the list
+  //     prev.map((row) =>
+  //       validRows.some((vrow) => vrow.id === row.id)
+  //         ? { ...row, status: "processed" }
+  //         : row
+  //     )
+  //   );
+  //   setCompletedSteps([]);
+  //   setCurrentStep(0);
+  //   setIsProcessing(false);
+  // };
 
   // Processing: Only unprocessed/pending documents
   const startProcessing = async () => {
     if (validRows.length === 0) return;
+
     setIsProcessing(true);
     setCurrentStep(0);
     setCompletedSteps([]);
-    // Simulate processing steps per batch
-    for (let i = 0; i < processingSteps.length; i++) {
-      setCurrentStep(i);
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      setCompletedSteps((prev) => [...prev, i]);
+    setUploadResults([]);
+    setError(null);
+
+    try {
+      // Step 1: File Upload
+      setCurrentStep(0);
+      const uploadPromises = validRows.map(async (row) => {
+        const formData = new FormData();
+        formData.append("pdf", row.file);
+        formData.append("classValue", row.class);
+        formData.append("subjectValue", row.subject);
+        formData.append(
+          "title",
+          `${
+            row.subject.charAt(0).toUpperCase() +
+            row.subject.slice(1).replace("_", " ")
+          } - Class ${row.class}`
+        );
+        formData.append("author", "Unknown");
+        formData.append("year", new Date().getFullYear());
+
+        try {
+          const result = await bookAPI.uploadBook(formData);
+          return { success: true, row, result };
+        } catch (error) {
+          return { success: false, row, error: error.message };
+        }
+      });
+
+      const uploadResults = await Promise.all(uploadPromises);
+      setUploadResults(uploadResults);
+      setCompletedSteps([0]);
+
+      // Step 2: Content Validation
+      setCurrentStep(1);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setCompletedSteps([0, 1]);
+
+      // Step 3: Text Extraction
+      setCurrentStep(2);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setCompletedSteps([0, 1, 2]);
+
+      // Step 4: Vector Processing
+      setCurrentStep(3);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setCompletedSteps([0, 1, 2, 3]);
+
+      // Step 5: AI Analysis
+      setCurrentStep(4);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setCompletedSteps([0, 1, 2, 3, 4]);
+
+      // Mark successful uploads as processed
+      const successfulUploads = uploadResults.filter(
+        (result) => result.success
+      );
+      if (successfulUploads.length > 0) {
+        setDocumentRows((prev) =>
+          prev.map((row) =>
+            successfulUploads.some((upload) => upload.row.id === row.id)
+              ? { ...row, status: "processed" }
+              : row
+          )
+        );
+      }
+
+      // Check for any errors
+      const failedUploads = uploadResults.filter((result) => !result.success);
+      if (failedUploads.length > 0) {
+        setError(
+          `Failed to upload ${failedUploads.length} file(s). Please try again.`
+        );
+      }
+    } catch (error) {
+      console.error("Processing error:", error);
+      setError(
+        "An unexpected error occurred during processing. Please try again."
+      );
+    } finally {
+      setIsProcessing(false);
+      setCurrentStep(processingSteps.length);
     }
-    setIsProcessing(false);
-    setCurrentStep(processingSteps.length);
-    // Mark rows as processed and clear them from input
-    handleProcessingComplete();
   };
 
   return (
@@ -384,7 +462,50 @@ const ExamPlatformUpload = () => {
                 </p>
               )}
             </div>
-            <div clsassName="flex justify-center items-center align-center bg-red-200 mt-4">
+            {/* Error Display */}
+            {error && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                  <p className="text-red-700 font-medium">Upload Error</p>
+                </div>
+                <p className="text-red-600 text-sm mt-1">{error}</p>
+              </div>
+            )}
+
+            {/* Upload Results */}
+            {uploadResults.length > 0 && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <h3 className="font-medium text-blue-900 mb-3">
+                  Upload Results:
+                </h3>
+                <div className="space-y-2">
+                  {uploadResults.map((result, index) => (
+                    <div key={index} className="flex items-center text-sm">
+                      {result.success ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                          <span className="text-green-700">
+                            {result.row.subject} - Class {result.row.class}:
+                            Uploaded successfully
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
+                          <span className="text-red-700">
+                            {result.row.subject} - Class {result.row.class}:{" "}
+                            {result.error}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-center items-center mt-4">
               <button
                 onClick={clearInputs}
                 className="text-sm text-gray-500 hover:text-gray-700 underline"
@@ -566,8 +687,15 @@ const ExamPlatformUpload = () => {
                     Processing Complete!
                   </h3>
                   <p className="text-green-600 mb-4">
-                    All documents have been successfully processed.
+                    {uploadResults.filter((r) => r.success).length} of{" "}
+                    {uploadResults.length} documents processed successfully.
                   </p>
+                  {uploadResults.filter((r) => !r.success).length > 0 && (
+                    <p className="text-amber-600 mb-4">
+                      {uploadResults.filter((r) => !r.success).length}{" "}
+                      document(s) failed to upload.
+                    </p>
+                  )}
                   <div className="flex justify-center space-x-4">
                     <button className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">
                       Generate Exams

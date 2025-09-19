@@ -23,7 +23,7 @@ import {
   authorizeMultiple,
 } from "../middleware/authMiddleware.js";
 
-import upload from "../middleware/multerMiddleware.js";
+import upload from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -196,7 +196,7 @@ router.get(
 
 // Upload student details via Excel (file in form-data under 'file' key)
 router.post(
-  "/students/upload",
+  "/students/uploads",
   authenticateFirebaseToken,
   authorize("admin"),
   upload.single("file"),

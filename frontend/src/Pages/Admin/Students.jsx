@@ -39,9 +39,7 @@ function Students() {
   // Use actual API endpoint for Excel upload
   const uploadExcel = async (formData) => {
     try {
-      const response = await axios.post("/admin/students/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await axios.post("/admin/students/uploads", formData);
       setSuccessMessage(response.data.message || "Upload successful");
       fetchStudents();
     } catch (error) {
