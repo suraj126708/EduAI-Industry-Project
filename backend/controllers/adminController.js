@@ -7,7 +7,6 @@ import Student from "../models/Student.js";
 import { validationResult } from "express-validator";
 import admin from "../config/firebase.js";
 import XLSX from "xlsx";
-import multer from "multer";
 import path from "path";
 import fs from "fs";
 
@@ -727,9 +726,6 @@ export const demoteFromAdmin = async (req, res) => {
   }
 };
 
-// For file uploads (Excel)
-const excelUpload = multer({ dest: "uploads/" });
-
 // @desc    Get students by class and division
 // @route   GET /api/admin/students
 // @access  Private (Admin)
@@ -774,24 +770,79 @@ export const uploadStudentExcel = async (req, res) => {
     const sheetName = workbook.SheetNames[0];
     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-    // Map Excel columns to Student data shape
-    const studentsToInsert = jsonData.map((r) => ({
-      name: r.name || r.Name || "",
-      class: r.class || r.Class || "",
-      div: r.div || r.Div || "",
-      rollNo: r.rollNo || r["Roll No"] || 0,
-      parentContact: r.parentContact || r["Parent Contact No"] || "",
-      parentEmail: r.parentEmail || r["Parent Email"] || "",
-    }));
+    // Normalize and prepare upserts to avoid duplicates
+    const operations = [];
+    for (const r of jsonData) {
+      const name = String(r.name || r.Name || "").trim();
+      const clsRaw = r.class ?? r.Class ?? "";
+      const divRaw = r.div ?? r.Div ?? "";
+      const rollRaw = r.rollNo ?? r["Roll No"] ?? r["Roll"] ?? 0;
 
-    await Student.insertMany(studentsToInsert, { ordered: false });
+      // Normalize class: remove leading "Class" and trim
+      const normalizedClass = String(clsRaw)
+        .replace(/^Class\s*/i, "")
+        .trim();
+      const normalizedDiv = String(divRaw).trim().toUpperCase();
+      const normalizedRoll = Number(rollRaw) || 0;
+
+      if (!name || !normalizedClass || !normalizedDiv || !normalizedRoll) {
+        continue; // skip incomplete rows
+      }
+
+      const parentContact = String(
+        r.parentContact || r["Parent Contact No"] || r["Parent Phone"] || ""
+      ).trim();
+      const parentEmail = String(
+        r.parentEmail || r["Parent Email"] || r["Parent Mail"] || ""
+      ).trim();
+
+      operations.push({
+        updateOne: {
+          filter: {
+            class: normalizedClass,
+            div: normalizedDiv,
+            rollNo: normalizedRoll,
+          },
+          update: {
+            $set: {
+              name,
+              parentContact,
+              parentEmail,
+            },
+            $setOnInsert: {
+              class: normalizedClass,
+              div: normalizedDiv,
+              rollNo: normalizedRoll,
+            },
+          },
+          upsert: true,
+        },
+      });
+    }
+
+    let upserted = 0;
+    let modified = 0;
+    if (operations.length > 0) {
+      const bulkResult = await Student.bulkWrite(operations, {
+        ordered: false,
+      });
+      upserted = bulkResult.upsertedCount || 0;
+      modified = bulkResult.modifiedCount || 0;
+    }
 
     // Remove temporary file
-    fs.unlinkSync(req.file.path);
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch (_) {}
 
     res.json({
       success: true,
-      message: `${studentsToInsert.length} students uploaded successfully.`,
+      message: `Students processed. Added: ${upserted}, Updated: ${modified}.`,
+      data: {
+        added: upserted,
+        updated: modified,
+        totalProcessed: operations.length,
+      },
     });
   } catch (error) {
     console.error("Excel upload error:", error);
@@ -828,6 +879,50 @@ export const bulkPromoteStudents = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to promote students.",
+      error: error.message,
+    });
+  }
+};
+
+// @desc Dedupe students by (class, div, rollNo), keep most recent
+// @route POST /api/admin/students/dedupe
+// @access Private (Admin)
+export const dedupeStudents = async (req, res) => {
+  try {
+    // Aggregate duplicates
+    const duplicates = await Student.aggregate([
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $group: {
+          _id: { class: "$class", div: "$div", rollNo: "$rollNo" },
+          ids: { $push: "$_id" },
+          keep: { $first: "$_id" },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $match: { count: { $gt: 1 } },
+      },
+    ]);
+
+    const toRemove = duplicates.flatMap((d) =>
+      d.ids.filter((id) => id.toString() !== d.keep.toString())
+    );
+    if (toRemove.length > 0) {
+      await Student.deleteMany({ _id: { $in: toRemove } });
+    }
+
+    res.json({
+      success: true,
+      message: `Deduplication complete. Removed ${toRemove.length} duplicate records across ${duplicates.length} keys`,
+    });
+  } catch (error) {
+    console.error("Deduplicate students error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to deduplicate students.",
       error: error.message,
     });
   }

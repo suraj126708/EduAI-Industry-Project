@@ -1,10 +1,19 @@
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 
 // Configure multer storage to save files in 'uploads' folder with original names
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/");
+    const uploadDir = "uploads";
+    try {
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+    } catch (err) {
+      return cb(err, uploadDir);
+    }
+    cb(null, uploadDir + "/");
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);

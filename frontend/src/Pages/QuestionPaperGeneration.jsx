@@ -21,15 +21,16 @@ const questionTypes = [
 ];
 
 const classOptions = [
+  "Class 1",
+  "Class 2",
+  "Class 3",
+  "Class 4",
+  "Class 5",
   "Class 6",
   "Class 7",
   "Class 8",
   "Class 9",
   "Class 10",
-  "Class 11",
-  "Class 12",
-  "Undergraduate",
-  "Postgraduate",
 ];
 
 const subjectOptions = [
@@ -128,6 +129,9 @@ export default function MinimalQuestionPaperForm() {
   const [openDropdowns, setOpenDropdowns] = useState({});
   const [questionTypeInputs, setQuestionTypeInputs] = useState({});
   const [questionTypeSuggestions, setQuestionTypeSuggestions] = useState({});
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [selectedHour, setSelectedHour] = useState(1);
+  const [selectedMinute, setSelectedMinute] = useState(0);
   const dropdownRefs = useRef({});
 
   // Close dropdowns when clicking outside
@@ -288,6 +292,10 @@ export default function MinimalQuestionPaperForm() {
       class: selectedClass,
       subject: selectedSubject,
       examType: selectedExamType,
+      duration: {
+        hours: selectedHour,
+        minutes: selectedMinute,
+      },
       questions,
     });
   };
@@ -302,6 +310,9 @@ export default function MinimalQuestionPaperForm() {
     const question = questions[questionIndex];
     return questionTypes.find((type) => type.value === question.type);
   };
+
+  const hourOptions = Array.from({ length: 13 }, (_, i) => i); // 0-12
+  const minuteOptions = Array.from({ length: 60 }, (_, i) => i); // 0-59
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 pb-32">
@@ -385,9 +396,87 @@ export default function MinimalQuestionPaperForm() {
                   <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
+
+              <div className="flex items-center gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Duration
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowDurationPicker(true)}
+                    className="px-4 py-3 border-b-2 border-gray-200 focus:outline-none bg-gray-50 text-gray-900 min-w-[120px] rounded transition-all duration-200"
+                  >
+                    {selectedHour} hr {selectedMinute.toString().padStart(2, "0")}{" "}
+                    min
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Duration Picker Modal */}
+        {showDurationPicker && (
+          <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center border border-black-200">
+              <div className="flex gap-8">
+                {/* Hours Picker */}
+                <div className="flex flex-col items-center">
+                  <div className="text-gray-500 mb-2">Hours</div>
+                  <div className="overflow-y-auto h-40 w-16 flex flex-col items-center">
+                    {Array.from({ length: 13 }, (_, i) => i).map((hr) => (
+                      <div
+                        key={hr}
+                        onClick={() => setSelectedHour(hr)}
+                        className={`cursor-pointer py-2 text-lg ${
+                          selectedHour === hr
+                            ? "text-blue-600 font-bold bg-blue-100 rounded"
+                            : "text-gray-700"
+                        }`}
+                      >
+                        {hr.toString().padStart(2, "0")}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Minutes Picker */}
+                <div className="flex flex-col items-center">
+                  <div className="text-gray-500 mb-2">Minutes</div>
+                  <div className="overflow-y-auto h-40 w-16 flex flex-col items-center">
+                    {Array.from({ length: 60 }, (_, i) => i).map((min) => (
+                      <div
+                        key={min}
+                        onClick={() => setSelectedMinute(min)}
+                        className={`cursor-pointer py-2 text-lg ${
+                          selectedMinute === min
+                            ? "text-purple-600 font-bold bg-purple-100 rounded"
+                            : "text-gray-700"
+                        }`}
+                      >
+                        {min.toString().padStart(2, "0")}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex gap-4">
+                <button
+                  onClick={() => setShowDurationPicker(false)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700"
+                >
+                  Set Duration
+                </button>
+                <button
+                  onClick={() => setShowDurationPicker(false)}
+                  className="px-6 py-2 bg-gray-200 text-gray-700 rounded shadow hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Questions Table */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-visible mb-8">
@@ -752,6 +841,13 @@ export default function MinimalQuestionPaperForm() {
                     <div className="flex justify-between py-2 border-b border-gray-100">
                       <span className="text-gray-600">Exam Type:</span>
                       <span className="font-medium">{result.examType}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-gray-100">
+                      <span className="text-gray-600">Duration:</span>
+                      <span className="font-medium">
+                        {result.duration.hours || "0"} hr{" "}
+                        {result.duration.minutes || "0"} min
+                      </span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-gray-100">
                       <span className="text-gray-600">Total Questions:</span>
