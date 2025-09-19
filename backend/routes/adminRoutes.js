@@ -14,7 +14,8 @@ import {
   exportTeachers,
   getStudentsByClassDivision,
   uploadStudentExcel,
-  downloadStudentExcel,
+  bulkPromoteStudents,
+  dedupeStudents,
 } from "../controllers/adminController.js";
 import {
   authenticateFirebaseToken,
@@ -23,7 +24,7 @@ import {
   authorizeMultiple,
 } from "../middleware/authMiddleware.js";
 
-import upload from "../middleware/multerMiddleware.js";
+import upload from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -219,6 +220,14 @@ router.put(
     next();
   },
   bulkPromoteStudents
+);
+
+// Deduplicate students (admin maintenance)
+router.post(
+  "/students/dedupe",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  dedupeStudents
 );
 
 export default router;

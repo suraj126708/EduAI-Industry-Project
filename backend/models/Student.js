@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const studentSchema = new mongoose.Schema(
   {
@@ -6,11 +6,14 @@ const studentSchema = new mongoose.Schema(
     class: { type: String, required: true },
     div: { type: String, required: true },
     rollNo: { type: Number, required: true },
-    parentContact: { type: String, required: true },
-    parentEmail: { type: String, required: true },
+    parentContact: { type: String, required: false },
+    parentEmail: { type: String, required: false },
   },
-  { timestamps: true }
+  { timestamps: true, collection: "students" }
 );
 
+// Ensure uniqueness per class/div/rollNo
+studentSchema.index({ class: 1, div: 1, rollNo: 1 }, { unique: true });
+
 const Student = mongoose.model("Student", studentSchema);
-module.exports = Student;
+export default Student;

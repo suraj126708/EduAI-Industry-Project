@@ -1,8 +1,20 @@
 import React, { useState } from "react";
-import * as XLSX from "xlsx";
-import axios from "axios";
+import api from "../../utils/api";
 
-const mockClasses = ["Class 1", "Class 2", "Class 3"];
+const mockClasses = [
+  "Class 1",
+  "Class 2",
+  "Class 3",
+  "Class 4",
+  "Class 5",
+  "Class 6",
+  "Class 7",
+  "Class 8",
+  "Class 9",
+  "Class 10",
+  "Class 11",
+  "Class 12",
+];
 const mockDivisions = ["A", "B", "C"];
 
 function Students() {
@@ -14,16 +26,22 @@ function Students() {
 
   const fetchStudents = async () => {
     try {
+      if (!selectedClass || !selectedDivision) {
+        // Avoid calling API with empty filters
+        return;
+      }
       console.log(
         "Requesting students with class:",
         selectedClass,
         "and division:",
         selectedDivision
       );
-      const response = await axios.get("/admin/students", {
+      const response = await api.get("admin/students", {
         params: {
-          class: selectedClass,
-          div: selectedDivision,
+          class: String(selectedClass)
+            .replace(/^Class\s*/i, "")
+            .trim(),
+          div: String(selectedDivision).trim().toUpperCase(),
         },
       });
       console.log("Received students:", response.data.data);
@@ -39,11 +57,13 @@ function Students() {
   // Use actual API endpoint for Excel upload
   const uploadExcel = async (formData) => {
     try {
-      const response = await axios.post("/admin/students/upload", formData, {
+      const response = await api.post("admin/students/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSuccessMessage(response.data.message || "Upload successful");
-      fetchStudents();
+      if (selectedClass && selectedDivision) {
+        fetchStudents();
+      }
     } catch (error) {
       setExcelError(error.response?.data?.message || "Upload failed");
       console.error("Upload error:", error);
