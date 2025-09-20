@@ -4,6 +4,9 @@ const currentYear = new Date().getFullYear();
 const mockClasses = ["Class 1", "Class 2", "Class 3"];
 const mockDivisions = ["A", "B", "C"];
 const mockExams = ["Midterm", "Final", "Unit Test"];
+const mockPaperTypes = ["Same for all students", "According to sets"];
+const mockPaperSets = ["Set A", "Set B", "Set C", "Set D"];
+const mockAttendanceOptions = ["Present", "Absent"];
 const mockStudents = [
   { rollNo: 1, name: "Amit" },
   { rollNo: 2, name: "Ravi" },
@@ -29,18 +32,33 @@ function AnswerSheetBulkUpload() {
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
   const [selectedExam, setSelectedExam] = useState("");
+  const [selectedPaperType, setSelectedPaperType] = useState("");
   const [filterConfirmed, setFilterConfirmed] = useState(false);
   const [uploads, setUploads] = useState({}); // rollNo => [{file,..}]
   const [errors, setErrors] = useState({});
   const [fileInputs, setFileInputs] = useState({}); // rollNo => inputs array, each tracks its file
+  const [studentSets, setStudentSets] = useState({}); // rollNo => selectedSet
 
   const handleClassChange = (e) => setSelectedClass(e.target.value);
   const handleDivisionChange = (e) => setSelectedDivision(e.target.value);
   const handleExamChange = (e) => setSelectedExam(e.target.value);
+  const handlePaperTypeChange = (e) => setSelectedPaperType(e.target.value);
+
+  const handleSetChange = (rollNo, set) => {
+    setStudentSets((prev) => ({
+      ...prev,
+      [rollNo]: set,
+    }));
+  };
 
   const handleConfirm = () => {
-    if (!selectedClass || !selectedDivision || !selectedExam) {
-      alert("Please select class, division, and exam");
+    if (
+      !selectedClass ||
+      !selectedDivision ||
+      !selectedExam ||
+      !selectedPaperType
+    ) {
+      alert("Please select class, division, exam, and paper type");
       return;
     }
     setFilterConfirmed(true);
@@ -50,18 +68,25 @@ function AnswerSheetBulkUpload() {
     setSelectedClass("");
     setSelectedDivision("");
     setSelectedExam("");
+    setSelectedPaperType("");
     setFilterConfirmed(false);
     setUploads({});
     setErrors({});
     setFileInputs({});
+    setStudentSets({});
   };
 
-  // Initialize file inputs when user list appears
+  // Initialize file inputs and set all students as present by default
   React.useEffect(() => {
     if (filterConfirmed) {
       const initialInputs = {};
-      mockStudents.forEach((s) => (initialInputs[s.rollNo] = [{ file: null }]));
+      const initialSets = {};
+      mockStudents.forEach((s) => {
+        initialInputs[s.rollNo] = [{ file: null }];
+        initialSets[s.rollNo] = "Present"; // Default to present
+      });
       setFileInputs(initialInputs);
+      setStudentSets(initialSets);
     }
   }, [filterConfirmed]);
 
@@ -166,26 +191,114 @@ function AnswerSheetBulkUpload() {
     }));
   };
 
-  // Simulated upload for all files under a rollNo
-  const handleUpload = (rollNo) => {
+  // Global submit function to upload all answer sheets
+  const handleGlobalSubmit = () => {
+    const presentStudents = getPresentStudents();
+    const studentsWithoutFiles = presentStudents.filter(
+      (student) =>
+        !uploads[student.rollNo] || uploads[student.rollNo].length === 0
+    );
+
+    if (studentsWithoutFiles.length > 0) {
+      alert(
+        `Please upload answer sheets for all present students. Missing files for: ${studentsWithoutFiles
+          .map((s) => s.name)
+          .join(", ")}`
+      );
+      return;
+    }
+
+    // Start uploading all files
+    presentStudents.forEach((student) => {
+      if (uploads[student.rollNo]) {
+        setUploads((prev) => ({
+          ...prev,
+          [student.rollNo]: prev[student.rollNo].map((item) => ({
+            ...item,
+            status: "Uploading",
+          })),
+        }));
+      }
+    });
+
+    // Simulate upload completion
+    setTimeout(() => {
+      presentStudents.forEach((student) => {
+        if (uploads[student.rollNo]) {
+          setUploads((prev) => ({
+            ...prev,
+            [student.rollNo]: prev[student.rollNo].map((item) => ({
+              ...item,
+              status: "Uploaded",
+            })),
+          }));
+        }
+      });
+    }, 2000);
+  };
+
+  // Individual submit function for absent students
+  const handleIndividualSubmit = (rollNo) => {
     if (!uploads[rollNo] || uploads[rollNo].length === 0) {
       setErrors((prev) => ({ ...prev, [rollNo]: "File required" }));
       return;
     }
+
+    // Start uploading files for this student
     setUploads((prev) => ({
       ...prev,
-      [rollNo]: prev[rollNo].map((item) =>
-        item.status !== "Uploaded" ? { ...item, status: "Uploading" } : item
-      ),
+      [rollNo]: prev[rollNo].map((item) => ({
+        ...item,
+        status: "Uploading",
+      })),
     }));
+
+    // Simulate upload completion
     setTimeout(() => {
       setUploads((prev) => ({
         ...prev,
-        [rollNo]: prev[rollNo].map((item) =>
-          item.status !== "Uploaded" ? { ...item, status: "Uploaded" } : item
-        ),
+        [rollNo]: prev[rollNo].map((item) => ({
+          ...item,
+          status: "Uploaded",
+        })),
       }));
-    }, 1200);
+    }, 1500);
+  };
+
+  // Check if student is marked as absent
+  const isStudentAbsent = (rollNo) => {
+    return studentSets[rollNo] === "Absent";
+  };
+
+  // Get absent students
+  const getAbsentStudents = () => {
+    return mockStudents.filter((student) => isStudentAbsent(student.rollNo));
+  };
+
+  // Get present students (not marked absent)
+  const getPresentStudents = () => {
+    return mockStudents.filter((student) => !isStudentAbsent(student.rollNo));
+  };
+
+  // Check if all present students have files ready
+  const allPresentStudentsReady = () => {
+    const presentStudents = getPresentStudents();
+    return presentStudents.every(
+      (student) => uploads[student.rollNo] && uploads[student.rollNo].length > 0
+    );
+  };
+
+  // Get status for a student
+  const getStudentStatus = (rollNo) => {
+    if (isStudentAbsent(rollNo)) {
+      return "Absent";
+    }
+
+    if (!uploads[rollNo] || uploads[rollNo].length === 0) {
+      return "Pending";
+    }
+
+    return "Ready";
   };
 
   return (
@@ -201,7 +314,7 @@ function AnswerSheetBulkUpload() {
         </div>
         {!filterConfirmed ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <select
                 className="border rounded p-2 w-full"
                 value={selectedClass}
@@ -232,6 +345,16 @@ function AnswerSheetBulkUpload() {
                   <option key={ex}>{ex}</option>
                 ))}
               </select>
+              <select
+                className="border rounded p-2 w-full"
+                value={selectedPaperType}
+                onChange={handlePaperTypeChange}
+              >
+                <option value="">Select Paper Type</option>
+                {mockPaperTypes.map((type) => (
+                  <option key={type}>{type}</option>
+                ))}
+              </select>
             </div>
             <div className="flex justify-center">
               <button
@@ -256,6 +379,9 @@ function AnswerSheetBulkUpload() {
                   <b>Exam:</b> {selectedExam}
                 </span>
                 <span>
+                  <b>Paper Type:</b> {selectedPaperType}
+                </span>
+                <span>
                   <b>Year:</b> {currentYear}
                 </span>
               </div>
@@ -272,6 +398,11 @@ function AnswerSheetBulkUpload() {
                   <tr>
                     <th className="py-2 px-4 text-left">Roll No.</th>
                     <th className="py-2 px-4 text-left">Name</th>
+                    {selectedPaperType === "According to sets" ? (
+                      <th className="py-2 px-4 text-left">Paper Set</th>
+                    ) : (
+                      <th className="py-2 px-4 text-left">Attendance</th>
+                    )}
                     <th className="py-2 px-4 text-left">Upload</th>
                     <th className="py-2 px-4 text-left">Camera</th>
                     <th className="py-2 px-4 text-left">Files (Renamed)</th>
@@ -286,6 +417,39 @@ function AnswerSheetBulkUpload() {
                     >
                       <td className="py-2 px-4">{student.rollNo}</td>
                       <td className="py-2 px-4">{student.name}</td>
+                      <td className="py-2 px-4">
+                        {selectedPaperType === "According to sets" ? (
+                          <select
+                            className="border rounded p-1 text-sm"
+                            value={studentSets[student.rollNo] || ""}
+                            onChange={(e) =>
+                              handleSetChange(student.rollNo, e.target.value)
+                            }
+                          >
+                            <option value="">Select Set</option>
+                            {mockPaperSets.map((set) => (
+                              <option key={set} value={set}>
+                                {set}
+                              </option>
+                            ))}
+                            <option value="Absent">Absent</option>
+                          </select>
+                        ) : (
+                          <select
+                            className="border rounded p-1 text-sm"
+                            value={studentSets[student.rollNo] || "Present"}
+                            onChange={(e) =>
+                              handleSetChange(student.rollNo, e.target.value)
+                            }
+                          >
+                            {mockAttendanceOptions.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
                       <td className="py-2 px-4">
                         {(fileInputs[student.rollNo] || []).map(
                           (input, idx) => (
@@ -334,31 +498,6 @@ function AnswerSheetBulkUpload() {
                             </div>
                           )
                         )}
-                        <button
-                          className={`px-3 py-1 rounded text-white mt-2 ${
-                            !uploads[student.rollNo] ||
-                            uploads[student.rollNo].length === 0 ||
-                            uploads[student.rollNo].some(
-                              (f) =>
-                                f.status === "Uploading" ||
-                                f.status === "Uploaded"
-                            )
-                              ? "bg-gray-400 cursor-not-allowed"
-                              : "bg-green-600 hover:bg-green-700"
-                          }`}
-                          disabled={
-                            !uploads[student.rollNo] ||
-                            uploads[student.rollNo].length === 0 ||
-                            uploads[student.rollNo].some(
-                              (f) =>
-                                f.status === "Uploading" ||
-                                f.status === "Uploaded"
-                            )
-                          }
-                          onClick={() => handleUpload(student.rollNo)}
-                        >
-                          Upload
-                        </button>
                         {errors[student.rollNo] && (
                           <div className="text-red-500 text-xs mt-1">
                             {errors[student.rollNo]}
@@ -392,34 +531,244 @@ function AnswerSheetBulkUpload() {
                         </ul>
                       </td>
                       <td className="py-2 px-4">
-                        {uploads[student.rollNo]?.length > 0 ? (
-                          uploads[student.rollNo].map((item, idx) => (
+                        {(() => {
+                          const status = getStudentStatus(student.rollNo);
+                          const hasUploading = uploads[student.rollNo]?.some(
+                            (item) => item.status === "Uploading"
+                          );
+                          const hasUploaded = uploads[student.rollNo]?.every(
+                            (item) => item.status === "Uploaded"
+                          );
+
+                          let displayStatus = status;
+                          if (hasUploading) displayStatus = "Uploading";
+                          else if (hasUploaded) displayStatus = "Uploaded";
+
+                          return (
                             <span
-                              key={idx}
-                              className={`px-2 py-1 rounded mr-2 ${
-                                item.status === "Uploaded"
+                              className={`px-2 py-1 rounded ${
+                                displayStatus === "Uploaded"
                                   ? "bg-green-100 text-green-700"
-                                  : item.status === "Uploading"
+                                  : displayStatus === "Uploading"
                                   ? "bg-yellow-100 text-yellow-800"
-                                  : item.status === "Ready"
+                                  : displayStatus === "Ready"
                                   ? "bg-blue-100 text-blue-700"
+                                  : displayStatus === "Absent"
+                                  ? "bg-red-100 text-red-700"
                                   : "bg-gray-200 text-gray-700"
                               }`}
                             >
-                              {item.status}
+                              {displayStatus}
                             </span>
-                          ))
-                        ) : (
-                          <span className="px-2 py-1 rounded bg-gray-200 text-gray-700">
-                            Pending
-                          </span>
-                        )}
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* Global Submit Button */}
+            <div className="mt-6 flex justify-center">
+              <button
+                className={`px-8 py-3 rounded-lg text-white font-semibold ${
+                  allPresentStudentsReady()
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gray-400 cursor-not-allowed"
+                }`}
+                disabled={!allPresentStudentsReady()}
+                onClick={handleGlobalSubmit}
+              >
+                Submit All Answer Sheets
+              </button>
+            </div>
+
+            {/* Absent Students Section */}
+            {getAbsentStudents().length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">
+                  Absent Students
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white text-sm rounded-lg border">
+                    <thead className="bg-red-50 text-gray-700">
+                      <tr>
+                        <th className="py-2 px-4 text-left">Roll No.</th>
+                        <th className="py-2 px-4 text-left">Name</th>
+                        <th className="py-2 px-4 text-left">Attendance</th>
+                        <th className="py-2 px-4 text-left">Upload</th>
+                        <th className="py-2 px-4 text-left">Camera</th>
+                        <th className="py-2 px-4 text-left">Files (Renamed)</th>
+                        <th className="py-2 px-4 text-left">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getAbsentStudents().map((student) => (
+                        <tr
+                          key={student.rollNo}
+                          className="border-b last:border-none bg-red-50"
+                        >
+                          <td className="py-2 px-4">{student.rollNo}</td>
+                          <td className="py-2 px-4">{student.name}</td>
+                          <td className="py-2 px-4">
+                            <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm">
+                              Absent
+                            </span>
+                          </td>
+                          <td className="py-2 px-4">
+                            {(fileInputs[student.rollNo] || []).map(
+                              (input, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center mb-2"
+                                >
+                                  <input
+                                    type="file"
+                                    accept="application/pdf,image/*"
+                                    className="block w-full"
+                                    style={{ maxWidth: "150px" }}
+                                    onChange={(e) =>
+                                      handleFileChange(
+                                        student.rollNo,
+                                        idx,
+                                        e.target.files
+                                      )
+                                    }
+                                  />
+                                  {input.file &&
+                                    idx ===
+                                      fileInputs[student.rollNo].length - 1 && (
+                                      <button
+                                        type="button"
+                                        className="text-blue-600 ml-2"
+                                        onClick={() =>
+                                          handleAddInput(student.rollNo)
+                                        }
+                                        title="Add another file"
+                                      >
+                                        <span className="text-xl font-bold">
+                                          +
+                                        </span>
+                                      </button>
+                                    )}
+                                  {input.file && (
+                                    <button
+                                      className="text-xs text-red-500 ml-2"
+                                      type="button"
+                                      onClick={() =>
+                                        handleRemoveFile(student.rollNo, idx)
+                                      }
+                                      title="Remove file"
+                                    >
+                                      x
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            )}
+                            {errors[student.rollNo] && (
+                              <div className="text-red-500 text-xs mt-1">
+                                {errors[student.rollNo]}
+                              </div>
+                            )}
+                            <button
+                              className={`px-3 py-1 rounded text-white mt-2 text-sm ${
+                                !uploads[student.rollNo] ||
+                                uploads[student.rollNo].length === 0 ||
+                                uploads[student.rollNo].some(
+                                  (f) =>
+                                    f.status === "Uploading" ||
+                                    f.status === "Uploaded"
+                                )
+                                  ? "bg-gray-400 cursor-not-allowed"
+                                  : "bg-green-600 hover:bg-green-700"
+                              }`}
+                              disabled={
+                                !uploads[student.rollNo] ||
+                                uploads[student.rollNo].length === 0 ||
+                                uploads[student.rollNo].some(
+                                  (f) =>
+                                    f.status === "Uploading" ||
+                                    f.status === "Uploaded"
+                                )
+                              }
+                              onClick={() =>
+                                handleIndividualSubmit(student.rollNo)
+                              }
+                            >
+                              Submit
+                            </button>
+                          </td>
+                          <td className="py-2 px-4">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              className="block w-full"
+                              style={{ maxWidth: "140px" }}
+                              onChange={(e) =>
+                                e.target.files.length > 0 &&
+                                handleCameraCapture(
+                                  student.rollNo,
+                                  e.target.files
+                                )
+                              }
+                            />
+                            <div className="text-xs text-gray-400 mt-1">
+                              Camera (mobile)
+                            </div>
+                          </td>
+                          <td className="py-2 px-4">
+                            <ul className="list-disc pl-4">
+                              {uploads[student.rollNo]?.length > 0 &&
+                                uploads[student.rollNo].map((item, idx) => (
+                                  <li key={idx} className="mb-1">
+                                    {item.file.name}
+                                  </li>
+                                ))}
+                            </ul>
+                          </td>
+                          <td className="py-2 px-4">
+                            {(() => {
+                              const status = getStudentStatus(student.rollNo);
+                              const hasUploading = uploads[
+                                student.rollNo
+                              ]?.some((item) => item.status === "Uploading");
+                              const hasUploaded = uploads[
+                                student.rollNo
+                              ]?.every((item) => item.status === "Uploaded");
+
+                              let displayStatus = status;
+                              if (hasUploading) displayStatus = "Uploading";
+                              else if (hasUploaded) displayStatus = "Uploaded";
+
+                              return (
+                                <span
+                                  className={`px-2 py-1 rounded ${
+                                    displayStatus === "Uploaded"
+                                      ? "bg-green-100 text-green-700"
+                                      : displayStatus === "Uploading"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : displayStatus === "Ready"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : displayStatus === "Absent"
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-gray-200 text-gray-700"
+                                  }`}
+                                >
+                                  {displayStatus}
+                                </span>
+                              );
+                            })()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
