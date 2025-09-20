@@ -306,7 +306,7 @@ function AnswerSheetBulkUpload() {
       <div className="max-w-5xl w-full bg-white shadow-lg rounded-xl p-8">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-800">
-            Bulk Answer Sheet Upload
+            Answer Sheet Upload
           </h2>
           <p className="text-gray-500">
             Select section once; upload multiple answer sheets per student
