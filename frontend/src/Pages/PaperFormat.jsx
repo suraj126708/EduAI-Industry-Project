@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { saveAs } from "file-saver";
 
 function ExamPaperGenerator() {
@@ -149,39 +149,42 @@ function ExamPaperGenerator() {
   const [editMode, setEditMode] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = useCallback((field, value) => {
     setPaperData((prev) => ({
       ...prev,
       [field]: value,
     }));
-  };
+  }, []);
 
-  const updateSection = (sectionIndex, field, value) => {
+  const updateSection = useCallback((sectionIndex, field, value) => {
     setPaperData((prev) => ({
       ...prev,
       sections: prev.sections.map((section, index) =>
         index === sectionIndex ? { ...section, [field]: value } : section
       ),
     }));
-  };
+  }, []);
 
-  const updateQuestion = (sectionIndex, questionIndex, field, value) => {
-    setPaperData((prev) => ({
-      ...prev,
-      sections: prev.sections.map((section, sIndex) =>
-        sIndex === sectionIndex
-          ? {
-              ...section,
-              questions: section.questions.map((question, qIndex) =>
-                qIndex === questionIndex
-                  ? { ...question, [field]: value }
-                  : question
-              ),
-            }
-          : section
-      ),
-    }));
-  };
+  const updateQuestion = useCallback(
+    (sectionIndex, questionIndex, field, value) => {
+      setPaperData((prev) => ({
+        ...prev,
+        sections: prev.sections.map((section, sIndex) =>
+          sIndex === sectionIndex
+            ? {
+                ...section,
+                questions: section.questions.map((question, qIndex) =>
+                  qIndex === questionIndex
+                    ? { ...question, [field]: value }
+                    : question
+                ),
+              }
+            : section
+        ),
+      }));
+    },
+    []
+  );
 
   const calculateTotalMarks = () => {
     return paperData.sections.reduce((total, section) => {
@@ -800,7 +803,7 @@ function ExamPaperGenerator() {
         {/* Sections */}
         {paperData.sections.map((section, sectionIndex) => (
           <div
-            key={sectionIndex}
+            key={`section-${sectionIndex}-${section.sectionName}`}
             className="border border-gray-300 rounded-lg p-4 mb-4"
           >
             <h4 className="text-lg font-semibold text-gray-800 mb-3">
@@ -829,7 +832,7 @@ function ExamPaperGenerator() {
 
             {section.questions.map((question, questionIndex) => (
               <div
-                key={questionIndex}
+                key={`question-${sectionIndex}-${questionIndex}-${question.questionNo}`}
                 className="bg-gray-50 p-3 rounded-md mb-3"
               >
                 <div className="grid grid-cols-12 gap-2 mb-2">

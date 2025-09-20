@@ -1,110 +1,55 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import { useNavigate } from "react-router-dom";
+import { Plus, FileText, AlertCircle } from "lucide-react";
+import questionTypes from "../assets/QuestionType.json";
+
+// Import reusable components
 import {
-  Plus,
-  X,
-  Search,
-  ChevronDown,
-  FileText,
-  Download,
-  Edit,
-} from "lucide-react";
+  Button,
+  ErrorMessage,
+  PaperDetailsForm,
+  QuestionsTable,
+  DurationPickerModal,
+  SuccessModal,
+} from "../components";
 
-// Simplified question types
-const questionTypes = [
-  { value: "single_correct", label: "Single Choice MCQ" },
-  { value: "multiple_correct", label: "Multiple Choice MCQ" },
-  { value: "true_false", label: "True/False" },
-  { value: "short_answer", label: "Short Answer" },
-  { value: "long_answer", label: "Essay/Long Answer" },
-  { value: "fill_blanks", label: "Fill in the Blanks" },
-  { value: "match_following", label: "Match the Following" },
-];
-
-const classOptions = [
-  "Class 1",
-  "Class 2",
-  "Class 3",
-  "Class 4",
-  "Class 5",
-  "Class 6",
-  "Class 7",
-  "Class 8",
-  "Class 9",
-  "Class 10",
-];
-
-const subjectOptions = [
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "English",
-  "History",
-  "Geography",
-  "Economics",
-  "Political Science",
-  "Computer Science",
-  "Accountancy",
-  "Business Studies",
-];
-
+const classOptions = ["Class 5"];
+const subjectOptions = ["Science"];
 const examTypeOptions = ["Unit Test", "Midterm", "Final"];
 
+// Main topics (chapters) for the top dropdown
+const mainTopics = [
+  "Living Things",
+  "Materials and Substances",
+  "Natural Phenomena",
+];
+
+// Full topic structure with subtopics for question rows
 const availableTopics = {
-  mathematics: {
-    "Number Systems": [
-      "Real Numbers",
-      "Rational Numbers",
-      "Irrational Numbers",
-      "Operations on Real Numbers",
+  science: {
+    "Living Things": [
+      "Plants and Animals",
+      "Human Body",
+      "Food and Nutrition",
+      "Health and Hygiene",
     ],
-    Algebra: [
-      "Polynomials",
-      "Linear Equations",
-      "Quadratic Equations",
-      "Factorization",
-    ],
-    Geometry: ["Triangles", "Circles", "Coordinate Geometry", "Constructions"],
-    Trigonometry: [
-      "Introduction to Trigonometry",
-      "Trigonometric Identities",
-      "Heights and Distances",
-    ],
-  },
-  physics: {
-    Mechanics: [
-      "Motion in a Straight Line",
-      "Laws of Motion",
-      "Work, Energy and Power",
-      "System of Particles",
-    ],
-    Thermodynamics: [
-      "Thermal Properties of Matter",
-      "Kinetic Theory",
-      "Thermodynamic Laws",
-    ],
-    "Waves & Optics": [
-      "Wave Motion",
-      "Sound Waves",
-      "Ray Optics",
-      "Wave Optics",
-    ],
-  },
-  chemistry: {
-    "Basic Concepts": [
-      "Some Basic Concepts",
-      "Structure of Atom",
-      "Classification of Elements",
-    ],
-    "Chemical Bonding": [
-      "Chemical Bonding",
+    "Materials and Substances": [
       "States of Matter",
-      "Thermodynamics",
+      "Materials Around Us",
+      "Changes Around Us",
+      "Separation of Substances",
     ],
-    "Organic Chemistry": [
-      "Hydrocarbons",
-      "Organic Chemistry Basics",
-      "Environmental Chemistry",
+    "Natural Phenomena": [
+      "Weather and Climate",
+      "Light and Sound",
+      "Force and Motion",
+      "Electricity and Magnets",
     ],
   },
 };
@@ -120,18 +65,23 @@ const initialQuestions = [
 ];
 
 export default function MinimalQuestionPaperForm() {
-  const [paperName, setPaperName] = useState("");
+  const navigate = useNavigate();
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedExamType, setSelectedExamType] = useState("");
+  const [selectedMainTopics, setSelectedMainTopics] = useState([]);
+  const [numberOfPapers, setNumberOfPapers] = useState(1);
   const [questions, setQuestions] = useState(initialQuestions);
-  const [result, setResult] = useState(null);
   const [openDropdowns, setOpenDropdowns] = useState({});
   const [questionTypeInputs, setQuestionTypeInputs] = useState({});
   const [questionTypeSuggestions, setQuestionTypeSuggestions] = useState({});
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [selectedHour, setSelectedHour] = useState(1);
   const [selectedMinute, setSelectedMinute] = useState(0);
+  const [errors, setErrors] = useState({});
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [generatedPaperData, setGeneratedPaperData] = useState(null);
   const dropdownRefs = useRef({});
 
   // Close dropdowns when clicking outside
@@ -152,50 +102,81 @@ export default function MinimalQuestionPaperForm() {
     };
   }, [openDropdowns]);
 
-  const updateQuestion = (index, key, value) => {
-    const newQuestions = [...questions];
-    newQuestions[index][key] = value;
-    setQuestions(newQuestions);
-  };
+  // Clear errors when form values change
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      setErrors({});
+    }
+  }, [
+    selectedClass,
+    selectedSubject,
+    selectedExamType,
+    selectedMainTopics,
+    numberOfPapers,
+    questions,
+  ]);
 
-  const addQuestion = () => {
-    setQuestions([
-      ...questions,
+  const updateQuestion = useCallback((index, key, value) => {
+    setQuestions((prev) => {
+      const newQuestions = [...prev];
+      newQuestions[index] = { ...newQuestions[index], [key]: value };
+      return newQuestions;
+    });
+  }, []);
+
+  const addQuestion = useCallback(() => {
+    setQuestions((prev) => [
+      ...prev,
       { type: "", units: [], topics: [], numQuestions: 1, marksPerQuestion: 1 },
     ]);
-  };
+  }, []);
 
-  const removeQuestion = (index) => {
-    if (questions.length > 1) {
-      setQuestions(questions.filter((_, i) => i !== index));
-    }
-  };
+  const removeQuestion = useCallback(
+    (index) => {
+      if (questions.length > 1) {
+        setQuestions((prev) => prev.filter((_, i) => i !== index));
+      }
+    },
+    [questions.length]
+  );
 
-  const handleQuestionTypeInput = (questionIndex, value) => {
-    setQuestionTypeInputs((prev) => ({ ...prev, [questionIndex]: value }));
+  const handleQuestionTypeInput = useCallback(
+    (questionIndex, value) => {
+      setQuestionTypeInputs((prev) => ({ ...prev, [questionIndex]: value }));
 
-    // Clear the selected type if input is empty
-    if (value.length === 0) {
-      updateQuestion(questionIndex, "type", "");
-      setQuestionTypeSuggestions((prev) => ({ ...prev, [questionIndex]: [] }));
-    } else {
-      const suggestions = questionTypes.filter(
-        (type) =>
-          type.label.toLowerCase().includes(value.toLowerCase()) ||
-          type.value.toLowerCase().includes(value.toLowerCase())
-      );
-      setQuestionTypeSuggestions((prev) => ({
+      // Clear the selected type if input is empty
+      if (value.length === 0) {
+        updateQuestion(questionIndex, "type", "");
+        setQuestionTypeSuggestions((prev) => ({
+          ...prev,
+          [questionIndex]: [],
+        }));
+      } else {
+        const suggestions = questionTypes.filter(
+          (type) =>
+            type.label.toLowerCase().includes(value.toLowerCase()) ||
+            type.value.toLowerCase().includes(value.toLowerCase())
+        );
+        setQuestionTypeSuggestions((prev) => ({
+          ...prev,
+          [questionIndex]: suggestions,
+        }));
+      }
+    },
+    [updateQuestion]
+  );
+
+  const selectQuestionType = useCallback(
+    (questionIndex, type) => {
+      updateQuestion(questionIndex, "type", type.value);
+      setQuestionTypeInputs((prev) => ({
         ...prev,
-        [questionIndex]: suggestions,
+        [questionIndex]: type.label,
       }));
-    }
-  };
-
-  const selectQuestionType = (questionIndex, type) => {
-    updateQuestion(questionIndex, "type", type.value);
-    setQuestionTypeInputs((prev) => ({ ...prev, [questionIndex]: type.label }));
-    setQuestionTypeSuggestions((prev) => ({ ...prev, [questionIndex]: [] }));
-  };
+      setQuestionTypeSuggestions((prev) => ({ ...prev, [questionIndex]: [] }));
+    },
+    [updateQuestion]
+  );
 
   const toggleUnit = (questionIndex, unit) => {
     const currentUnits = questions[questionIndex].units || [];
@@ -258,61 +239,222 @@ export default function MinimalQuestionPaperForm() {
     }));
   };
 
-  const getSubjectTopics = () => {
-    const subjectKey = selectedSubject.toLowerCase().replace(/\s+/g, "");
-    return availableTopics[subjectKey] || {};
-  };
+  const getSubjectTopics = useCallback(() => {
+    // Since we only have Science for Class 5, directly use the science topics
+    const allTopics = availableTopics.science || {};
 
-  const handleGenerate = () => {
-    if (
-      !paperName.trim() ||
-      !selectedClass ||
-      !selectedSubject ||
-      !selectedExamType
-    ) {
-      alert("Please fill in all paper details");
-      return;
+    // If no main topics are selected, return all topics
+    if (selectedMainTopics.length === 0) {
+      return allTopics;
     }
 
-    const isValid = questions.every(
-      (q) =>
-        q.type &&
-        (q.units.length > 0 || q.topics.length > 0) &&
-        q.numQuestions > 0 &&
-        q.marksPerQuestion > 0
-    );
-
-    if (!isValid) {
-      alert("Please complete all question configurations");
-      return;
-    }
-
-    setResult({
-      paperName,
-      class: selectedClass,
-      subject: selectedSubject,
-      examType: selectedExamType,
-      duration: {
-        hours: selectedHour,
-        minutes: selectedMinute,
-      },
-      questions,
+    // Filter topics based on selected main topics (chapters)
+    const filteredTopics = {};
+    Object.entries(allTopics).forEach(([unit, topics]) => {
+      // If this unit (chapter) is selected in main topics, include all its subtopics
+      if (selectedMainTopics.includes(unit)) {
+        filteredTopics[unit] = topics;
+      }
     });
-  };
 
-  const totalQuestions = questions.reduce((sum, q) => sum + q.numQuestions, 0);
-  const totalMarks = questions.reduce(
-    (sum, q) => sum + q.numQuestions * q.marksPerQuestion,
-    0
+    return filteredTopics;
+  }, [selectedMainTopics]);
+
+  const getAllMainTopicsForSubject = useCallback(() => {
+    // Return main topics (chapters) for the top dropdown
+    return mainTopics.map((topic) => ({
+      topic,
+      value: topic,
+    }));
+  }, []);
+
+  const handleMainTopicToggle = useCallback(
+    (topicValue) => {
+      if (topicValue === "select-all") {
+        const allMainTopics = getAllMainTopicsForSubject();
+        const allMainTopicValues = allMainTopics.map((t) => t.value);
+
+        // If all main topics are selected, deselect all; otherwise, select all
+        const allSelected = allMainTopicValues.every((val) =>
+          selectedMainTopics.includes(val)
+        );
+        setSelectedMainTopics(allSelected ? [] : allMainTopicValues);
+      } else {
+        setSelectedMainTopics((prev) => {
+          if (prev.includes(topicValue)) {
+            return prev.filter((t) => t !== topicValue);
+          } else {
+            return [...prev, topicValue];
+          }
+        });
+      }
+    },
+    [getAllMainTopicsForSubject, selectedMainTopics]
   );
 
-  const getSelectedQuestionType = (questionIndex) => {
-    const question = questions[questionIndex];
-    return questionTypes.find((type) => type.value === question.type);
-  };
+  const isAllMainTopicsSelected = useCallback(() => {
+    const allMainTopics = getAllMainTopicsForSubject();
+    const allMainTopicValues = allMainTopics.map((t) => t.value);
+    return (
+      allMainTopicValues.length > 0 &&
+      allMainTopicValues.every((val) => selectedMainTopics.includes(val))
+    );
+  }, [getAllMainTopicsForSubject, selectedMainTopics]);
 
-  const hourOptions = Array.from({ length: 13 }, (_, i) => i); // 0-12
-  const minuteOptions = Array.from({ length: 60 }, (_, i) => i); // 0-59
+  const validateForm = useCallback(() => {
+    const newErrors = {};
+
+    // Validate basic form fields
+    if (!selectedClass) {
+      newErrors.class = "Please select a class";
+    }
+    if (!selectedSubject) {
+      newErrors.subject = "Please select a subject";
+    }
+    if (!selectedExamType) {
+      newErrors.examType = "Please select an exam type";
+    }
+    if (!selectedMainTopics || selectedMainTopics.length === 0) {
+      newErrors.topic = "Please select at least one topic";
+    }
+    if (!numberOfPapers || numberOfPapers < 1 || numberOfPapers > 10) {
+      newErrors.numberOfPapers = "Number of papers must be between 1 and 10";
+    }
+
+    // Validate questions
+    questions.forEach((q, index) => {
+      const questionErrors = {};
+
+      // Check if question type is provided (either from dropdown or custom input)
+      const hasQuestionType = q.type || questionTypeInputs[index];
+      if (!hasQuestionType) {
+        questionErrors.type = "Please select or enter a question type";
+      }
+
+      if (!q.units || q.units.length === 0) {
+        if (!q.topics || q.topics.length === 0) {
+          questionErrors.topics = "Please select at least one unit or topic";
+        }
+      }
+
+      if (!q.numQuestions || q.numQuestions <= 0) {
+        questionErrors.numQuestions =
+          "Number of questions must be greater than 0";
+      }
+
+      if (!q.marksPerQuestion || q.marksPerQuestion <= 0) {
+        questionErrors.marksPerQuestion =
+          "Marks per question must be greater than 0";
+      }
+
+      if (Object.keys(questionErrors).length > 0) {
+        newErrors[`question_${index}`] = questionErrors;
+      }
+    });
+
+    return newErrors;
+  }, [
+    selectedClass,
+    selectedSubject,
+    selectedExamType,
+    selectedMainTopics,
+    numberOfPapers,
+    questions,
+    questionTypeInputs,
+  ]);
+
+  const handleGenerate = useCallback(async () => {
+    const validationErrors = validateForm();
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const paperData = {
+        class: selectedClass,
+        subject: selectedSubject,
+        examType: selectedExamType,
+        topics: selectedMainTopics,
+        numberOfPapers: numberOfPapers,
+        duration: {
+          hours: selectedHour,
+          minutes: selectedMinute,
+        },
+        questions: questions.map((q) => ({
+          ...q,
+          // Use custom input if no predefined type is selected
+          type: q.type || questionTypeInputs[questions.indexOf(q)] || "custom",
+        })),
+      };
+
+      setGeneratedPaperData(paperData);
+      setShowSuccessModal(true);
+      setErrors({});
+    } catch (error) {
+      setErrors({
+        general: "Failed to generate question paper. Please try again.",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [
+    validateForm,
+    selectedClass,
+    selectedSubject,
+    selectedExamType,
+    selectedMainTopics,
+    numberOfPapers,
+    selectedHour,
+    selectedMinute,
+    questions,
+    questionTypeInputs,
+  ]);
+
+  const totalQuestions = useMemo(
+    () => questions.reduce((sum, q) => sum + q.numQuestions, 0),
+    [questions]
+  );
+
+  const totalMarks = useMemo(
+    () =>
+      questions.reduce(
+        (sum, q) => sum + q.numQuestions * q.marksPerQuestion,
+        0
+      ),
+    [questions]
+  );
+
+  const getSelectedQuestionType = useCallback(
+    (questionIndex) => {
+      const question = questions[questionIndex];
+      return questionTypes.find((type) => type.value === question.type);
+    },
+    [questions]
+  );
+
+  // Handle navigation to paper format page
+  const handleViewPaper = useCallback(() => {
+    // Store paper data in sessionStorage for the PaperFormat page to access
+    sessionStorage.setItem(
+      "generatedPaperData",
+      JSON.stringify(generatedPaperData)
+    );
+    setShowSuccessModal(false);
+    navigate("/paper");
+  }, [generatedPaperData, navigate]);
+
+  // Handle closing the modal
+  const handleCloseModal = useCallback(() => {
+    setShowSuccessModal(false);
+    setGeneratedPaperData(null);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 pb-32">
@@ -327,619 +469,113 @@ export default function MinimalQuestionPaperForm() {
           </p>
         </div>
 
-        {/* Paper Details - Rich Design */}
-        <div className="mb-8">
-          <div className=" p-6">
-            <div className="flex flex-wrap items-center gap-6 justify-center">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={paperName}
-                    onChange={(e) => setPaperName(e.target.value)}
-                    placeholder="Enter paper name"
-                    className="px-4 py-3 border-b-2 border-gray-200   focus:outline-none bg-gray-50  text-gray-900 placeholder-gray-400 min-w-[200px] transition-all duration-200"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <select
-                    value={selectedClass}
-                    onChange={(e) => setSelectedClass(e.target.value)}
-                    className="px-4 py-3 border-b-2 border-gray-200   focus:outline-none bg-gray-50  text-gray-900 min-w-[140px] appearance-none cursor-pointer transition-all duration-200"
-                  >
-                    <option value="">Select class</option>
-                    {classOptions.map((cls) => (
-                      <option key={cls} value={cls}>
-                        {cls}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <select
-                    value={selectedSubject}
-                    onChange={(e) => setSelectedSubject(e.target.value)}
-                    className="px-4 py-3 border-b-2 border-gray-200   focus:outline-none bg-gray-50  text-gray-900 min-w-[170px] appearance-none cursor-pointer transition-all duration-200"
-                  >
-                    <option value="">Select subject</option>
-                    {subjectOptions.map((subject) => (
-                      <option key={subject} value={subject}>
-                        {subject}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <select
-                    value={selectedExamType}
-                    onChange={(e) => setSelectedExamType(e.target.value)}
-                    className="px-4 py-3 border-b-2 border-gray-200   focus:outline-none bg-gray-50  text-gray-900 min-w-[140px] appearance-none cursor-pointer transition-all duration-200"
-                  >
-                    <option value="">Select exam</option>
-                    {examTypeOptions.map((examType) => (
-                      <option key={examType} value={examType}>
-                        {examType}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">
-                    Duration
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowDurationPicker(true)}
-                    className="px-4 py-3 border-b-2 border-gray-200 focus:outline-none bg-gray-50 text-gray-900 min-w-[120px] rounded transition-all duration-200"
-                  >
-                    {selectedHour} hr {selectedMinute.toString().padStart(2, "0")}{" "}
-                    min
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Duration Picker Modal */}
-        {showDurationPicker && (
-          <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center border border-black-200">
-              <div className="flex gap-8">
-                {/* Hours Picker */}
-                <div className="flex flex-col items-center">
-                  <div className="text-gray-500 mb-2">Hours</div>
-                  <div className="overflow-y-auto h-40 w-16 flex flex-col items-center">
-                    {Array.from({ length: 13 }, (_, i) => i).map((hr) => (
-                      <div
-                        key={hr}
-                        onClick={() => setSelectedHour(hr)}
-                        className={`cursor-pointer py-2 text-lg ${
-                          selectedHour === hr
-                            ? "text-blue-600 font-bold bg-blue-100 rounded"
-                            : "text-gray-700"
-                        }`}
-                      >
-                        {hr.toString().padStart(2, "0")}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {/* Minutes Picker */}
-                <div className="flex flex-col items-center">
-                  <div className="text-gray-500 mb-2">Minutes</div>
-                  <div className="overflow-y-auto h-40 w-16 flex flex-col items-center">
-                    {Array.from({ length: 60 }, (_, i) => i).map((min) => (
-                      <div
-                        key={min}
-                        onClick={() => setSelectedMinute(min)}
-                        className={`cursor-pointer py-2 text-lg ${
-                          selectedMinute === min
-                            ? "text-purple-600 font-bold bg-purple-100 rounded"
-                            : "text-gray-700"
-                        }`}
-                      >
-                        {min.toString().padStart(2, "0")}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6 flex gap-4">
-                <button
-                  onClick={() => setShowDurationPicker(false)}
-                  className="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700"
-                >
-                  Set Duration
-                </button>
-                <button
-                  onClick={() => setShowDurationPicker(false)}
-                  className="px-6 py-2 bg-gray-200 text-gray-700 rounded shadow hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-              </div>
+        {/* General Error Display */}
+        {errors.general && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertCircle className="w-5 h-5" />
+              <span className="font-medium">{errors.general}</span>
             </div>
           </div>
         )}
 
+        {/* Paper Details Form */}
+        <PaperDetailsForm
+          selectedClass={selectedClass}
+          setSelectedClass={setSelectedClass}
+          selectedSubject={selectedSubject}
+          setSelectedSubject={setSelectedSubject}
+          selectedExamType={selectedExamType}
+          setSelectedExamType={setSelectedExamType}
+          selectedMainTopics={selectedMainTopics}
+          setSelectedMainTopics={setSelectedMainTopics}
+          numberOfPapers={numberOfPapers}
+          setNumberOfPapers={setNumberOfPapers}
+          showDurationPicker={showDurationPicker}
+          setShowDurationPicker={setShowDurationPicker}
+          selectedHour={selectedHour}
+          selectedMinute={selectedMinute}
+          openDropdowns={openDropdowns}
+          setOpenDropdowns={setOpenDropdowns}
+          handleMainTopicToggle={handleMainTopicToggle}
+          getAllMainTopicsForSubject={getAllMainTopicsForSubject}
+          isAllMainTopicsSelected={isAllMainTopicsSelected}
+          errors={errors}
+        />
+
+        {/* Duration Picker Modal */}
+        <DurationPickerModal
+          isOpen={showDurationPicker}
+          onClose={() => setShowDurationPicker(false)}
+          selectedHour={selectedHour}
+          selectedMinute={selectedMinute}
+          onHourChange={setSelectedHour}
+          onMinuteChange={setSelectedMinute}
+        />
+
+        {/* Number of Papers Input */}
+
         {/* Questions Table */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-visible mb-8">
-          {/* Table Header */}
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-5 border-b border-gray-200">
-            <div className="grid grid-cols-12 gap-4 text-sm font-semibold text-gray-800">
-              <div className="col-span-1 flex items-center">
-                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-blue-600">#</span>
-                </div>
-              </div>
-              <div className="col-span-3 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-500" />
-                Question Type
-              </div>
-              <div className="col-span-4 flex items-center gap-2">
-                <Search className="w-4 h-4 text-green-500" />
-                Topics
-              </div>
-              <div className="col-span-2 text-center">Questions</div>
-              <div className="col-span-1 text-center">Marks</div>
-              <div className="col-span-1 text-center">Total</div>
-            </div>
-          </div>
-
-          {/* Table Body */}
-          <div className="divide-y divide-gray-100 overflow-visible">
-            {questions.map((q, idx) => {
-              const selectedType = getSelectedQuestionType(idx);
-              return (
-                <div
-                  key={idx}
-                  className="px-6 py-5 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="grid grid-cols-12 gap-4 items-center">
-                    {/* Row Number */}
-                    <div className="col-span-1">
-                      <span className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-bold rounded-full shadow-md">
-                        {idx + 1}
-                      </span>
-                    </div>
-
-                    {/* Question Type */}
-                    <div className="col-span-3 relative">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-blue-400" />
-                        <input
-                          type="text"
-                          value={
-                            questionTypeInputs[idx] ||
-                            (selectedType ? selectedType.label : "")
-                          }
-                          onChange={(e) =>
-                            handleQuestionTypeInput(idx, e.target.value)
-                          }
-                          placeholder="Type 'mc' for MCQ..."
-                          className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-gray-50 focus:bg-white transition-all duration-200"
-                        />
-                      </div>
-
-                      {/* Suggestions */}
-                      {questionTypeSuggestions[idx] &&
-                        questionTypeSuggestions[idx].length > 0 && (
-                          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                            {questionTypeSuggestions[idx].map((type) => (
-                              <button
-                                key={type.value}
-                                onClick={() => selectQuestionType(idx, type)}
-                                className="w-full px-4 py-3 text-left hover:bg-gray-50 text-sm border-b border-gray-100 last:border-b-0"
-                              >
-                                {type.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                    </div>
-
-                    {/* Topics Selector */}
-                    <div
-                      className="col-span-4 relative"
-                      ref={(el) => (dropdownRefs.current[idx] = el)}
-                    >
-                      <div
-                        onClick={() => toggleDropdown(idx)}
-                        className="w-full p-3 border-2 border-gray-200 rounded-lg cursor-pointer flex items-center justify-between min-h-[48px] hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 bg-gray-50"
-                      >
-                        <div className="flex-1">
-                          {(q.units && q.units.length > 0) ||
-                          (q.topics && q.topics.length > 0) ? (
-                            <div className="flex flex-wrap gap-1">
-                              {q.units &&
-                                q.units.slice(0, 2).map((unit, unitIdx) => (
-                                  <span
-                                    key={`unit-${unitIdx}`}
-                                    className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md font-medium"
-                                  >
-                                    {unit}
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleUnit(idx, unit);
-                                      }}
-                                      className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </span>
-                                ))}
-
-                              {q.topics &&
-                                q.topics
-                                  .slice(
-                                    0,
-                                    Math.max(0, 3 - (q.units?.length || 0))
-                                  )
-                                  .map((topic, topicIdx) => (
-                                    <span
-                                      key={`topic-${topicIdx}`}
-                                      className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-md font-medium"
-                                    >
-                                      {topic}
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          const unit = Object.keys(
-                                            getSubjectTopics()
-                                          ).find((u) =>
-                                            getSubjectTopics()[u].includes(
-                                              topic
-                                            )
-                                          );
-                                          if (unit)
-                                            toggleTopic(idx, topic, unit);
-                                        }}
-                                        className="ml-1 hover:bg-green-200 rounded-full p-0.5"
-                                      >
-                                        <X className="w-3 h-3" />
-                                      </button>
-                                    </span>
-                                  ))}
-
-                              {(q.units?.length || 0) +
-                                (q.topics?.length || 0) >
-                                3 && (
-                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
-                                  +
-                                  {(q.units?.length || 0) +
-                                    (q.topics?.length || 0) -
-                                    3}{" "}
-                                  more
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 text-sm">
-                              Click to select topics
-                            </span>
-                          )}
-                        </div>
-                        <ChevronDown
-                          className={`w-4 h-4 text-gray-400 transition-transform ${
-                            openDropdowns[idx] ? "rotate-180" : ""
-                          }`}
-                        />
-                      </div>
-
-                      {/* Dropdown Menu */}
-                      {openDropdowns[idx] && (
-                        <div className="absolute top-full left-0 right-0 z-[9999] mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl max-h-80 overflow-y-auto">
-                          {Object.keys(getSubjectTopics()).length > 0 ? (
-                            Object.entries(getSubjectTopics()).map(
-                              ([unit, topics]) => (
-                                <div
-                                  key={unit}
-                                  className="p-4 border-b border-gray-100 last:border-b-0"
-                                >
-                                  {/* Unit Header */}
-                                  <label className="flex items-center p-2 hover:bg-gray-50 cursor-pointer rounded-md">
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        q.units && q.units.includes(unit)
-                                      }
-                                      onChange={() => toggleUnit(idx, unit)}
-                                      className="mr-3 text-blue-600 focus:ring-blue-500 rounded"
-                                    />
-                                    <div className="flex-1">
-                                      <div className="font-medium text-gray-900 text-sm">
-                                        {unit}
-                                      </div>
-                                      <div className="text-xs text-gray-500 mt-1">
-                                        {topics.length} topics
-                                      </div>
-                                    </div>
-                                  </label>
-
-                                  {/* Topics */}
-                                  <div className="ml-8 mt-2 space-y-1">
-                                    {topics.map((topic) => (
-                                      <label
-                                        key={topic}
-                                        className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer rounded-md"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={
-                                            q.topics && q.topics.includes(topic)
-                                          }
-                                          onChange={() =>
-                                            toggleTopic(idx, topic, unit)
-                                          }
-                                          className="mr-3 text-green-600 focus:ring-green-500 rounded"
-                                        />
-                                        <span className="text-sm text-gray-700">
-                                          {topic}
-                                        </span>
-                                      </label>
-                                    ))}
-                                  </div>
-                                </div>
-                              )
-                            )
-                          ) : (
-                            <div className="p-4 text-center text-gray-500">
-                              Please select a subject first
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Number of Questions */}
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={q.numQuestions}
-                        onChange={(e) =>
-                          updateQuestion(idx, "numQuestions", +e.target.value)
-                        }
-                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-center"
-                      />
-                    </div>
-
-                    {/* Marks per Question */}
-                    <div className="col-span-1">
-                      <input
-                        type="number"
-                        min="1"
-                        value={q.marksPerQuestion}
-                        onChange={(e) =>
-                          updateQuestion(
-                            idx,
-                            "marksPerQuestion",
-                            +e.target.value
-                          )
-                        }
-                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-center"
-                      />
-                    </div>
-
-                    {/* Total Marks */}
-                    <div className="col-span-1 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 text-sm font-medium rounded-md">
-                          {q.numQuestions * q.marksPerQuestion}
-                        </span>
-                        {questions.length > 1 && (
-                          <button
-                            onClick={() => removeQuestion(idx)}
-                            className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Table Footer */}
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-            <div className="grid grid-cols-12 gap-4 items-center">
-              <div className="col-span-7 text-gray-700 font-medium">
-                Total Summary
-              </div>
-              <div className="col-span-4 text-center">
-                <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-md">
-                  {totalQuestions} Questions
-                </span>
-              </div>
-              <div className="col-span-1 text-center">
-                <span className="inline-flex items-center px-3 py-1 bg-gray-900 text-white text-sm font-medium rounded-md">
-                  {totalMarks} Marks
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <QuestionsTable
+          questions={questions}
+          errors={errors}
+          onUpdateQuestion={updateQuestion}
+          onRemoveQuestion={removeQuestion}
+          onQuestionTypeInput={handleQuestionTypeInput}
+          onSelectQuestionType={selectQuestionType}
+          questionTypeInputs={questionTypeInputs}
+          questionTypeSuggestions={questionTypeSuggestions}
+          onToggleDropdown={toggleDropdown}
+          onToggleUnit={toggleUnit}
+          onToggleTopic={toggleTopic}
+          getSubjectTopics={getSubjectTopics}
+          openDropdowns={openDropdowns}
+          dropdownRefs={dropdownRefs}
+          totalQuestions={totalQuestions}
+          totalMarks={totalMarks}
+        />
 
         {/* Action Buttons */}
         <div className="flex gap-4 justify-center mb-8">
-          <button
+          <Button
             onClick={addQuestion}
-            className="flex items-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+            variant="secondary"
+            className="flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Add Question
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handleGenerate}
-            className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            disabled={isGenerating}
+            className={`flex items-center gap-2 ${
+              isGenerating ? "cursor-not-allowed" : ""
+            }`}
           >
-            <FileText className="w-4 h-4" />
-            Generate Paper
-          </button>
+            {isGenerating ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileText className="w-4 h-4" />
+                Generate Paper
+              </>
+            )}
+          </Button>
         </div>
 
-        {/* Results */}
-        {result && (
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-200 p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-green-900 mb-1">
-                    Paper Generated Successfully! 🎉
-                  </h3>
-                  <p className="text-green-700">
-                    Your question paper is ready for review and download
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8">
-              <div className="grid lg:grid-cols-2 gap-8">
-                {/* Paper Info */}
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-gray-900 mb-4">
-                    Paper Information
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Paper Name:</span>
-                      <span className="font-medium">{result.paperName}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Class:</span>
-                      <span className="font-medium">{result.class}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Subject:</span>
-                      <span className="font-medium">{result.subject}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Exam Type:</span>
-                      <span className="font-medium">{result.examType}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Duration:</span>
-                      <span className="font-medium">
-                        {result.duration.hours || "0"} hr{" "}
-                        {result.duration.minutes || "0"} min
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Total Questions:</span>
-                      <span className="font-medium">{totalQuestions}</span>
-                    </div>
-                    <div className="flex justify-between py-2">
-                      <span className="text-gray-600">Total Marks:</span>
-                      <span className="font-medium">{totalMarks}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Question Breakdown */}
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-4">
-                    Question Breakdown
-                  </h4>
-                  <div className="space-y-3">
-                    {result.questions.map((item, idx) => {
-                      const questionType = questionTypes.find(
-                        (t) => t.value === item.type
-                      );
-                      return (
-                        <div key={idx} className="p-4 bg-gray-50 rounded-md">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-gray-900">
-                              {questionType?.label || "Unknown Type"}
-                            </span>
-                            <span className="text-sm text-gray-600">
-                              {item.numQuestions} × {item.marksPerQuestion} ={" "}
-                              {item.numQuestions * item.marksPerQuestion} marks
-                            </span>
-                          </div>
-
-                          {/* Display selected topics */}
-                          <div className="space-y-1">
-                            {item.units && item.units.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                <span className="text-xs text-gray-500">
-                                  Units:
-                                </span>
-                                {item.units.map((unit, unitIdx) => (
-                                  <span
-                                    key={unitIdx}
-                                    className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
-                                  >
-                                    {unit}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {item.topics && item.topics.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                <span className="text-xs text-gray-500">
-                                  Topics:
-                                </span>
-                                {item.topics.map((topic, topicIdx) => (
-                                  <span
-                                    key={topicIdx}
-                                    className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
-                                  >
-                                    {topic}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-8 pt-6 border-t border-gray-200 flex flex-wrap gap-4 justify-center">
-                <button className="flex items-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow-md">
-                  <Download className="w-4 h-4" />
-                  Export PDF
-                </button>
-                <button className="flex items-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow-md">
-                  <Edit className="w-4 h-4" />
-                  Edit Paper
-                </button>
-                <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
-                  <FileText className="w-4 h-4" />
-                  Generate Questions
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Success Modal */}
+        <SuccessModal
+          isOpen={showSuccessModal}
+          onClose={handleCloseModal}
+          onViewPaper={handleViewPaper}
+          generatedPaperData={generatedPaperData}
+          totalQuestions={totalQuestions}
+          totalMarks={totalMarks}
+        />
       </div>
     </div>
   );

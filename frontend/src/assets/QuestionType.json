@@ -1,0 +1,710 @@
+[
+  {
+    "value": "single_correct",
+    "label": "Single Choice (MCQ)"
+  },
+  {
+    "value": "multiple_correct",
+    "label": "Multiple Choice (MCQ)"
+  },
+  {
+    "value": "true_false",
+    "label": "True/False"
+  },
+  {
+    "value": "yes_no",
+    "label": "Yes/No"
+  },
+  {
+    "value": "short_answer",
+    "label": "Short Answer"
+  },
+  {
+    "value": "long_answer",
+    "label": "Long Answer / Essay"
+  },
+  {
+    "value": "fill_in_blank",
+    "label": "Fill in the Blank"
+  },
+  {
+    "value": "fill_in_multiple_blanks",
+    "label": "Fill in Multiple Blanks"
+  },
+  {
+    "value": "dropdown",
+    "label": "Dropdown Selection"
+  },
+  {
+    "value": "multiple_dropdown",
+    "label": "Multiple Dropdown (Cloze)"
+  },
+  {
+    "value": "matching",
+    "label": "Matching"
+  },
+  {
+    "value": "categorization",
+    "label": "Categorization"
+  },
+  {
+    "value": "sequence_ordering",
+    "label": "Ordering / Sequencing"
+  },
+  {
+    "value": "drag_drop",
+    "label": "Drag and Drop"
+  },
+  {
+    "value": "drag_drop_text",
+    "label": "Drag Text to Blanks"
+  },
+  {
+    "value": "drag_drop_image",
+    "label": "Drag and Drop Images"
+  },
+  {
+    "value": "hotspot",
+    "label": "Hotspot (Image Click)"
+  },
+  {
+    "value": "label_image",
+    "label": "Label Image"
+  },
+  {
+    "value": "highlight_text",
+    "label": "Highlight Text"
+  },
+  {
+    "value": "highlight_image",
+    "label": "Highlight Image"
+  },
+  {
+    "value": "numeric",
+    "label": "Numeric Answer"
+  },
+  {
+    "value": "calculated",
+    "label": "Calculated (Formula)"
+  },
+  {
+    "value": "equation",
+    "label": "Equation Entry"
+  },
+  {
+    "value": "chart",
+    "label": "Chart Question"
+  },
+  {
+    "value": "graph",
+    "label": "Graphing"
+  },
+  {
+    "value": "code",
+    "label": "Code Editor"
+  },
+  {
+    "value": "audio",
+    "label": "Audio Response"
+  },
+  {
+    "value": "video",
+    "label": "Video Response"
+  },
+  {
+    "value": "file_upload",
+    "label": "File Upload"
+  },
+  {
+    "value": "crossword",
+    "label": "Crossword Puzzle"
+  },
+  {
+    "value": "puzzle",
+    "label": "Puzzle"
+  },
+  {
+    "value": "word_problem",
+    "label": "Word Problem"
+  },
+  {
+    "value": "story_comprehension",
+    "label": "Story Comprehension"
+  },
+  {
+    "value": "picture_description",
+    "label": "Picture Description"
+  },
+  {
+    "value": "rhyming_words",
+    "label": "Rhyming Words"
+  },
+  {
+    "value": "opposites",
+    "label": "Opposites"
+  },
+  {
+    "value": "synonyms",
+    "label": "Synonyms"
+  },
+  {
+    "value": "jumbled_sentences",
+    "label": "Jumbled Sentences"
+  },
+  {
+    "value": "word_formation",
+    "label": "Word Formation"
+  },
+  {
+    "value": "spelling_correction",
+    "label": "Spelling Correction"
+  },
+  {
+    "value": "missing_letters",
+    "label": "Missing Letters"
+  },
+  {
+    "value": "counting",
+    "label": "Counting"
+  },
+  {
+    "value": "number_pattern",
+    "label": "Number Pattern"
+  },
+  {
+    "value": "shape_recognition",
+    "label": "Shape Recognition"
+  },
+  {
+    "value": "color_recognition",
+    "label": "Color Recognition"
+  },
+  {
+    "value": "size_comparison",
+    "label": "Size Comparison"
+  },
+  {
+    "value": "time_reading",
+    "label": "Time Reading"
+  },
+  {
+    "value": "money_problems",
+    "label": "Money Problems"
+  },
+  {
+    "value": "measurement",
+    "label": "Measurement"
+  },
+  {
+    "value": "fraction_basic",
+    "label": "Basic Fractions"
+  },
+  {
+    "value": "table_completion",
+    "label": "Table Completion"
+  },
+  {
+    "value": "diagram_labeling",
+    "label": "Diagram Labeling"
+  },
+  {
+    "value": "map_reading",
+    "label": "Map Reading"
+  },
+  {
+    "value": "calendar_questions",
+    "label": "Calendar Questions"
+  },
+  {
+    "value": "weather_patterns",
+    "label": "Weather Patterns"
+  },
+  {
+    "value": "animal_habitat",
+    "label": "Animal Habitat"
+  },
+  {
+    "value": "plant_parts",
+    "label": "Plant Parts"
+  },
+  {
+    "value": "simple_experiment",
+    "label": "Simple Experiment"
+  },
+  {
+    "value": "algebra_expression",
+    "label": "Algebra Expression"
+  },
+  {
+    "value": "equation_solving",
+    "label": "Equation Solving"
+  },
+  {
+    "value": "geometry_proof",
+    "label": "Geometry Proof"
+  },
+  {
+    "value": "trigonometry",
+    "label": "Trigonometry"
+  },
+  {
+    "value": "statistics_graph",
+    "label": "Statistics & Graphs"
+  },
+  {
+    "value": "probability",
+    "label": "Probability"
+  },
+  {
+    "value": "percentage_calculation",
+    "label": "Percentage Calculation"
+  },
+  {
+    "value": "ratio_proportion",
+    "label": "Ratio & Proportion"
+  },
+  {
+    "value": "profit_loss",
+    "label": "Profit & Loss"
+  },
+  {
+    "value": "simple_interest",
+    "label": "Simple Interest"
+  },
+  {
+    "value": "compound_interest",
+    "label": "Compound Interest"
+  },
+  {
+    "value": "speed_distance_time",
+    "label": "Speed, Distance & Time"
+  },
+  {
+    "value": "work_time",
+    "label": "Work & Time Problems"
+  },
+  {
+    "value": "age_problems",
+    "label": "Age Problems"
+  },
+  {
+    "value": "grammar_correction",
+    "label": "Grammar Correction"
+  },
+  {
+    "value": "tenses",
+    "label": "Tenses"
+  },
+  {
+    "value": "voice_change",
+    "label": "Voice Change (Active/Passive)"
+  },
+  {
+    "value": "speech_change",
+    "label": "Speech Change (Direct/Indirect)"
+  },
+  {
+    "value": "preposition_fill",
+    "label": "Preposition Fill"
+  },
+  {
+    "value": "article_usage",
+    "label": "Article Usage (a, an, the)"
+  },
+  {
+    "value": "conjunction_fill",
+    "label": "Conjunction Fill"
+  },
+  {
+    "value": "sentence_transformation",
+    "label": "Sentence Transformation"
+  },
+  {
+    "value": "idiom_meaning",
+    "label": "Idiom & Meaning"
+  },
+  {
+    "value": "phrasal_verbs",
+    "label": "Phrasal Verbs"
+  },
+  {
+    "value": "poetry_comprehension",
+    "label": "Poetry Comprehension"
+  },
+  {
+    "value": "character_analysis",
+    "label": "Character Analysis"
+  },
+  {
+    "value": "theme_identification",
+    "label": "Theme Identification"
+  },
+  {
+    "value": "literary_devices",
+    "label": "Literary Devices"
+  },
+  {
+    "value": "physics_calculation",
+    "label": "Physics Calculation"
+  },
+  {
+    "value": "chemical_formula",
+    "label": "Chemical Formula"
+  },
+  {
+    "value": "chemical_equation",
+    "label": "Chemical Equation"
+  },
+  {
+    "value": "periodic_table",
+    "label": "Periodic Table"
+  },
+  {
+    "value": "atomic_structure",
+    "label": "Atomic Structure"
+  },
+  {
+    "value": "molecular_diagram",
+    "label": "Molecular Diagram"
+  },
+  {
+    "value": "laboratory_safety",
+    "label": "Laboratory Safety"
+  },
+  {
+    "value": "scientific_method",
+    "label": "Scientific Method"
+  },
+  {
+    "value": "hypothesis_testing",
+    "label": "Hypothesis Testing"
+  },
+  {
+    "value": "data_interpretation",
+    "label": "Data Interpretation"
+  },
+  {
+    "value": "ecosystem_diagram",
+    "label": "Ecosystem Diagram"
+  },
+  {
+    "value": "food_chain",
+    "label": "Food Chain"
+  },
+  {
+    "value": "life_cycle",
+    "label": "Life Cycle"
+  },
+  {
+    "value": "human_body_systems",
+    "label": "Human Body Systems"
+  },
+  {
+    "value": "cell_structure",
+    "label": "Cell Structure"
+  },
+  {
+    "value": "photosynthesis",
+    "label": "Photosynthesis"
+  },
+  {
+    "value": "digestive_system",
+    "label": "Digestive System"
+  },
+  {
+    "value": "respiratory_system",
+    "label": "Respiratory System"
+  },
+  {
+    "value": "circulatory_system",
+    "label": "Circulatory System"
+  },
+  {
+    "value": "nervous_system",
+    "label": "Nervous System"
+  },
+  {
+    "value": "reproductive_system",
+    "label": "Reproductive System"
+  },
+  {
+    "value": "genetics_basic",
+    "label": "Basic Genetics"
+  },
+  {
+    "value": "evolution",
+    "label": "Evolution"
+  },
+  {
+    "value": "classification",
+    "label": "Classification"
+  },
+  {
+    "value": "historical_timeline",
+    "label": "Historical Timeline"
+  },
+  {
+    "value": "historical_event",
+    "label": "Historical Event"
+  },
+  {
+    "value": "historical_figure",
+    "label": "Historical Figure"
+  },
+  {
+    "value": "cause_effect",
+    "label": "Cause & Effect"
+  },
+  {
+    "value": "geographical_features",
+    "label": "Geographical Features"
+  },
+  {
+    "value": "climate_zones",
+    "label": "Climate Zones"
+  },
+  {
+    "value": "natural_disasters",
+    "label": "Natural Disasters"
+  },
+  {
+    "value": "population_density",
+    "label": "Population Density"
+  },
+  {
+    "value": "economic_activities",
+    "label": "Economic Activities"
+  },
+  {
+    "value": "government_structure",
+    "label": "Government Structure"
+  },
+  {
+    "value": "constitution_basic",
+    "label": "Basic Constitution"
+  },
+  {
+    "value": "rights_responsibilities",
+    "label": "Rights & Responsibilities"
+  },
+  {
+    "value": "cultural_diversity",
+    "label": "Cultural Diversity"
+  },
+  {
+    "value": "festivals_traditions",
+    "label": "Festivals & Traditions"
+  },
+  {
+    "value": "art_techniques",
+    "label": "Art Techniques"
+  },
+  {
+    "value": "color_theory",
+    "label": "Color Theory"
+  },
+  {
+    "value": "art_movements",
+    "label": "Art Movements"
+  },
+  {
+    "value": "famous_artists",
+    "label": "Famous Artists"
+  },
+  {
+    "value": "musical_instruments",
+    "label": "Musical Instruments"
+  },
+  {
+    "value": "musical_notes",
+    "label": "Musical Notes"
+  },
+  {
+    "value": "rhythm_pattern",
+    "label": "Rhythm Pattern"
+  },
+  {
+    "value": "dance_forms",
+    "label": "Dance Forms"
+  },
+  {
+    "value": "computer_basics",
+    "label": "Computer Basics"
+  },
+  {
+    "value": "programming_logic",
+    "label": "Programming Logic"
+  },
+  {
+    "value": "algorithm_steps",
+    "label": "Algorithm Steps"
+  },
+  {
+    "value": "flowchart",
+    "label": "Flowchart"
+  },
+  {
+    "value": "html_tags",
+    "label": "HTML Tags"
+  },
+  {
+    "value": "css_styling",
+    "label": "CSS Styling"
+  },
+  {
+    "value": "database_concepts",
+    "label": "Database Concepts"
+  },
+  {
+    "value": "network_basics",
+    "label": "Network Basics"
+  },
+  {
+    "value": "cybersecurity_basic",
+    "label": "Basic Cybersecurity"
+  },
+  {
+    "value": "digital_citizenship",
+    "label": "Digital Citizenship"
+  },
+  {
+    "value": "physical_fitness",
+    "label": "Physical Fitness"
+  },
+  {
+    "value": "sports_rules",
+    "label": "Sports Rules"
+  },
+  {
+    "value": "exercise_techniques",
+    "label": "Exercise Techniques"
+  },
+  {
+    "value": "nutrition_basics",
+    "label": "Nutrition Basics"
+  },
+  {
+    "value": "health_hygiene",
+    "label": "Health & Hygiene"
+  },
+  {
+    "value": "first_aid",
+    "label": "First Aid"
+  },
+  {
+    "value": "environmental_conservation",
+    "label": "Environmental Conservation"
+  },
+  {
+    "value": "renewable_energy",
+    "label": "Renewable Energy"
+  },
+  {
+    "value": "pollution_types",
+    "label": "Pollution Types"
+  },
+  {
+    "value": "sustainable_development",
+    "label": "Sustainable Development"
+  },
+  {
+    "value": "moral_values",
+    "label": "Moral Values"
+  },
+  {
+    "value": "ethical_dilemma",
+    "label": "Ethical Dilemma"
+  },
+  {
+    "value": "life_skills",
+    "label": "Life Skills"
+  },
+  {
+    "value": "decision_making",
+    "label": "Decision Making"
+  },
+  {
+    "value": "problem_solving",
+    "label": "Problem Solving"
+  },
+  {
+    "value": "critical_thinking",
+    "label": "Critical Thinking"
+  },
+  {
+    "value": "creative_writing",
+    "label": "Creative Writing"
+  },
+  {
+    "value": "essay_writing",
+    "label": "Essay Writing"
+  },
+  {
+    "value": "letter_writing",
+    "label": "Letter Writing"
+  },
+  {
+    "value": "dialogue_writing",
+    "label": "Dialogue Writing"
+  },
+  {
+    "value": "story_writing",
+    "label": "Story Writing"
+  },
+  {
+    "value": "poem_writing",
+    "label": "Poem Writing"
+  },
+  {
+    "value": "report_writing",
+    "label": "Report Writing"
+  },
+  {
+    "value": "speech_writing",
+    "label": "Speech Writing"
+  },
+  {
+    "value": "debate_topics",
+    "label": "Debate Topics"
+  },
+  {
+    "value": "presentation_skills",
+    "label": "Presentation Skills"
+  },
+  {
+    "value": "communication_skills",
+    "label": "Communication Skills"
+  },
+  {
+    "value": "leadership_qualities",
+    "label": "Leadership Qualities"
+  },
+  {
+    "value": "teamwork",
+    "label": "Teamwork"
+  },
+  {
+    "value": "time_management",
+    "label": "Time Management"
+  },
+  {
+    "value": "stress_management",
+    "label": "Stress Management"
+  },
+  {
+    "value": "goal_setting",
+    "label": "Goal Setting"
+  },
+  {
+    "value": "career_planning",
+    "label": "Career Planning"
+  },
+  {
+    "value": "financial_literacy",
+    "label": "Financial Literacy"
+  },
+  {
+    "value": "entrepreneurship",
+    "label": "Entrepreneurship"
+  }
+]
