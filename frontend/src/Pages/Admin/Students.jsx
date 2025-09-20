@@ -15,7 +15,7 @@ const mockClasses = [
   "Class 11",
   "Class 12",
 ];
-const mockDivisions = ["A", "B", "C"];
+const mockDivisions = ["A", "B", "C", "D"];
 
 function Students() {
   const [selectedClass, setSelectedClass] = useState("");
@@ -57,7 +57,7 @@ function Students() {
   // Use actual API endpoint for Excel upload
   const uploadExcel = async (formData) => {
     try {
-      const response = await api.post("admin/students/upload", formData, {
+      const response = await api.post("admin/students/uploads", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSuccessMessage(response.data.message || "Upload successful");
