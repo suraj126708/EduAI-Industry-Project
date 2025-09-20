@@ -113,7 +113,7 @@ const DurationPickerModal = ({
           <Button onClick={onClose} variant="secondary" className="flex-1">
             Cancel
           </Button>
-          <Button onClick={onClose} className="flex-1">
+          <Button onClick={onClose} className="flex-1 text-gray-900">
             Set Duration
           </Button>
         </div>

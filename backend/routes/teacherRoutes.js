@@ -39,14 +39,94 @@ const updateTeacherValidation = [
     .withMessage("Please provide a valid phone number"),
 ];
 
-// @route   GET /api/teachers
-// @desc    Get all teachers (Admin only)
-// @access  Private (Admin)
+/**
+ * @swagger
+ * /api/teachers:
+ *   get:
+ *     summary: Get all teachers
+ *     description: Retrieve a list of all teachers (Admin only)
+ *     tags: [Teachers]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Teachers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 teachers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Teacher'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Admin access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get("/", authenticateFirebaseToken, authorize("admin"), getAllTeachers);
 
-// @route   GET /api/teachers/:id
-// @desc    Get teacher by ID
-// @access  Private
+/**
+ * @swagger
+ * /api/teachers/{id}:
+ *   get:
+ *     summary: Get teacher by ID
+ *     description: Retrieve a specific teacher by their ID
+ *     tags: [Teachers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439011"
+ *         description: MongoDB ObjectId of the teacher
+ *     responses:
+ *       200:
+ *         description: Teacher retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 teacher:
+ *                   $ref: '#/components/schemas/Teacher'
+ *       400:
+ *         description: Invalid teacher ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Teacher not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   "/:id",
   authenticateFirebaseToken,
@@ -54,9 +134,78 @@ router.get(
   getTeacherById
 );
 
-// @route   PUT /api/teachers/:id
-// @desc    Update teacher profile
-// @access  Private
+/**
+ * @swagger
+ * /api/teachers/{id}:
+ *   put:
+ *     summary: Update teacher profile
+ *     description: Update the profile information of a specific teacher
+ *     tags: [Teachers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439011"
+ *         description: MongoDB ObjectId of the teacher
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "John Doe"
+ *                 minLength: 1
+ *                 maxLength: 100
+ *               role:
+ *                 type: string
+ *                 example: "teacher"
+ *                 minLength: 1
+ *                 maxLength: 50
+ *               phone:
+ *                 type: string
+ *                 example: "+1234567890"
+ *     responses:
+ *       200:
+ *         description: Teacher updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Teacher updated successfully"
+ *                 teacher:
+ *                   $ref: '#/components/schemas/Teacher'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Teacher not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.put(
   "/:id",
   authenticateFirebaseToken,

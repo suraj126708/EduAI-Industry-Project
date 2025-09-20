@@ -21,6 +21,9 @@ import "./config/firebase.js";
 // Import error middleware
 import { errorHandler } from "./middleware/errorMiddleware.js";
 
+// Import Swagger configuration
+import { specs, swaggerUi } from "./config/swagger.js";
+
 // Load environment variables
 dotenv.config();
 
@@ -60,7 +63,46 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Serve static files from uploads directory
 app.use("/uploads", express.static("uploads"));
 
-// Health check route
+// Swagger API Documentation
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(specs, {
+    explorer: true,
+    customCss: ".swagger-ui .topbar { display: none }",
+    customSiteTitle: "Teacher Management System API Documentation",
+  })
+);
+
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Check if the API server is running and healthy
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Server is healthy and running
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Teacher Management System Backend is running!"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2024-01-15T10:30:00.000Z"
+ *                 environment:
+ *                   type: string
+ *                   example: "development"
+ */
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -94,7 +136,7 @@ app.listen(PORT, () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api`);
+  console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
   console.log("\n======================================\n");
 });
 

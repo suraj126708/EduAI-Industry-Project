@@ -62,9 +62,55 @@ const bulkTeacherValidation = [
 
 // 🔥 RBAC Protected Routes
 
-// @route   GET /api/admin/dashboard
-// @desc    Get admin dashboard data
-// @access  Private (Admin)
+/**
+ * @swagger
+ * /api/admin/dashboard:
+ *   get:
+ *     summary: Get admin dashboard data
+ *     description: Retrieve comprehensive dashboard data for admin users
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 dashboard:
+ *                   type: object
+ *                   properties:
+ *                     totalTeachers:
+ *                       type: integer
+ *                       example: 150
+ *                     totalStudents:
+ *                       type: integer
+ *                       example: 2500
+ *                     totalBooks:
+ *                       type: integer
+ *                       example: 300
+ *                     recentActivity:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Admin access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   "/dashboard",
   authenticateFirebaseToken,
@@ -72,9 +118,66 @@ router.get(
   getAdminDashboard
 );
 
-// @route   GET /api/admin/stats
-// @desc    Get system statistics
-// @access  Private (Admin)
+/**
+ * @swagger
+ * /api/admin/stats:
+ *   get:
+ *     summary: Get system statistics
+ *     description: Retrieve detailed system statistics and metrics
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: System statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     users:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 150
+ *                         active:
+ *                           type: integer
+ *                           example: 145
+ *                         inactive:
+ *                           type: integer
+ *                           example: 5
+ *                     books:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 300
+ *                         processed:
+ *                           type: integer
+ *                           example: 280
+ *                         pending:
+ *                           type: integer
+ *                           example: 20
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Admin access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   "/stats",
   authenticateFirebaseToken,
@@ -82,9 +185,84 @@ router.get(
   getSystemStats
 );
 
-// @route   GET /api/admin/teachers
-// @desc    Get all teachers with pagination and filtering
-// @access  Private (Admin, Moderator with read permission)
+/**
+ * @swagger
+ * /api/admin/teachers:
+ *   get:
+ *     summary: Get all teachers with pagination
+ *     description: Retrieve all teachers with pagination and filtering options (Admin/Moderator)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           example: 10
+ *         description: Number of teachers per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           example: "john"
+ *         description: Search term for teacher name or email
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           enum: [teacher, admin, moderator, editor]
+ *           example: "teacher"
+ *         description: Filter by teacher role
+ *     responses:
+ *       200:
+ *         description: Teachers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 teachers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Teacher'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                       example: 1
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 15
+ *                     totalTeachers:
+ *                       type: integer
+ *                       example: 150
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Admin/Moderator access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   "/teachers",
   authenticateFirebaseToken,

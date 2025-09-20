@@ -1,16 +1,16 @@
 import React from "react";
 import { ChevronDown } from "lucide-react";
 
-const CustomDropdown = ({ 
-  value, 
-  onClick, 
-  placeholder = "Select option", 
+const CustomDropdown = ({
+  value,
+  onClick,
+  placeholder = "Select option",
   error = null,
   className = "",
   isOpen = false,
   children,
   disabled = false,
-  ...props 
+  ...props
 }) => {
   return (
     <div className={`flex flex-col items-center gap-2 ${className}`}>
@@ -23,7 +23,7 @@ const CustomDropdown = ({
           {...props}
         >
           <div className="flex-1">
-            {value || <span className="text-gray-400">{placeholder}</span>}
+            {value || <span className="text-gray-800">{placeholder}</span>}
           </div>
           <ChevronDown
             className={`w-4 h-4 text-gray-400 transition-transform ${

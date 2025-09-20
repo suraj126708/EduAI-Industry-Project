@@ -72,9 +72,94 @@ const filterValidation = [
     .withMessage("Subject must be between 1 and 50 characters"),
 ];
 
-// @route   POST /api/books/upload
-// @desc    Upload book PDF
-// @access  Private (Teacher/Admin)
+/**
+ * @swagger
+ * /api/books/upload:
+ *   post:
+ *     summary: Upload book PDF
+ *     description: Upload a book PDF file with metadata
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pdf
+ *               - classValue
+ *               - subjectValue
+ *             properties:
+ *               pdf:
+ *                 type: string
+ *                 format: binary
+ *                 description: PDF file to upload
+ *               classValue:
+ *                 type: string
+ *                 pattern: "^(0[1-9]|1[0-2])$"
+ *                 example: "10"
+ *                 description: Class (01-12)
+ *               subjectValue:
+ *                 type: string
+ *                 example: "Mathematics"
+ *                 minLength: 1
+ *                 maxLength: 50
+ *                 description: Subject name
+ *               title:
+ *                 type: string
+ *                 example: "Advanced Mathematics"
+ *                 minLength: 1
+ *                 maxLength: 200
+ *                 description: Book title
+ *               author:
+ *                 type: string
+ *                 example: "Dr. Smith"
+ *                 minLength: 1
+ *                 maxLength: 100
+ *                 description: Book author
+ *               year:
+ *                 type: integer
+ *                 example: 2023
+ *                 minimum: 1900
+ *                 maximum: 2028
+ *                 description: Publication year
+ *     responses:
+ *       201:
+ *         description: Book uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Book uploaded successfully"
+ *                 book:
+ *                   $ref: '#/components/schemas/Book'
+ *       400:
+ *         description: Validation error or file upload error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Teacher/Admin access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post(
   "/upload",
   authenticateFirebaseToken,
@@ -84,14 +169,92 @@ router.post(
   uploadBook
 );
 
-// @route   GET /api/books
-// @desc    Get all books
-// @access  Private
+/**
+ * @swagger
+ * /api/books:
+ *   get:
+ *     summary: Get all books
+ *     description: Retrieve a list of all books
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Books retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 books:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Book'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get("/", authenticateFirebaseToken, getAllBooks);
 
-// @route   GET /api/books/filter
-// @desc    Get books by class and subject filter
-// @access  Private
+/**
+ * @swagger
+ * /api/books/filter:
+ *   get:
+ *     summary: Get books by filter
+ *     description: Retrieve books filtered by class and subject
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: classValue
+ *         schema:
+ *           type: string
+ *           pattern: "^(0[1-9]|1[0-2])$"
+ *           example: "10"
+ *         description: Class filter (01-12)
+ *       - in: query
+ *         name: subjectValue
+ *         schema:
+ *           type: string
+ *           example: "Mathematics"
+ *           minLength: 1
+ *           maxLength: 50
+ *         description: Subject filter
+ *     responses:
+ *       200:
+ *         description: Filtered books retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 books:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Book'
+ *       400:
+ *         description: Invalid filter parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get(
   "/filter",
   authenticateFirebaseToken,
@@ -99,14 +262,129 @@ router.get(
   getBooksByFilter
 );
 
-// @route   GET /api/books/:id
-// @desc    Get book by ID
-// @access  Private
+/**
+ * @swagger
+ * /api/books/{id}:
+ *   get:
+ *     summary: Get book by ID
+ *     description: Retrieve a specific book by its ID
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439011"
+ *         description: MongoDB ObjectId of the book
+ *     responses:
+ *       200:
+ *         description: Book retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 book:
+ *                   $ref: '#/components/schemas/Book'
+ *       400:
+ *         description: Invalid book ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Book not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get("/:id", authenticateFirebaseToken, bookIdValidation, getBookById);
 
-// @route   PUT /api/books/:id/status
-// @desc    Update book processing status
-// @access  Private (Admin/Teacher)
+/**
+ * @swagger
+ * /api/books/{id}/status:
+ *   put:
+ *     summary: Update book processing status
+ *     description: Update the processing status of a book
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439011"
+ *         description: MongoDB ObjectId of the book
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, processed, failed]
+ *                 example: "processed"
+ *                 description: New processing status
+ *     responses:
+ *       200:
+ *         description: Book status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Book status updated successfully"
+ *                 book:
+ *                   $ref: '#/components/schemas/Book'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Teacher/Admin access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Book not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.put(
   "/:id/status",
   authenticateFirebaseToken,
@@ -116,9 +394,62 @@ router.put(
   updateBookStatus
 );
 
-// @route   DELETE /api/books/:id
-// @desc    Delete book
-// @access  Private (Admin/Teacher)
+/**
+ * @swagger
+ * /api/books/{id}:
+ *   delete:
+ *     summary: Delete book
+ *     description: Permanently delete a book
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439011"
+ *         description: MongoDB ObjectId of the book
+ *     responses:
+ *       200:
+ *         description: Book deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Book deleted successfully"
+ *       400:
+ *         description: Invalid book ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Teacher/Admin access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Book not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.delete(
   "/:id",
   authenticateFirebaseToken,

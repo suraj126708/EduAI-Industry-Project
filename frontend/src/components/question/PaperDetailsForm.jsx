@@ -78,13 +78,7 @@ const PaperDetailsForm = ({
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span
-                    className={`text-sm font-medium ${
-                      selectedHour === 1 && selectedMinute === 0
-                        ? "text-gray-400"
-                        : "text-gray-900"
-                    }`}
-                  >
+                  <span className={`text-sm font-medium text-gray-800`}>
                     {selectedHour === 1 && selectedMinute === 0
                       ? "Set Duration"
                       : `${selectedHour}h ${selectedMinute}m`}
