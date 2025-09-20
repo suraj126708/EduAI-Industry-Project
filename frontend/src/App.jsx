@@ -15,6 +15,7 @@ import QuestionPaperForm from "./Pages/QuestionPaperGeneration";
 import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
 import AnswerSheetUpload from "./Pages/AnswerSheetUpload";
 import PaperFormat from "./Pages/PaperFormat";
+import ReportGeneration from "./Pages/ReportGeneration";
 
 // Admin imports
 import AdminLayout from "./Pages/Admin/AdminLayout";
@@ -46,6 +47,8 @@ function App() {
               path="/question-paper-generation"
               element={<QuestionPaperForm />}
             />
+            <Route path="/reports" element={<ReportGeneration />} />
+
 
             <Route
               path="/admin/*"

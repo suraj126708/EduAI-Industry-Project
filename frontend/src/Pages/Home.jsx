@@ -26,6 +26,12 @@ const homeCards = [
     route: "/admin",
   },
   {
+    title: "Reports",
+    icon: <FaBook className="text-purple-500 w-8 h-8 mb-2" />,
+    route: "/reports",
+  },
+
+  {
     title: "Question paper format",
     icon: <IoNewspaperOutline className="text-blue-500 w-8 h-8 mb-2" />,
     route: "/paper",
