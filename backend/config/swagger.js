@@ -5,18 +5,10 @@ const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Teacher Management System API",
+      title: "EDUAI",
       version: "1.0.0",
       description:
         "API documentation for Teacher Management System - A comprehensive platform for managing teachers, students, classes, subjects, and educational resources.",
-      contact: {
-        name: "API Support",
-        email: "support@teachermanagement.com",
-      },
-      license: {
-        name: "MIT",
-        url: "https://opensource.org/licenses/MIT",
-      },
     },
     servers: [
       {
@@ -24,7 +16,7 @@ const options = {
         description: "Development server",
       },
       {
-        url: "https://api.teachermanagement.com",
+        url: "https://eduai-industry-project-api.onrender.com",
         description: "Production server",
       },
     ],
