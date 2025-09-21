@@ -115,7 +115,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/teachers", teacherRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/books", bookRoutes);
+//app.use("/api/books", bookRoutes);
 
 // ✅ NEW (Works in Express v5)
 app.use("/{*catchall}", (req, res) => {

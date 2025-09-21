@@ -1,4 +1,3 @@
-// models/Class.js
 import mongoose from "mongoose";
 
 const classSchema = new mongoose.Schema(
@@ -9,11 +8,18 @@ const classSchema = new mongoose.Schema(
       required: true,
     },
 
-    name: {
+    grade: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 12, // You can adjust max grade as needed
+    },
+
+    division: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 100,
+      maxlength: 10, // e.g., "A", "B", or "10-A"
     },
   },
   {
@@ -24,8 +30,9 @@ const classSchema = new mongoose.Schema(
 
 // Indexes
 classSchema.index({ schoolId: 1 });
-classSchema.index({ name: 1 });
-classSchema.index({ schoolId: 1, name: 1 }, { unique: true });
+classSchema.index({ grade: 1 });
+classSchema.index({ division: 1 });
+classSchema.index({ schoolId: 1, grade: 1, division: 1 }, { unique: true });
 
 // Instance methods
 classSchema.methods.getSchool = function () {
@@ -37,12 +44,20 @@ classSchema.statics.findBySchool = function (schoolId) {
   return this.find({ schoolId });
 };
 
-classSchema.statics.findByName = function (name) {
-  return this.find({ name: { $regex: name, $options: "i" } });
+classSchema.statics.findByGrade = function (grade) {
+  return this.find({ grade });
 };
 
-classSchema.statics.findBySchoolAndName = function (schoolId, name) {
-  return this.findOne({ schoolId, name });
+classSchema.statics.findByDivision = function (division) {
+  return this.find({ division: { $regex: division, $options: "i" } });
+};
+
+classSchema.statics.findBySchoolGradeDivision = function (
+  schoolId,
+  grade,
+  division
+) {
+  return this.findOne({ schoolId, grade, division });
 };
 
 // Transform output

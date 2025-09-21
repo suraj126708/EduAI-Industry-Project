@@ -1,5 +1,4 @@
-// controllers/teacherController.js
-import Teacher from "../models/Teacher.js";
+import User from "../models/UserSchema.js"; // Changed from Teacher to User
 import { validationResult } from "express-validator";
 
 // @desc    Get all teachers (Admin only)
@@ -11,10 +10,8 @@ export const getAllTeachers = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Build filter query
-    const filter = {};
+    const filter = { role: "teacher" };
     if (req.query.status) filter.status = req.query.status;
-    if (req.query.role) filter.role = req.query.role;
     if (req.query.schoolId) filter.schoolId = req.query.schoolId;
     if (req.query.search) {
       filter.$or = [
@@ -23,13 +20,13 @@ export const getAllTeachers = async (req, res) => {
       ];
     }
 
-    const teachers = await Teacher.find(filter)
+    const teachers = await User.find(filter)
       .populate("schoolId", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const totalTeachers = await Teacher.countDocuments(filter);
+    const totalTeachers = await User.countDocuments(filter);
 
     res.status(200).json({
       success: true,
@@ -63,10 +60,10 @@ export const getAllTeachers = async (req, res) => {
 // @access  Private
 export const getTeacherById = async (req, res) => {
   try {
-    const teacher = await Teacher.findById(req.params.id).populate(
-      "schoolId",
-      "name address contact"
-    );
+    const teacher = await User.findOne({
+      _id: req.params.id,
+      role: "teacher",
+    }).populate("schoolId", "name address contact");
 
     if (!teacher) {
       return res.status(404).json({
@@ -107,7 +104,7 @@ export const updateTeacher = async (req, res) => {
       });
     }
 
-    const teacher = await Teacher.findById(req.params.id);
+    const teacher = await User.findOne({ _id: req.params.id, role: "teacher" });
 
     if (!teacher) {
       return res.status(404).json({
@@ -116,10 +113,10 @@ export const updateTeacher = async (req, res) => {
       });
     }
 
-    // Check if user can update this teacher (own profile or admin)
+    // Authorization check: can update own or admin only
     if (
-      req.teacher._id.toString() !== teacher._id.toString() &&
-      req.teacher.role !== "admin"
+      req.user._id.toString() !== teacher._id.toString() &&
+      req.user.role !== "admin"
     ) {
       return res.status(403).json({
         success: false,

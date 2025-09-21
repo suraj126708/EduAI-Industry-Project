@@ -1,6 +1,5 @@
-// controllers/authController.js
 import admin from "../config/firebase.js";
-import Teacher from "../models/Teacher.js";
+import User from "../models/UserSchema.js";
 import { validationResult } from "express-validator";
 
 // @desc    Register teacher after Firebase auth
@@ -19,22 +18,27 @@ export const registerTeacher = async (req, res) => {
 
     const { name, role, phone, schoolId } = req.body;
 
-    // Teacher is already authenticated via middleware, so we have req.teacher
-    const teacher = req.teacher;
+    const user = req.user;
 
-    // Update teacher profile with additional information
-    if (name) teacher.name = name;
-    if (role) teacher.role = role;
-    if (phone) teacher.phone = phone;
-    if (schoolId) teacher.schoolId = schoolId;
+    if (user.role !== "teacher") {
+      return res.status(403).json({
+        success: false,
+        message: "User is not a teacher",
+      });
+    }
 
-    await teacher.save();
+    if (name) user.name = name;
+    if (role) user.role = role;
+    if (phone) user.phone = phone;
+    if (schoolId) user.schoolId = schoolId;
+
+    await user.save();
 
     res.status(200).json({
       success: true,
       message: "Teacher profile updated successfully",
       data: {
-        teacher: teacher.toJSON(),
+        user: user.toJSON(),
       },
     });
   } catch (error) {
@@ -55,16 +59,22 @@ export const registerTeacher = async (req, res) => {
 // @access  Private
 export const getTeacherProfile = async (req, res) => {
   try {
-    const teacher = req.teacher;
+    const user = req.user;
 
-    // Update last login time
-    await teacher.updateLastLogin();
+    if (user.role !== "teacher") {
+      return res.status(403).json({
+        success: false,
+        message: "User is not a teacher",
+      });
+    }
+
+    await user.updateLastLogin();
 
     res.status(200).json({
       success: true,
       message: "Teacher profile retrieved successfully",
       data: {
-        teacher: teacher.toJSON(),
+        user: user.toJSON(),
         firebaseData: {
           uid: req.firebaseUser.uid,
           email: req.firebaseUser.email,
@@ -103,24 +113,30 @@ export const updateTeacherProfile = async (req, res) => {
       });
     }
 
-    const teacher = req.teacher;
+    const user = req.user;
     const updateData = req.body;
 
-    // Update basic fields
+    if (user.role !== "teacher") {
+      return res.status(403).json({
+        success: false,
+        message: "User is not a teacher",
+      });
+    }
+
     const allowedUpdates = ["name", "role", "phone"];
     allowedUpdates.forEach((field) => {
       if (updateData[field] !== undefined) {
-        teacher[field] = updateData[field];
+        user[field] = updateData[field];
       }
     });
 
-    await teacher.save();
+    await user.save();
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
       data: {
-        teacher: teacher.toJSON(),
+        user: user.toJSON(),
       },
     });
   } catch (error) {
@@ -141,14 +157,21 @@ export const updateTeacherProfile = async (req, res) => {
 // @access  Private
 export const deleteTeacherAccount = async (req, res) => {
   try {
-    const teacher = req.teacher;
-    const firebaseUid = teacher.firebaseUid;
+    const user = req.user;
+    if (user.role !== "teacher") {
+      return res.status(403).json({
+        success: false,
+        message: "User is not a teacher",
+      });
+    }
+
+    const firebaseUid = user.firebaseUid;
 
     // Delete teacher from Firebase
     await admin.auth().deleteUser(firebaseUid);
 
     // Delete teacher from MongoDB
-    await Teacher.findByIdAndDelete(teacher._id);
+    await User.findByIdAndDelete(user._id);
 
     res.status(200).json({
       success: true,
@@ -172,16 +195,25 @@ export const deleteTeacherAccount = async (req, res) => {
 // @access  Private
 export const verifyToken = async (req, res) => {
   try {
+    const user = req.user;
+
+    if (user.role !== "teacher") {
+      return res.status(403).json({
+        success: false,
+        message: "User is not a teacher",
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: "Token is valid",
       data: {
-        teacher: {
-          id: req.teacher._id,
-          email: req.teacher.email,
-          name: req.teacher.name,
-          role: req.teacher.role,
-          status: req.teacher.status,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          status: user.status,
         },
         tokenInfo: {
           uid: req.firebaseUser.uid,
@@ -218,8 +250,7 @@ export const createCustomToken = async (req, res) => {
       });
     }
 
-    // Only allow admins to create custom tokens
-    if (req.teacher.role !== "admin") {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
         message: "Admin access required",

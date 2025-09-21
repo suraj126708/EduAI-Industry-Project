@@ -1,11 +1,9 @@
-// Enhanced middlewares/authMiddleware.js - Complete RBAC Implementation
 import admin from "../config/firebase.js";
-import Teacher from "../models/Teacher.js";
+import User from "../models/UserSchema.js";
 
-// Middleware to verify Firebase ID token
+// Middleware to verify Firebase ID token and attach user to request
 export const authenticateFirebaseToken = async (req, res, next) => {
   try {
-    // Get token from header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -16,7 +14,6 @@ export const authenticateFirebaseToken = async (req, res, next) => {
       });
     }
 
-    // Extract token
     const idToken = authHeader.split(" ")[1];
 
     if (!idToken) {
@@ -27,10 +24,8 @@ export const authenticateFirebaseToken = async (req, res, next) => {
       });
     }
 
-    // Verify the Firebase ID token
     const decodedToken = await admin.auth().verifyIdToken(idToken);
 
-    // Check if token is expired
     const now = Date.now() / 1000;
     if (decodedToken.exp < now) {
       return res.status(401).json({
@@ -40,42 +35,34 @@ export const authenticateFirebaseToken = async (req, res, next) => {
       });
     }
 
-    // Find or create teacher in MongoDB
-    let teacher = await Teacher.findByFirebaseUid(decodedToken.uid);
+    let user = await User.findOne({ firebaseUid: decodedToken.uid });
 
-    if (!teacher) {
-      // Create new teacher if doesn't exist
-      const teacherData = {
+    if (!user) {
+      const userData = {
         firebaseUid: decodedToken.uid,
         email: decodedToken.email,
         name: decodedToken.name || decodedToken.email?.split("@")[0],
-        role: "teacher", // Default role for new teachers
+        role: "teacher", // Default role can be adjusted here
         lastLoginAt: new Date(),
         status: "active",
       };
-
-      teacher = new Teacher(teacherData);
-      await teacher.save();
+      user = new User(userData);
+      await user.save();
 
       console.log(
-        `✨ New teacher created: ${teacher.email} (${teacher.firebaseUid}) with role: ${teacher.role}`
+        `✨ New user created: ${user.email} (${user.firebaseUid}) with role: ${user.role}`
       );
     } else {
-      // Update last login time
-      teacher.lastLoginAt = new Date();
+      user.lastLoginAt = new Date();
 
-      // Update teacher info if changed
-      if (teacher.email !== decodedToken.email)
-        teacher.email = decodedToken.email;
-      if (teacher.name !== decodedToken.name && decodedToken.name) {
-        teacher.name = decodedToken.name;
-      }
+      if (user.email !== decodedToken.email) user.email = decodedToken.email;
+      if (user.name !== decodedToken.name && decodedToken.name)
+        user.name = decodedToken.name;
 
-      await teacher.save({ validateBeforeSave: false });
+      await user.save({ validateBeforeSave: false });
     }
 
-    // Check if teacher account is active
-    if (!teacher.isActive()) {
+    if (user.status !== "active") {
       return res.status(403).json({
         success: false,
         message: "Account is not active. Please contact support.",
@@ -83,15 +70,13 @@ export const authenticateFirebaseToken = async (req, res, next) => {
       });
     }
 
-    // Attach teacher info to request object
-    req.teacher = teacher;
+    req.user = user;
     req.firebaseUser = decodedToken;
 
     next();
   } catch (error) {
     console.error("🔒 Auth middleware error:", error.message);
 
-    // Handle specific Firebase errors
     if (error.code === "auth/id-token-expired") {
       return res.status(401).json({
         success: false,
@@ -99,7 +84,6 @@ export const authenticateFirebaseToken = async (req, res, next) => {
         error: "TOKEN_EXPIRED",
       });
     }
-
     if (error.code === "auth/id-token-revoked") {
       return res.status(401).json({
         success: false,
@@ -107,7 +91,6 @@ export const authenticateFirebaseToken = async (req, res, next) => {
         error: "TOKEN_REVOKED",
       });
     }
-
     if (error.code === "auth/argument-error") {
       return res.status(401).json({
         success: false,
@@ -124,49 +107,47 @@ export const authenticateFirebaseToken = async (req, res, next) => {
   }
 };
 
-// 🔥 Enhanced Role-Based Authorization Middleware
+// Role-based authorization middleware
 export const authorize = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!req.teacher) {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Access denied. Teacher not authenticated.",
+        message: "Access denied. User not authenticated.",
         error: "NOT_AUTHENTICATED",
       });
     }
 
-    // Check if teacher has any of the allowed roles
-    if (!allowedRoles.includes(req.teacher.role)) {
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: `Access denied. Required role: ${allowedRoles.join(
           " or "
-        )}. Your role: ${req.teacher.role}`,
+        )}. Your role: ${req.user.role}`,
         error: "INSUFFICIENT_PERMISSIONS",
-        teacherRole: req.teacher.role,
+        userRole: req.user.role,
         requiredRoles: allowedRoles,
       });
     }
 
     console.log(
-      `✅ Teacher ${req.teacher.email} authorized with role: ${req.teacher.role}`
+      `✅ User ${req.user.email} authorized with role: ${req.user.role}`
     );
     next();
   };
 };
 
-// 🔥 Permission-Based Authorization Middleware
+// Permission-based authorization middleware
 export const checkPermissions = (...permissions) => {
   return (req, res, next) => {
-    if (!req.teacher) {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Access denied. Teacher not authenticated.",
+        message: "Access denied. User not authenticated.",
         error: "NOT_AUTHENTICATED",
       });
     }
 
-    // Define role permissions
     const rolePermissions = {
       admin: [
         "create",
@@ -182,11 +163,10 @@ export const checkPermissions = (...permissions) => {
       teacher: ["read", "update_own"],
     };
 
-    const teacherPermissions = rolePermissions[req.teacher.role] || [];
+    const userPermissions = rolePermissions[req.user.role] || [];
 
-    // Check if teacher has all required permissions
-    const hasAllPermissions = permissions.every((permission) =>
-      teacherPermissions.includes(permission)
+    const hasAllPermissions = permissions.every((perm) =>
+      userPermissions.includes(perm)
     );
 
     if (!hasAllPermissions) {
@@ -196,42 +176,38 @@ export const checkPermissions = (...permissions) => {
           ", "
         )}`,
         error: "INSUFFICIENT_PERMISSIONS",
-        teacherRole: req.teacher.role,
-        teacherPermissions,
+        userRole: req.user.role,
+        userPermissions,
         requiredPermissions: permissions,
       });
     }
 
     console.log(
-      `✅ Teacher ${
-        req.teacher.email
+      `✅ User ${
+        req.user.email
       } authorized with permissions: ${permissions.join(", ")}`
     );
     next();
   };
 };
 
-// 🔥 Resource Ownership Middleware
-export const checkOwnership = (resourceField = "teacherId") => {
+// Check resource ownership middleware
+export const checkOwnership = (resourceField = "userId") => {
   return (req, res, next) => {
-    if (!req.teacher) {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Access denied. Teacher not authenticated.",
+        message: "Access denied. User not authenticated.",
         error: "NOT_AUTHENTICATED",
       });
     }
 
-    // Admin and moderator can access all resources
-    if (["admin", "moderator"].includes(req.teacher.role)) {
-      return next();
-    }
+    if (["admin", "moderator"].includes(req.user.role)) return next();
 
-    // Check if teacher owns the resource
-    const resourceTeacherId =
+    const resourceUserId =
       req.params.id || req.body[resourceField] || req.query[resourceField];
 
-    if (resourceTeacherId && resourceTeacherId !== req.teacher._id) {
+    if (resourceUserId && resourceUserId !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: "Access denied. You can only access your own resources.",
@@ -243,13 +219,13 @@ export const checkOwnership = (resourceField = "teacherId") => {
   };
 };
 
-// 🔥 Dynamic Role Check Middleware
+// Dynamic role check middleware
 export const checkRole = (getRoleFromRequest) => {
   return (req, res, next) => {
-    if (!req.teacher) {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Access denied. Teacher not authenticated.",
+        message: "Access denied. User not authenticated.",
         error: "NOT_AUTHENTICATED",
       });
     }
@@ -264,7 +240,7 @@ export const checkRole = (getRoleFromRequest) => {
       });
     }
 
-    if (req.teacher.role !== requiredRole && req.teacher.role !== "admin") {
+    if (req.user.role !== requiredRole && req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
         message: `Access denied. Required role: ${requiredRole}`,
@@ -276,20 +252,19 @@ export const checkRole = (getRoleFromRequest) => {
   };
 };
 
-// 🔥 Multiple Role Strategy Middleware
+// Multiple role strategy middleware: supports object mapping of roles to permissions or boolean
 export const authorizeMultiple = (roleConfig) => {
   return (req, res, next) => {
-    if (!req.teacher) {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Access denied. Teacher not authenticated.",
+        message: "Access denied. User not authenticated.",
         error: "NOT_AUTHENTICATED",
       });
     }
 
-    // roleConfig example: { admin: true, moderator: ['read', 'update'], teacher: ['read'] }
-    const teacherRole = req.teacher.role;
-    const roleAccess = roleConfig[teacherRole];
+    const userRole = req.user.role;
+    const roleAccess = roleConfig[userRole];
 
     if (!roleAccess) {
       return res.status(403).json({
@@ -299,15 +274,13 @@ export const authorizeMultiple = (roleConfig) => {
       });
     }
 
-    // If role has full access (true)
     if (roleAccess === true) {
       return next();
     }
 
-    // If role has specific permissions (array)
     if (Array.isArray(roleAccess)) {
       const method = req.method.toLowerCase();
-      const methodPermissionMap = {
+      const permissionMap = {
         get: "read",
         post: "create",
         put: "update",
@@ -315,7 +288,7 @@ export const authorizeMultiple = (roleConfig) => {
         delete: "delete",
       };
 
-      const requiredPermission = methodPermissionMap[method];
+      const requiredPermission = permissionMap[method];
 
       if (!roleAccess.includes(requiredPermission)) {
         return res.status(403).json({
@@ -330,51 +303,34 @@ export const authorizeMultiple = (roleConfig) => {
   };
 };
 
-// Middleware for optional authentication (doesn't fail if no token)
+// Optional authentication middleware that does not block unauthenticated access
 export const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return next(); // Continue without authentication
+      return next();
     }
 
     const idToken = authHeader.split(" ")[1];
-    if (!idToken) {
-      return next(); // Continue without authentication
-    }
+    if (!idToken) return next();
 
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const teacher = await Teacher.findByFirebaseUid(decodedToken.uid);
+    const user = await User.findOne({ firebaseUid: decodedToken.uid });
 
-    if (teacher && teacher.isActive()) {
-      req.teacher = teacher;
+    if (user && user.status === "active") {
+      req.user = user;
       req.firebaseUser = decodedToken;
-
-      // Update last login time
-      await teacher.updateLastLogin();
+      // Optionally update last login here
+      user.lastLoginAt = new Date();
+      await user.save({ validateBeforeSave: false });
     }
 
     next();
   } catch (error) {
-    // If optional auth fails, just continue without teacher
     console.warn("⚠️ Optional auth failed:", error.message);
     next();
   }
 };
 
-// Helper function to determine auth provider
-const getAuthProvider = (signInProvider) => {
-  const providerMap = {
-    password: "email",
-    "google.com": "google",
-    "facebook.com": "facebook",
-    "twitter.com": "twitter",
-    "github.com": "github",
-  };
-
-  return providerMap[signInProvider] || "email";
-};
-
-// Export default middleware
 export default authenticateFirebaseToken;
