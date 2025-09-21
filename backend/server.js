@@ -10,7 +10,6 @@ import morgan from "morgan";
 import authRoutes from "./routes/authRoutes.js";
 import teacherRoutes from "./routes/teacherRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
-import bookRoutes from "./routes/bookRoutes.js";
 
 // Import database connection
 import connectDB from "./config/db.js";
