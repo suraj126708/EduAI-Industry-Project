@@ -14,7 +14,7 @@ const teacherProfileSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    collection: "teacherprofiles",
+    collection: "teachers",
   }
 );
 

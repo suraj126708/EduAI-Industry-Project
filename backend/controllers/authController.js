@@ -61,7 +61,7 @@ export const getTeacherProfile = async (req, res) => {
   try {
     const user = req.user;
 
-    if (user.role !== "teacher") {
+    if (user.role !== "teacher" && user.role !== "admin") {
       return res.status(403).json({
         success: false,
         message: "User is not a teacher",
