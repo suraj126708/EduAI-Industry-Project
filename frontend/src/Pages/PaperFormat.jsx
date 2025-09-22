@@ -1,14 +1,16 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { saveAs } from "file-saver";
+import { useNavigate } from "react-router-dom";
 
 function ExamPaperGenerator() {
+  const navigate = useNavigate();
   const [paperData, setPaperData] = useState({
-    collegeName: "St. Xavier's College of Engineering",
-    testName: "End-Term Examination",
-    subject: "Applied Mathematics",
-    className: "Second Year B.Tech",
-    maxMarks: 60,
-    timeAllowed: "3 hours",
+    collegeName: "Your College Name",
+    testName: "Unit Test",
+    subject: "History",
+    className: "Class 10",
+    maxMarks: 30,
+    timeAllowed: "1 hour",
     semester: "Fourth Semester",
     date: "15th May 2025",
     instructions: [
@@ -23,85 +25,91 @@ function ExamPaperGenerator() {
       {
         sectionName: "Section A",
         sectionTitle: "Multiple Choice Questions",
-        description:
-          "Choose the correct option for each question. Each question carries 2 marks.",
+        description: "Choose the correct option for each question.",
         questions: [
           {
             questionNo: "1",
-            question: "The derivative of sin(x) with respect to x is:",
-            options: ["a) cos(x)", "b) -cos(x)", "c) sin(x)", "d) -sin(x)"],
-            marks: 2,
+            question:
+              "Which event is considered a major turning point in the French Revolution?",
+            options: [
+              "a) The Reign of Terror",
+              "b) The Storming of the Bastille",
+              "c) The execution of Louis XVI",
+              "d) The rise of Napoleon",
+            ],
+            marks: 1,
           },
           {
             questionNo: "2",
-            question: "If f(x) = x³ + 2x² - 5x + 1, then f'(x) = ?",
+            question: "Who was the key leader in the unification of Italy?",
             options: [
-              "a) 3x² + 4x - 5",
-              "b) x³ + 4x - 5",
-              "c) 3x² + 2x - 5",
-              "d) 3x² + 4x + 1",
+              "a) Otto von Bismarck",
+              "b) Giuseppe Garibaldi",
+              "c) Victor Emmanuel II",
+              "d) Cavour",
             ],
-            marks: 2,
+            marks: 1,
           },
           {
             questionNo: "3",
-            question: "The integral ∫2x dx is equal to:",
-            options: ["a) x² + c", "b) 2x² + c", "c) x²/2 + c", "d) 2x + c"],
-            marks: 2,
+            question:
+              "What was the primary cause of Balkan nationalism and conflicts?",
+            options: [
+              "a) Religious differences",
+              "b) Ethnic diversity",
+              "c) Economic competition",
+              "d) Territorial disputes",
+            ],
+            marks: 1,
           },
           {
             questionNo: "4",
             question:
-              "In matrix multiplication, if A is a 3×2 matrix and B is a 2×4 matrix, then AB is:",
+              "Which of the following was NOT a consequence of the First World War?",
             options: [
-              "a) 3×4 matrix",
-              "b) 2×2 matrix",
-              "c) 3×2 matrix",
-              "d) Not possible",
+              "a) Rise of communism",
+              "b) Collapse of empires",
+              "c) Treaty of Versailles",
+              "d) Unification of Germany",
             ],
-            marks: 2,
-          },
-          {
-            questionNo: "5",
-            question: "The value of lim(x→0) (sin x)/x is:",
-            options: ["a) 0", "b) 1", "c) ∞", "d) -1"],
-            marks: 2,
+            marks: 1,
           },
         ],
       },
       {
         sectionName: "Section B",
         sectionTitle: "Short Answer Questions",
-        description:
-          "Answer the following questions in 3-4 lines. Each question carries 4 marks.",
+        description: "Answer the following questions in 3-4 lines.",
         questions: [
           {
-            questionNo: "6",
+            questionNo: "1",
             question:
-              "Find the equation of tangent to the curve y = x² + 3x - 2 at the point where x = 1.",
-            marks: 4,
+              "Explain the impact of the French Revolution on the spread of nationalism in Europe.",
+            marks: 2,
           },
           {
-            questionNo: "7",
-            question: "Evaluate the definite integral ∫₀² (2x + 1) dx.",
-            marks: 4,
-          },
-          {
-            questionNo: "8",
-            question: "Find the inverse of the matrix A = [[2, 1], [3, 2]].",
-            marks: 4,
-          },
-          {
-            questionNo: "9",
+            questionNo: "2",
             question:
-              "Determine whether the function f(x) = |x - 2| is differentiable at x = 2. Justify your answer.",
-            marks: 4,
+              "Describe the role of Otto von Bismarck in the unification of Germany.",
+            marks: 2,
           },
           {
-            questionNo: "10",
+            questionNo: "3",
             question:
-              "Find the critical points of the function f(x) = x³ - 6x² + 9x + 1.",
-            marks: 4,
+              "What were the main factors that contributed to the rise of nationalism in India?",
+            marks: 2,
+          },
+          {
+            questionNo: "4",
+            question:
+              "How did the First World War impact the Khilafat Movement in India?",
+            marks: 2,
+          },
+          {
+            questionNo: "5",
+            question:
+              "Briefly explain the objectives and strategies of the Non-Cooperation Movement.",
+            marks: 2,
           },
         ],
       },
@@ -109,37 +117,31 @@ function ExamPaperGenerator() {
         sectionName: "Section C",
         sectionTitle: "Long Answer Questions",
         description:
-          "Answer any three of the following questions. Show all steps clearly. Each question carries 10 marks.",
+          "Answer any three of the following questions. Show all steps clearly.",
         questions: [
           {
-            questionNo: "11",
+            questionNo: "1",
             question:
-              "A rectangular box with an open top is to be constructed from a square piece of cardboard, 12 inches on a side, by cutting out equal squares from each corner and turning up the sides. Find the dimensions of the box of maximum volume and calculate this maximum volume.",
-            marks: 10,
+              "Analyze the impact of the French Revolution on the development of nationalism in Europe. Discuss its influence on various European countries.",
+            marks: 4,
           },
           {
-            questionNo: "12",
+            questionNo: "2",
             question:
-              "Using integration by parts, evaluate ∫x·e^x dx. Also find the area bounded by the curve y = x·e^x, the x-axis, and the vertical lines x = 0 and x = 1.",
-            marks: 10,
+              "Explain the process of unification of Germany under Otto von Bismarck. Discuss the role of diplomacy, war, and popular support in this process.",
+            marks: 4,
           },
           {
-            questionNo: "13",
+            questionNo: "3",
             question:
-              "Given the system of linear equations: 2x + y - z = 3, x - y + 2z = 1, 3x + 2y + z = 8. Solve using matrix method and verify your solution.",
-            marks: 10,
+              "Describe the various phases of the Indian nationalist movement from the early 20th century to the attainment of independence. Highlight the key events, leaders, and ideologies involved.",
+            marks: 4,
           },
           {
-            questionNo: "14",
+            questionNo: "4",
             question:
-              "A company's profit P(x) in thousands of dollars from selling x units of a product is given by P(x) = -2x² + 40x - 100. Find: (a) The number of units that maximize profit, (b) The maximum profit, (c) The break-even points.",
-            marks: 10,
-          },
-          {
-            questionNo: "15",
-            question:
-              "Prove that the series ∑(n=1 to ∞) 1/n² converges using the integral test. Also find the sum of the first 5 terms and estimate the error in this approximation.",
-            marks: 10,
+              "Discuss the causes and consequences of the Balkan nationalism and conflicts in the late 19th and early 20th centuries. Explain how these conflicts contributed to the outbreak of the First World War.",
+            marks: 4,
           },
         ],
       },
@@ -148,6 +150,63 @@ function ExamPaperGenerator() {
 
   const [editMode, setEditMode] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+
+  // Load generated paper JSON (if any) saved in sessionStorage and map it to the page state
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("generatedPaperData");
+      if (!raw) return;
+      const gen = JSON.parse(raw);
+
+      // Map incoming API response structure to paperData shape with safe fallbacks
+      setPaperData((prev) => {
+        const mapped = { ...prev };
+
+        // Map basic fields from API response
+        mapped.collegeName = gen.collegeName || mapped.collegeName;
+        mapped.testName = gen.testName || mapped.testName;
+        mapped.subject = gen.subject || mapped.subject;
+        mapped.className = gen.className || mapped.className;
+        mapped.timeAllowed = gen.timeAllowed || mapped.timeAllowed;
+        mapped.date = gen.date || mapped.date;
+        mapped.semester = gen.semester || mapped.semester;
+        mapped.maxMarks = gen.maxMarks || mapped.maxMarks;
+
+        // Map instructions
+        if (Array.isArray(gen.instructions) && gen.instructions.length > 0) {
+          mapped.instructions = gen.instructions;
+        }
+
+        // Map sections - API response should have sections array
+        if (Array.isArray(gen.sections) && gen.sections.length > 0) {
+          mapped.sections = gen.sections.map((section) => ({
+            sectionName:
+              section.sectionName || `Section ${section.sectionName || "A"}`,
+            sectionTitle: section.sectionTitle || "",
+            description: section.description || "",
+            questions: Array.isArray(section.questions)
+              ? section.questions.map((q, idx) => ({
+                  questionNo: q.questionNo || (idx + 1).toString(),
+                  question: q.question || "",
+                  marks: q.marks || 1,
+                  options: q.options || undefined,
+                }))
+              : [],
+          }));
+        }
+
+        return mapped;
+      });
+    } catch (err) {
+      // keep existing default paperData if parsing/mapping fails
+      console.error(
+        "Failed to load generatedPaperData from sessionStorage:",
+        err
+      );
+    }
+  }, []);
 
   const handleInputChange = useCallback((field, value) => {
     setPaperData((prev) => ({
@@ -202,6 +261,74 @@ function ExamPaperGenerator() {
     setTimeout(() => {
       setSavedMessage("");
     }, 3000);
+  };
+
+  const handleSavePaper = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      // Prepare the paper data for saving
+      const paperToSave = {
+        ...paperData,
+        totalMarks: calculateTotalMarks(),
+        createdAt: new Date().toISOString(),
+      };
+
+      // Call backend API to save the paper
+      const res = await fetch("http://localhost:8001/save_question_paper/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(paperToSave),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data || data.status !== "success") {
+        throw new Error(data?.message || "Failed to save question paper");
+      }
+
+      setSavedMessage("Question paper saved successfully!");
+      setShowSaveModal(false);
+
+      // Clear session storage after successful save
+      sessionStorage.removeItem("generatedPaperData");
+
+      setTimeout(() => {
+        setSavedMessage("");
+        // Navigate back to question generation page
+        navigate("/question-paper-generation");
+      }, 2000);
+    } catch (error) {
+      console.error("Save error:", error);
+
+      let errorMessage = "Failed to save question paper";
+
+      if (
+        error.name === "TypeError" &&
+        error.message.includes("Failed to fetch")
+      ) {
+        errorMessage =
+          "Unable to connect to the server. Please check if the backend server is running on localhost:8000";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setSavedMessage(`Error: ${errorMessage}`);
+      setTimeout(() => {
+        setSavedMessage("");
+      }, 5000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [paperData, navigate]);
+
+  const handleConfirmSave = () => {
+    setShowSaveModal(true);
+  };
+
+  const handleCancelSave = () => {
+    setShowSaveModal(false);
   };
 
   const downloadPDF = () => {
@@ -901,6 +1028,45 @@ function ExamPaperGenerator() {
     </div>
   );
 
+  // Save Confirmation Modal Component
+  const SaveConfirmationModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          Confirm Save
+        </h3>
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to save this question paper? This action will
+          save the paper to the database and you'll be redirected back to the
+          generation page.
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={handleCancelSave}
+            disabled={isSaving}
+            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSavePaper}
+            disabled={isSaving}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Paper"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div>
       {/* Control Panel */}
@@ -927,9 +1093,32 @@ function ExamPaperGenerator() {
             >
               Download DOC
             </button>
+
+            <button
+              onClick={handleConfirmSave}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg shadow-lg font-medium transition-colors"
+            >
+              Save Paper
+            </button>
           </>
         )}
       </div>
+
+      {/* Save Confirmation Modal */}
+      {showSaveModal && <SaveConfirmationModal />}
+
+      {/* Success/Error Message */}
+      {savedMessage && (
+        <div className="fixed top-20 right-4 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-sm">
+          <div
+            className={`font-medium ${
+              savedMessage.includes("Error") ? "text-red-600" : "text-green-600"
+            }`}
+          >
+            {savedMessage}
+          </div>
+        </div>
+      )}
 
       {editMode ? <EditView /> : <PaperView />}
     </div>

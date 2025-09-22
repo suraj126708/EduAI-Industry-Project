@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from "react";
 import { ChevronDown } from "lucide-react";
 import Dropdown from "../Dropdown";
@@ -17,19 +18,19 @@ const PaperDetailsForm = ({
   setNumberOfPapers,
   showDurationPicker,
   setShowDurationPicker,
+  classOptions,
+  subjectOptions,
+  examTypeOptions,
+  mainTopicOptions,
+  isAllMainTopicsSelected,
   selectedHour,
   selectedMinute,
   openDropdowns,
   setOpenDropdowns,
   handleMainTopicToggle,
   getAllMainTopicsForSubject,
-  isAllMainTopicsSelected,
   errors,
 }) => {
-  const classOptions = ["Class 5"];
-  const subjectOptions = ["Science"];
-  const examTypeOptions = ["Unit Test", "Midterm", "Final"];
-
   return (
     <div className="mb-8">
       <div className="p-6">
@@ -100,7 +101,7 @@ const PaperDetailsForm = ({
               }
               onMainTopicToggle={handleMainTopicToggle}
               getAllMainTopicsForSubject={getAllMainTopicsForSubject}
-              isAllMainTopicsSelected={isAllMainTopicsSelected}
+              isAllMainTopicsSelected={() => isAllMainTopicsSelected}
               error={errors.topic}
             />
           </div>

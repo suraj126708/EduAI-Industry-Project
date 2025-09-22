@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, {
   useState,
   useEffect,
@@ -19,37 +20,50 @@ import {
   SuccessModal,
 } from "../components";
 
-const classOptions = ["Class 5"];
-const subjectOptions = ["Science"];
+const classOptions = ["Class 10"];
+const subjectOptions = ["History", "Geography", "Science"];
 const examTypeOptions = ["Unit Test", "Midterm", "Final"];
 
-// Main topics (chapters) for the top dropdown
 const mainTopics = [
-  "Living Things",
-  "Materials and Substances",
-  "Natural Phenomena",
+  "Nationalism in Europe",
+  "Nationalism in India",
+  "The Making of a Global World",
+  "The Age of Industrialisation",
+  "Print Culture and the Modern World",
 ];
 
 // Full topic structure with subtopics for question rows
 const availableTopics = {
-  science: {
-    "Living Things": [
-      "Plants and Animals",
-      "Human Body",
-      "Food and Nutrition",
-      "Health and Hygiene",
+  history: {
+    "Nationalism in Europe": [
+      "French Revolution and Nationalism",
+      "Unification of Germany",
+      "Unification of Italy",
+      "Balkan Nationalism and Conflicts",
     ],
-    "Materials and Substances": [
-      "States of Matter",
-      "Materials Around Us",
-      "Changes Around Us",
-      "Separation of Substances",
+    "Nationalism in India": [
+      "First World War and Khilafat Movement",
+      "Non-Cooperation Movement",
+      "Civil Disobedience Movement",
+      "Quit India Movement",
     ],
-    "Natural Phenomena": [
-      "Weather and Climate",
-      "Light and Sound",
-      "Force and Motion",
-      "Electricity and Magnets",
+    "The Making of a Global World": [
+      "Pre-modern World",
+      "Nineteenth Century Economy",
+      "Inter-war Economy",
+      "Globalisation and the World Economy",
+    ],
+    "The Age of Industrialisation": [
+      "Before the Industrial Revolution",
+      "Industrialisation in Britain",
+      "Industrialisation in Colonies",
+      "Industrial Workers and Social Change",
+    ],
+    "Print Culture and the Modern World": [
+      "Early Print in Europe",
+      "Growth of Press in the Nineteenth Century",
+      "Print and Nationalism in India",
+      "Impact on Society and Culture",
     ],
   },
 };
@@ -240,8 +254,7 @@ export default function MinimalQuestionPaperForm() {
   };
 
   const getSubjectTopics = useCallback(() => {
-    // Since we only have Science for Class 5, directly use the science topics
-    const allTopics = availableTopics.science || {};
+    const allTopics = availableTopics.history || {};
 
     // If no main topics are selected, return all topics
     if (selectedMainTopics.length === 0) {
@@ -374,32 +387,73 @@ export default function MinimalQuestionPaperForm() {
     setIsGenerating(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const paperData = {
+      // Prepare payload from current form state to match API format
+      const payload = {
         class: selectedClass,
         subject: selectedSubject,
         examType: selectedExamType,
         topics: selectedMainTopics,
-        numberOfPapers: numberOfPapers,
+        numberOfPapers,
         duration: {
           hours: selectedHour,
           minutes: selectedMinute,
         },
-        questions: questions.map((q) => ({
-          ...q,
-          // Use custom input if no predefined type is selected
-          type: q.type || questionTypeInputs[questions.indexOf(q)] || "custom",
+        questions: questions.map((q, idx) => ({
+          type: q.type || questionTypeInputs[idx] || "custom",
+          units: q.units || [],
+          topics: q.topics || [],
+          numQuestions: q.numQuestions,
+          marksPerQuestion: q.marksPerQuestion,
         })),
       };
 
-      setGeneratedPaperData(paperData);
+      console.log("payload", payload);
+
+      const res = await fetch(
+        "http://localhost:8002/generate_question_paper/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await res.json();
+      console.log(data);
+      if (
+        !res.ok ||
+        !data ||
+        data.status !== "success" ||
+        !data.question_paper
+      ) {
+        throw new Error(
+          (data && data.message) || "Failed to generate question paper"
+        );
+      }
+
+      // Use the returned question_paper from the API
+      setGeneratedPaperData(data.question_paper);
       setShowSuccessModal(true);
       setErrors({});
     } catch (error) {
+      console.error("Generate error:", error);
+
+      let errorMessage = "Failed to generate question paper. Please try again.";
+
+      if (
+        error.name === "TypeError" &&
+        error.message.includes("Failed to fetch")
+      ) {
+        errorMessage =
+          "Unable to connect to the server. Please check if the backend server is running on localhost:8000";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       setErrors({
-        general: "Failed to generate question paper. Please try again.",
+        general: errorMessage,
       });
     } finally {
       setIsGenerating(false);
@@ -489,6 +543,11 @@ export default function MinimalQuestionPaperForm() {
           setSelectedExamType={setSelectedExamType}
           selectedMainTopics={selectedMainTopics}
           setSelectedMainTopics={setSelectedMainTopics}
+          classOptions={classOptions}
+          subjectOptions={subjectOptions}
+          examTypeOptions={examTypeOptions}
+          mainTopicOptions={getAllMainTopicsForSubject()}
+          isAllMainTopicsSelected={isAllMainTopicsSelected()}
           numberOfPapers={numberOfPapers}
           setNumberOfPapers={setNumberOfPapers}
           showDurationPicker={showDurationPicker}
@@ -499,7 +558,6 @@ export default function MinimalQuestionPaperForm() {
           setOpenDropdowns={setOpenDropdowns}
           handleMainTopicToggle={handleMainTopicToggle}
           getAllMainTopicsForSubject={getAllMainTopicsForSubject}
-          isAllMainTopicsSelected={isAllMainTopicsSelected}
           errors={errors}
         />
 
@@ -565,17 +623,27 @@ export default function MinimalQuestionPaperForm() {
               </>
             )}
           </Button>
+
+          {/* View Paper button shown when a generated paper exists */}
+          {generatedPaperData && (
+            <Button
+              onClick={handleViewPaper}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              View Paper
+            </Button>
+          )}
         </div>
 
         {/* Success Modal */}
-        <SuccessModal
+        {/* <SuccessModal
           isOpen={showSuccessModal}
           onClose={handleCloseModal}
           onViewPaper={handleViewPaper}
           generatedPaperData={generatedPaperData}
           totalQuestions={totalQuestions}
           totalMarks={totalMarks}
-        />
+        /> */}
       </div>
     </div>
   );
