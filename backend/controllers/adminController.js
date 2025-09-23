@@ -718,33 +718,41 @@ export const getStudentsByClassDivision = async (req, res) => {
   try {
     const { class: cls, div } = req.query;
     if (!cls || !div) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Class and Division required" });
+      return res.status(400).json({
+        success: false,
+        message: "Class and Division required",
+      });
     }
 
-    // Find User IDs of students with matching profiles (assumes profile has classDivision info)
-    const studentProfiles = await StudentProfile.find().populate({
+    // Find student profiles matching class and division, populate userId with role filter
+    const studentProfiles = await StudentProfile.find({
+      class: cls,
+      div: div,
+    }).populate({
       path: "userId",
       match: { role: "student" },
     });
 
-    // Filter matching class and division; alternatively, this can be optimized by adding filtering query
-    const filteredProfiles = studentProfiles.filter(
-      (sp) => sp.classDivisionId?.toString() === cls && sp.division === div
-    );
+    // Filter out profiles where populate didn't find a matching user
+    const filteredProfiles = studentProfiles.filter((sp) => sp.userId != null);
 
     if (!filteredProfiles.length) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No students found" });
+      return res.status(404).json({
+        success: false,
+        message: "No students found",
+      });
     }
 
-    // Fetch full User documents for matched profiles
+    // Extract userIds from the filtered profiles
     const studentIds = filteredProfiles.map((sp) => sp.userId._id);
+
+    // Fetch full user documents for matched profiles
     const students = await User.find({ _id: { $in: studentIds } });
 
-    res.json({ success: true, data: students });
+    res.status(200).json({
+      success: true,
+      data: students,
+    });
   } catch (error) {
     console.error("Get students error:", error);
     res.status(500).json({
@@ -769,21 +777,57 @@ export const uploadStudentExcel = async (req, res) => {
     const sheetName = workbook.SheetNames[0];
     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-    const operations = [];
+    let successCount = 0;
+    let failedRows = [];
     for (const r of jsonData) {
       const name = String(r.name || r.Name || "").trim();
+      const email = String(r.email || r.Email || "").trim();
       const clsRaw = r.class ?? r.Class ?? "";
       const divRaw = r.div ?? r.Div ?? "";
       const rollRaw = r.rollNo ?? r["Roll No"] ?? r["Roll"] ?? 0;
+      const parentContact = r.parentContact || "";
+      const parentEmail = r.parentEmail || "";
 
-      if (!name || !clsRaw || !divRaw || !rollRaw) continue;
+      // Basic validation
+      if (!name || !email || !clsRaw || !divRaw || !rollRaw) {
+        failedRows.push(r);
+        continue;
+      }
 
-      // Add or update User + StudentProfile logic here
-      // For brevity, simple upsert logic is omitted but you would:
-      // 1) Upsert User with role: 'student'
-      // 2) Upsert StudentProfile with userId and class/div info
+      // Upsert into users collection
+      let user = await User.findOneAndUpdate(
+        { email },
+        {
+          $set: {
+            name,
+            email,
+            role: "student",
+            status: "active",
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
 
-      // This can be implemented as batch or sequential upserts as per your design
+      // Upsert into students collection
+      await StudentProfile.findOneAndUpdate(
+        {
+          userId: user._id,
+          class: clsRaw,
+          div: divRaw,
+          rollNo: rollRaw,
+        },
+        {
+          userId: user._id,
+          class: clsRaw,
+          div: divRaw,
+          rollNo: rollRaw,
+          parentContact,
+          parentEmail,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      successCount++;
     }
 
     try {
@@ -793,7 +837,10 @@ export const uploadStudentExcel = async (req, res) => {
     res.json({
       success: true,
       message: `Students processed successfully.`,
-      data: {}, // Add upsert results/info here
+      data: {
+        successCount,
+        failedRows,
+      },
     });
   } catch (error) {
     console.error("Excel upload error:", error);
