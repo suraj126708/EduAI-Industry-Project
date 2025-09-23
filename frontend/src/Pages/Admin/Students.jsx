@@ -154,7 +154,7 @@ function Students() {
           {students.length === 0 ? (
             <tr>
               <td className="border px-3 py-6 text-center" colSpan="6">
-                No students found!
+                No students found for this class and division!
               </td>
             </tr>
           ) : (

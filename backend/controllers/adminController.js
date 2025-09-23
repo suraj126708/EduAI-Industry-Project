@@ -714,6 +714,7 @@ export const demoteFromAdmin = async (req, res) => {
 // -----------------------------
 // Get Students by Class and Division
 // -----------------------------
+
 export const getStudentsByClassDivision = async (req, res) => {
   try {
     const { class: cls, div } = req.query;
@@ -724,30 +725,15 @@ export const getStudentsByClassDivision = async (req, res) => {
       });
     }
 
-    // Find student profiles matching class and division, populate userId with role filter
-    const studentProfiles = await StudentProfile.find({
-      class: cls,
-      div: div,
-    }).populate({
-      path: "userId",
-      match: { role: "student" },
-    });
+    const students = await StudentProfile.find({ class: cls, div: div });
 
-    // Filter out profiles where populate didn't find a matching user
-    const filteredProfiles = studentProfiles.filter((sp) => sp.userId != null);
-
-    if (!filteredProfiles.length) {
-      return res.status(404).json({
-        success: false,
-        message: "No students found",
+    if (!students.length) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        message: "No students found for this class and division",
       });
     }
-
-    // Extract userIds from the filtered profiles
-    const studentIds = filteredProfiles.map((sp) => sp.userId._id);
-
-    // Fetch full user documents for matched profiles
-    const students = await User.find({ _id: { $in: studentIds } });
 
     res.status(200).json({
       success: true,
@@ -763,9 +749,7 @@ export const getStudentsByClassDivision = async (req, res) => {
   }
 };
 
-// -----------------------------
 // Bulk Upload Students (Excel)
-// -----------------------------
 export const uploadStudentExcel = async (req, res) => {
   try {
     if (!req.file) {
@@ -781,43 +765,23 @@ export const uploadStudentExcel = async (req, res) => {
     let failedRows = [];
     for (const r of jsonData) {
       const name = String(r.name || r.Name || "").trim();
-      const email = String(r.email || r.Email || "").trim();
       const clsRaw = r.class ?? r.Class ?? "";
       const divRaw = r.div ?? r.Div ?? "";
       const rollRaw = r.rollNo ?? r["Roll No"] ?? r["Roll"] ?? 0;
       const parentContact = r.parentContact || "";
       const parentEmail = r.parentEmail || "";
 
-      // Basic validation
-      if (!name || !email || !clsRaw || !divRaw || !rollRaw) {
+      // Basic validation: require name, class, div, rollNo
+      if (!name || !clsRaw || !divRaw || !rollRaw) {
         failedRows.push(r);
         continue;
       }
 
-      // Upsert into users collection
-      let user = await User.findOneAndUpdate(
-        { email },
-        {
-          $set: {
-            name,
-            email,
-            role: "student",
-            status: "active",
-          },
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
-
-      // Upsert into students collection
+      // Upsert student document directly (no user doc)
       await StudentProfile.findOneAndUpdate(
+        { name, class: clsRaw, div: divRaw, rollNo: rollRaw }, // key to avoid duplicates
         {
-          userId: user._id,
-          class: clsRaw,
-          div: divRaw,
-          rollNo: rollRaw,
-        },
-        {
-          userId: user._id,
+          name,
           class: clsRaw,
           div: divRaw,
           rollNo: rollRaw,
@@ -866,16 +830,16 @@ export const bulkPromoteStudents = async (req, res) => {
 
     // Find student profiles matching the class and division
     const studentProfiles = await StudentProfile.find({
-      classDivisionId: fromClass,
-      division: div,
+      class: fromClass,
+      div: div,
     });
 
     const userIdsToPromote = studentProfiles.map((sp) => sp.userId);
 
-    // Update the classDivisionId field in student profiles to 'toClass'
+    // Update the class field in student profiles to 'toClass'
     const result = await StudentProfile.updateMany(
       { userId: { $in: userIdsToPromote } },
-      { $set: { classDivisionId: toClass } }
+      { $set: { class: toClass } }
     );
 
     res.json({
@@ -892,18 +856,19 @@ export const bulkPromoteStudents = async (req, res) => {
   }
 };
 
+// Deduplicate student profiles
 export const dedupeStudents = async (req, res) => {
   try {
     // Your deduplication logic, e.g., remove duplicate student profiles or users
-    // Sample example:
+    // Example:
     const duplicates = await StudentProfile.aggregate([
       { $sort: { createdAt: -1 } },
       {
         $group: {
           _id: {
-            classDivisionId: "$classDivisionId",
-            division: "$division",
-            rollNumber: "$rollNumber",
+            class: "$class",
+            div: "$div",
+            rollNo: "$rollNo",
           },
           ids: { $push: "$_id" },
           keep: { $first: "$_id" },
