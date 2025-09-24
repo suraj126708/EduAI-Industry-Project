@@ -4,6 +4,7 @@ import School from "../models/School.js";
 import Class from "../models/Class.js";
 import Subject from "../models/Subject.js";
 import TeacherProfile from "../models/Teacher.js";
+import TeacherClassSubject from "../models/TeacherClassSubject.js";
 import StudentProfile from "../models/Student.js";
 import { validationResult } from "express-validator";
 import admin from "../config/firebase.js";
@@ -899,3 +900,145 @@ export const dedupeStudents = async (req, res) => {
     });
   }
 };
+
+/*-------------Schools-------------*/
+
+// Create a school (Admin only)
+export async function createSchool(req, res) {
+  try {
+    const {
+      name,
+      type,
+      establishedYear,
+      address,
+      addressDetails,
+      contact,
+      emailDomain,
+    } = req.body;
+
+    const existingSchool = await School.findByName(name);
+    if (existingSchool)
+      return res.status(400).json({ error: "School name already exists" });
+
+    const school = new School({
+      name,
+      type,
+      establishedYear,
+      address,
+      addressDetails,
+      contact,
+      emailDomain,
+    });
+
+    await school.save();
+    res.status(201).json(school);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
+// Add or update a class in school (grade + division unique in school)
+export async function addOrUpdateClass(req, res) {
+  try {
+    const { schoolId, grade, division } = req.body;
+
+    let existingClass = await Class.findBySchoolGradeDivision(
+      schoolId,
+      grade,
+      division
+    );
+
+    if (existingClass) {
+      // Update if necessary or just return
+      return res.json(existingClass);
+    }
+
+    const newClass = new Class({ schoolId, grade, division });
+    await newClass.save();
+    res.status(201).json(newClass);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
+// Delete a class by ID
+export async function deleteClass(req, res) {
+  try {
+    const { classId } = req.params;
+    await Class.findByIdAndDelete(classId);
+    res.json({ message: "Class deleted" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
+// Add or update a subject in school with unique subjectId
+export async function addOrUpdateSubject(req, res) {
+  try {
+    const { schoolId, subjectId, name } = req.body;
+
+    let subject = await Subject.findOne({ schoolId, subjectId });
+    if (subject) {
+      // Update subject name if different
+      if (subject.name !== name) {
+        subject.name = name;
+        await subject.save();
+      }
+      return res.json(subject);
+    }
+
+    subject = new Subject({ schoolId, subjectId, name });
+    await subject.save();
+    res.status(201).json(subject);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
+// Delete a subject by ID
+export async function deleteSubject(req, res) {
+  try {
+    const { subjectId } = req.params;
+    await Subject.findByIdAndDelete(subjectId);
+    res.json({ message: "Subject deleted" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
+// Assign teacher to class + subject
+export async function assignTeacher(req, res) {
+  try {
+    const { teacherId, classId, subjectId } = req.body;
+
+    const existingAssignment = await TeacherClassSubject.findOne({
+      teacherId,
+      classId,
+      subjectId,
+    });
+    if (existingAssignment) {
+      return res.status(400).json({ error: "Assignment already exists" });
+    }
+
+    const assignment = new TeacherClassSubject({
+      teacherId,
+      classId,
+      subjectId,
+    });
+    await assignment.save();
+    res.status(201).json(assignment);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
+// Remove teacher assignment by ID
+export async function removeAssignment(req, res) {
+  try {
+    const { assignmentId } = req.params;
+    await TeacherClassSubject.findByIdAndDelete(assignmentId);
+    res.json({ message: "Assignment removed" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}

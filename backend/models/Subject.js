@@ -1,30 +1,40 @@
 import mongoose from "mongoose";
 
-const studentProfileSchema = new mongoose.Schema(
+const subjectSchema = new mongoose.Schema(
   {
-    userId: {
+    schoolId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      unique: true,
+      ref: "School",
       required: true,
     },
-    classDivisionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "ClassDivision",
-      required: false,
+    subjectId: {
+      type: String,
+      required: true,
+      trim: true,
+      uppercase: true,
     },
-    rollNumber: Number,
-    admissionDate: Date,
-    parentContact: String,
-    parentEmail: String,
-    // Add more student-specific fields if needed
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    // Add other subject-specific fields if needed
   },
   {
     timestamps: true,
-    collection: "studentprofiles",
+    collection: "subjects",
   }
 );
 
-const StudentProfile = mongoose.model("StudentProfile", studentProfileSchema);
+// Unique index to enforce unique subjectId per school
+subjectSchema.index({ schoolId: 1, subjectId: 1 }, { unique: true });
 
-export default StudentProfile;
+// Optional: transform output to remove __v
+subjectSchema.methods.toJSON = function () {
+  const subjectObject = this.toObject();
+  delete subjectObject.__v;
+  return subjectObject;
+};
+
+const Subject = mongoose.model("Subject", subjectSchema);
+export default Subject;

@@ -16,6 +16,13 @@ import {
   uploadStudentExcel,
   bulkPromoteStudents,
   dedupeStudents,
+  createSchool,
+  addOrUpdateClass,
+  deleteClass,
+  addOrUpdateSubject,
+  deleteSubject,
+  assignTeacher,
+  removeAssignment,
 } from "../controllers/adminController.js";
 import {
   authenticateFirebaseToken,
@@ -406,6 +413,60 @@ router.post(
   authenticateFirebaseToken,
   authorize("admin"),
   dedupeStudents
+);
+
+/*--------------New Routes added here-----------*/
+// Schools
+router.post(
+  "/schools",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  createSchool
+);
+
+// Classes
+router.post(
+  "/classes",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  addOrUpdateClass
+);
+
+router.delete(
+  "/classes/:classId",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  deleteClass
+);
+
+// Subjects
+router.post(
+  "/subjects",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  addOrUpdateSubject
+);
+
+router.delete(
+  "/subjects/:subjectId",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  deleteSubject
+);
+
+// Teacher assignments to class + subject
+router.post(
+  "/assignments",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  assignTeacher
+);
+
+router.delete(
+  "/assignments/:assignmentId",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  removeAssignment
 );
 
 export default router;
