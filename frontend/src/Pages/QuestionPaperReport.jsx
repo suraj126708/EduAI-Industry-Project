@@ -1,399 +1,590 @@
-import React from "react";
-import {
-  Download,
-  Award,
-  TrendingUp,
-  TrendingDown,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  BookOpen,
-  Target,
-  BarChart3,
-} from "lucide-react";
+import React, { useState } from "react";
 
-const ExamReport = () => {
-  // Dummy data - replace with actual data from your backend
-  const reportData = {
-    student: {
-      name: "Alex Johnson",
-      rollNumber: "MT2024001",
-      class: "Grade 10 - Mathematics",
-      examDate: "2025-09-15",
-    },
-    exam: {
-      title: "Unit Test - Algebra and Trigonometry",
-      subject: "Mathematics",
-      totalMarks: 25,
-      duration: "90 minutes",
-      examType: "Unit Test",
-    },
-    performance: {
-      obtainedMarks: 18,
-      percentage: 72,
-      grade: "B+",
-      rank: 5,
-      totalStudents: 45,
-    },
-    questionAnalysis: [
-      {
-        qNo: 1,
-        topic: "Linear Equations",
-        maxMarks: 5,
-        obtainedMarks: 5,
-        userAnswer: "x = 3, y = 2",
-        correctAnswer: "x = 3, y = 2",
-        status: "correct",
-        feedback:
-          "Perfect solution with clear step-by-step approach. Excellent algebraic manipulation skills demonstrated.",
-      },
-      {
-        qNo: 2,
-        topic: "Quadratic Functions",
-        maxMarks: 6,
-        obtainedMarks: 4,
-        userAnswer: "Roots: x = 2, x = -1, Vertex not calculated",
-        correctAnswer: "Roots: x = 2, x = -1, Vertex: (-0.5, -2.25)",
-        status: "partial",
-        feedback:
-          "Correctly found the roots using factorization method. However, missed calculating the vertex of the parabola. Need to practice vertex form conversions.",
-      },
-      {
-        qNo: 3,
-        topic: "Trigonometric Identities",
-        maxMarks: 7,
-        obtainedMarks: 5,
-        userAnswer: "Used basic identities, calculation errors in final steps",
-        correctAnswer: "sin²θ + cos²θ = 1, final answer: √3/2",
-        status: "partial",
-        feedback:
-          "Good understanding of fundamental trigonometric identities. Minor computational errors in the final calculation steps. Practice more with fraction simplification.",
-      },
-      {
-        qNo: 4,
-        topic: "Logarithms",
-        maxMarks: 4,
-        obtainedMarks: 2,
-        userAnswer: "Attempted using change of base, incomplete solution",
-        correctAnswer: "log₂(8) = 3, using properties of logarithms",
-        status: "needs_improvement",
-        feedback:
-          "Partial understanding of logarithmic properties. Struggled with change of base formula application. Recommend reviewing logarithm laws and practicing more examples.",
-      },
-      {
-        qNo: 5,
-        topic: "Probability",
-        maxMarks: 3,
-        obtainedMarks: 2,
-        userAnswer: "P(A∩B) = 0.3, conditional probability not addressed",
-        correctAnswer: "P(A∩B) = 0.3, P(A|B) = 0.6",
-        status: "partial",
-        feedback:
-          "Correctly calculated joint probability. Need to work on conditional probability concepts and formulas.",
-      },
+// Simple icon components to replace lucide-react icons
+const Download = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+const Award = ({ className = "w-6 h-6" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+  </svg>
+);
+
+const TrendingUp = ({ className = "w-6 h-6" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+  </svg>
+);
+
+const AlertCircle = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+  </svg>
+);
+
+const CheckCircle = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const Clock = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const BookOpen = ({ className = "w-6 h-6" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+  </svg>
+);
+
+const Target = ({ className = "w-8 h-8" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+  </svg>
+);
+
+const BarChart3 = ({ className = "w-6 h-6" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+  </svg>
+);
+
+// Dummy test data
+const testRecords = [
+  {
+    class: "10",
+    division: "A",
+   
+    students: [
+      { name: "Alex Johnson", rollNumber: "3" },
+      { name: "Sara Lee", rollNumber: "5" },
+      { name: "Rahul Mehta", rollNumber: "8" },
+    ],
+  },
+  {
+    class: "10",
+    division: "B",
+    testType: "Mid Term",
+    students: [
+      { name: "Priya Singh", rollNumber: "7" },
+      { name: "Rohan Gupta", rollNumber: "11" },
+    ],
+  },
+  {
+    class: "9",
+    division: "A",
+    testType: "Final",
+    students: [
+      { name: "Amit Patel", rollNumber: "13" },
+      { name: "Neha Sharma", rollNumber: "14" },
+    ],
+  },
+];
+
+const students = [
+  { name: "Alex Johnson", rollNumber: "3", class: "10", division: "A" },
+  { name: "Sara Lee", rollNumber: "5", class: "10", division: "A" },
+  { name: "Rahul Mehta", rollNumber: "8", class: "10", division: "A" },
+  { name: "Priya Singh", rollNumber: "7", class: "10", division: "B" },
+  { name: "Rohan Gupta", rollNumber: "11", class: "10", division: "B" },
+  { name: "Amit Patel", rollNumber: "13", class: "9", division: "A" },
+  { name: "Neha Sharma", rollNumber: "14", class: "9", division: "A" },
+];
+
+const classOptions = ["9", "10"];
+const divisionOptions = ["A", "B"];
+const subjectOptions = ["Science", "Math", "English"];
+const reportTypeOptions = ["Subject Wise", "Mid Term", "Final"];
+
+// Hardcoded reports for demonstration
+const allSubjectsReport = {
+  "Mid Term": [
+    { subject: "Science", marks: 38, total: 50, grade: "B+" },
+    { subject: "Math", marks: 42, total: 50, grade: "A" },
+    { subject: "English", marks: 35, total: 50, grade: "B" },
+  ],
+  "Final": [
+    { subject: "Science", marks: 45, total: 50, grade: "A+" },
+    { subject: "Math", marks: 40, total: 50, grade: "A" },
+    { subject: "English", marks: 39, total: 50, grade: "B+" },
+  ],
+};
+
+const subjectWiseReports = {
+  Science: {
+    obtainedMarks: 45,
+    totalMarks: 50,
+    percentage: 90,
+    grade: "A+",
+    strengths: ["Excellent in Natural Phenomena", "Good in Living Things"],
+    weaknesses: ["Needs work on Materials and Substances"],
+    recommendations: [
+      "Revise Materials and Substances chapter.",
+      "Practice more scientific terminology.",
     ],
     topicAnalysis: [
       {
-        topic: "Linear Equations",
+        topic: "Natural Phenomena",
+        score: "9/10",
         strength: "strong",
-        score: "100%",
-        description:
-          "Excellent mastery of linear equation solving. Strong algebraic manipulation skills and systematic approach to problem-solving.",
+        description: "Excellent grasp of concepts.",
       },
       {
-        topic: "Quadratic Functions",
+        topic: "Living Things",
+        score: "8/10",
         strength: "moderate",
-        score: "67%",
-        description:
-          "Good grasp of basic quadratic concepts and root finding. Needs improvement in vertex calculations and graphical interpretations.",
+        description: "Good understanding, can improve with more practice.",
       },
       {
-        topic: "Trigonometric Identities",
-        strength: "moderate",
-        score: "71%",
-        description:
-          "Solid foundation in basic trigonometric identities. Minor computational errors affecting final results. Practice needed for complex identity manipulations.",
-      },
-      {
-        topic: "Logarithms",
+        topic: "Materials and Substances",
+        score: "5/10",
         strength: "weak",
-        score: "50%",
-        description:
-          "Fundamental understanding present but application is inconsistent. Significant gaps in logarithmic properties and change of base formula usage.",
+        description: "Needs revision of key facts and properties.",
+      },
+    ],
+  },
+  Math: {
+    obtainedMarks: 40,
+    totalMarks: 50,
+    percentage: 80,
+    grade: "A",
+    strengths: ["Strong in Algebra", "Good in Geometry"],
+    weaknesses: ["Needs work on Statistics"],
+    recommendations: [
+      "Revise Statistics concepts.",
+      "Solve more practice problems.",
+    ],
+    topicAnalysis: [
+      {
+        topic: "Algebra",
+        score: "8/10",
+        strength: "strong",
+        description: "Consistently solves algebraic problems.",
       },
       {
-        topic: "Probability",
+        topic: "Geometry",
+        score: "7/10",
         strength: "moderate",
-        score: "67%",
-        description:
-          "Basic probability concepts understood. Conditional probability requires additional focus and practice.",
+        description: "Good spatial reasoning, can improve accuracy.",
+      },
+      {
+        topic: "Statistics",
+        score: "5/10",
+        strength: "weak",
+        description: "Needs more practice with data interpretation.",
       },
     ],
+  },
+  English: {
+    obtainedMarks: 39,
+    totalMarks: 50,
+    percentage: 78,
+    grade: "B+",
+    strengths: ["Good in Grammar", "Strong in Reading Comprehension"],
+    weaknesses: ["Needs work on Essay Writing"],
     recommendations: [
-      "Focus on logarithmic properties and practice change of base formula applications",
-      "Review conditional probability formulas and solve more word problems",
-      "Practice vertex form conversions for quadratic functions",
-      "Improve computational accuracy in trigonometric calculations",
-      "Maintain strong performance in linear equations and apply similar systematic approaches to other topics",
+      "Practice essay writing.",
+      "Expand vocabulary.",
     ],
+    topicAnalysis: [
+      {
+        topic: "Grammar",
+        score: "8/10",
+        strength: "strong",
+        description: "Grammar usage is accurate.",
+      },
+      {
+        topic: "Reading Comprehension",
+        score: "7/10",
+        strength: "moderate",
+        description: "Understands passages well, can improve speed.",
+      },
+      {
+        topic: "Essay Writing",
+        score: "4/10",
+        strength: "weak",
+        description: "Needs to organize ideas and use richer vocabulary.",
+      },
+    ],
+  },
+};
+
+const getDummyReportData = (student, selectedClass, selectedDivision, selectedTestType) => ({
+  student: {
+    name: student.name,
+    rollNumber: student.rollNumber,
+    class: selectedClass,
+    division: selectedDivision,
+    examDate: "2025-09-22",
+  },
+  exam: {
+    subject: "Science",
+    title: selectedTestType,
+    duration: "2 hr",
+    totalMarks: 50,
+  },
+  performance: {
+    obtainedMarks: 38,
+    percentage: 76,
+    grade: "B+",
+    rank: 5,
+    totalStudents: 30,
+  },
+  questionAnalysis: [
+    {
+      qNo: 1,
+      topic: "Living Things",
+      obtainedMarks: 2,
+      maxMarks: 3,
+      status: "good",
+      userAnswer: "Plants make their own food.",
+      correctAnswer: "Plants are autotrophs.",
+      feedback: "Good understanding, but use scientific terms.",
+    },
+    {
+      qNo: 2,
+      topic: "Materials and Substances",
+      obtainedMarks: 1,
+      maxMarks: 2,
+      status: "needs_work",
+      userAnswer: "Water boils at 90°C.",
+      correctAnswer: "Water boils at 100°C.",
+      feedback: "Revise boiling points of substances.",
+    },
+    {
+      qNo: 3,
+      topic: "Natural Phenomena",
+      obtainedMarks: 2,
+      maxMarks: 2,
+      status: "excellent",
+      userAnswer: "Lightning is caused by electric discharge.",
+      correctAnswer: "Lightning is caused by electric discharge.",
+      feedback: "Excellent answer.",
+    },
+  ],
+  topicAnalysis: [
+    {
+      topic: "Living Things",
+      score: "7/10",
+      strength: "moderate",
+      description: "Basic concepts are clear. Practice scientific terminology for better scores.",
+    },
+    {
+      topic: "Materials and Substances",
+      score: "5/10",
+      strength: "weak",
+      description: "Needs revision of key facts and properties.",
+    },
+    {
+      topic: "Natural Phenomena",
+      score: "9/10",
+      strength: "strong",
+      description: "Excellent grasp of concepts.",
+    },
+  ],
+  recommendations: [
+    "Revise boiling points and physical properties of substances.",
+    "Use more scientific terms in answers.",
+    "Continue practicing Natural Phenomena topics.",
+  ],
+});
+
+// Helper functions for styling
+const getStatusColor = (status) => {
+  switch (status) {
+    case "excellent":
+      return "bg-green-100 text-green-800 border-green-200";
+    case "good":
+      return "bg-blue-100 text-blue-800 border-blue-200";
+    case "needs_work":
+      return "bg-red-100 text-red-800 border-red-200";
+    default:
+      return "bg-gray-100 text-gray-800 border-gray-200";
+  }
+};
+
+const getStatusIcon = (status) => {
+  switch (status) {
+    case "excellent":
+      return <CheckCircle className="w-4 h-4" />;
+    case "good":
+      return <Clock className="w-4 h-4" />;
+    case "needs_work":
+      return <AlertCircle className="w-4 h-4" />;
+    default:
+      return <AlertCircle className="w-4 h-4" />;
+  }
+};
+
+const getStrengthColor = (strength) => {
+  switch (strength) {
+    case "strong":
+      return "bg-green-50 border-green-200 text-green-800";
+    case "moderate":
+      return "bg-blue-50 border-blue-200 text-blue-800";
+    case "weak":
+      return "bg-red-50 border-red-200 text-red-800";
+    default:
+      return "bg-gray-50 border-gray-200 text-gray-800";
+  }
+};
+
+export default function ExamReport() {
+  // Selection states
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedDivision, setSelectedDivision] = useState("");
+  const [selectedReportType, setSelectedReportType] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [searchRollNo, setSearchRollNo] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  // Filter students based on selection
+  const filteredStudents = students.filter((s) =>
+    (!selectedClass || s.class === selectedClass) &&
+    (!selectedDivision || s.division === selectedDivision) &&
+    (!searchRollNo || s.rollNumber.includes(searchRollNo)) &&
+    (!searchName || s.name.toLowerCase().includes(searchName.toLowerCase()))
+  );
+
+  // Handle student selection
+  const handleSelectStudent = (student) => {
+    setSelectedStudent(student);
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "correct":
-        return "text-green-600 bg-green-50";
-      case "partial":
-        return "text-yellow-600 bg-yellow-50";
-      case "needs_improvement":
-        return "text-red-600 bg-red-50";
-      default:
-        return "text-gray-600 bg-gray-50";
-    }
+  // Handle back to selection
+  const handleBackToSelection = () => {
+    setSelectedStudent(null);
+    setSelectedSubject("");
+    setSelectedReportType("");
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "correct":
-        return <CheckCircle className="w-4 h-4" />;
-      case "partial":
-        return <AlertCircle className="w-4 h-4" />;
-      case "needs_improvement":
-        return <TrendingDown className="w-4 h-4" />;
-      default:
-        return <AlertCircle className="w-4 h-4" />;
-    }
-  };
-
-  const getStrengthColor = (strength) => {
-    switch (strength) {
-      case "strong":
-        return "text-green-700 bg-green-100 border-green-200";
-      case "moderate":
-        return "text-blue-700 bg-blue-100 border-blue-200";
-      case "weak":
-        return "text-red-700 bg-red-100 border-red-200";
-      default:
-        return "text-gray-700 bg-gray-100 border-gray-200";
-    }
-  };
-
+  // Handle download
   const handleDownload = () => {
     window.print();
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8 print:p-4 print:bg-white">
-      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg print:shadow-none print:rounded-none">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 rounded-t-xl print:rounded-none">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">
-                EDUAI Performance Report
-              </h1>
-              <p className="text-blue-100">
-                Comprehensive Analysis & Evaluation
-              </p>
-            </div>
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors print:hidden"
-            >
-              <Download className="w-4 h-4" />
-              Download Report
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h2 className="text-xl font-semibold mb-3">
-                Student Information
-              </h2>
-              <div className="space-y-2 text-blue-100">
-                <p>
-                  <span className="font-medium">Name:</span>{" "}
-                  {reportData.student.name}
-                </p>
-                <p>
-                  <span className="font-medium">Roll Number:</span>{" "}
-                  {reportData.student.rollNumber}
-                </p>
-                <p>
-                  <span className="font-medium">Class:</span>{" "}
-                  {reportData.student.class}
-                </p>
-                <p>
-                  <span className="font-medium">Exam Date:</span>{" "}
-                  {reportData.student.examDate}
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-semibold mb-3">Exam Details</h2>
-              <div className="space-y-2 text-blue-100">
-                <p>
-                  <span className="font-medium">Subject:</span>{" "}
-                  {reportData.exam.subject}
-                </p>
-                <p>
-                  <span className="font-medium">Test:</span>{" "}
-                  {reportData.exam.title}
-                </p>
-                <p>
-                  <span className="font-medium">Duration:</span>{" "}
-                  {reportData.exam.duration}
-                </p>
-                <p>
-                  <span className="font-medium">Total Marks:</span>{" "}
-                  {reportData.exam.totalMarks}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Performance Overview */}
-        <div className="p-8 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <Award className="w-6 h-6 text-blue-600" />
-            Performance Overview
+  // Selection page
+  if (!selectedStudent) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 flex flex-col items-center">
+        <div className="max-w-xl w-full bg-white rounded-xl shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+            Select Student for Report
           </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-600 font-medium">Score</p>
-                  <p className="text-2xl font-bold text-green-700">
-                    {reportData.performance.obtainedMarks}/
-                    {reportData.exam.totalMarks}
-                  </p>
-                </div>
-                <Target className="w-8 h-8 text-green-600" />
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-600 font-medium">Percentage</p>
-                  <p className="text-2xl font-bold text-blue-700">
-                    {reportData.performance.percentage}%
-                  </p>
-                </div>
-                <BarChart3 className="w-8 h-8 text-blue-600" />
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-600 font-medium">Grade</p>
-                  <p className="text-2xl font-bold text-purple-700">
-                    {reportData.performance.grade}
-                  </p>
-                </div>
-                <Award className="w-8 h-8 text-purple-600" />
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-600 font-medium">Class Rank</p>
-                  <p className="text-2xl font-bold text-orange-700">
-                    {reportData.performance.rank}/
-                    {reportData.performance.totalStudents}
-                  </p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Question-wise Analysis */}
-        <div className="p-8 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-blue-600" />
-            Question-wise Analysis
-          </h2>
-
-          <div className="space-y-6">
-            {reportData.questionAnalysis.map((q, index) => (
-              <div
-                key={index}
-                className="bg-gray-50 rounded-xl p-6 border border-gray-200"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Class</label>
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="border px-3 py-2 rounded w-full"
               >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      Question {q.qNo}: {q.topic}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Marks: {q.obtainedMarks}/{q.maxMarks}
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                      q.status
-                    )}`}
-                  >
-                    {getStatusIcon(q.status)}
-                    {q.status.replace("_", " ").toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <p className="font-medium text-gray-700 mb-2">
-                      Your Answer:
-                    </p>
-                    <p className="text-gray-600 bg-white p-3 rounded-lg border">
-                      {q.userAnswer}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-700 mb-2">
-                      Expected Answer:
-                    </p>
-                    <p className="text-gray-600 bg-white p-3 rounded-lg border">
-                      {q.correctAnswer}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="font-medium text-gray-700 mb-2">
-                    Feedback & Suggestions:
-                  </p>
-                  <p className="text-gray-600 leading-relaxed">{q.feedback}</p>
-                </div>
+                <option value="">All</option>
+                {classOptions.map((cls) => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Division</label>
+              <select
+                value={selectedDivision}
+                onChange={(e) => setSelectedDivision(e.target.value)}
+                className="border px-3 py-2 rounded w-full"
+              >
+                <option value="">All</option>
+                {divisionOptions.map((div) => (
+                  <option key={div} value={div}>{div}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Report Type</label>
+              <select
+                value={selectedReportType}
+                onChange={(e) => {
+                  setSelectedReportType(e.target.value);
+                  setSelectedSubject("");
+                }}
+                className="border px-3 py-2 rounded w-full"
+              >
+                <option value="">Select</option>
+                {reportTypeOptions.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            {selectedReportType === "Subject Wise" && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Subject</label>
+                <select
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="border px-3 py-2 rounded w-full"
+                >
+                  <option value="">Select</option>
+                  {subjectOptions.map((sub) => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
               </div>
-            ))}
+            )}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Roll No</label>
+              <input
+                type="text"
+                value={searchRollNo}
+                onChange={(e) => setSearchRollNo(e.target.value)}
+                className="border px-3 py-2 rounded w-full"
+                placeholder="Roll Number"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Name</label>
+              <input
+                type="text"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                className="border px-3 py-2 rounded w-full"
+                placeholder="Student Name"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Year</label>
+              <input
+                type="number"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="border px-3 py-2 rounded w-full"
+                min={2000}
+                max={2100}
+                placeholder="Year"
+              />
+            </div>
+          </div>
+          <div>
+            {filteredStudents.length === 0 ? (
+              <div className="text-gray-500 text-center">No students found.</div>
+            ) : (
+              <table className="w-full border">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 border">Name</th>
+                    <th className="p-2 border">Class</th>
+                    <th className="p-2 border">Division</th>
+                    <th className="p-2 border">Roll No</th>
+                    <th className="p-2 border"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.map((s, idx) => (
+                    <tr key={idx}>
+                      <td className="p-2 border">{s.name}</td>
+                      <td className="p-2 border">{s.class}</td>
+                      <td className="p-2 border">{s.division}</td>
+                      <td className="p-2 border">{s.rollNumber}</td>
+                      <td className="p-2 border">
+                        <button
+                          className="bg-indigo-600 text-white px-4 py-1 rounded hover:bg-indigo-700"
+                          onClick={() => handleSelectStudent(s)}
+                          disabled={
+                            !selectedReportType ||
+                            (selectedReportType === "Subject Wise" && !selectedSubject)
+                          }
+                        >
+                          View Report
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          <div className="text-xs text-gray-400 mt-2">
+            * Please select report type (and subject if subject wise) before viewing report.
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {/* Topic-wise Strength Analysis */}
-        <div className="p-8 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-blue-600" />
-            Topic-wise Strength Analysis
-          </h2>
-
-          <div className="space-y-4">
-            {reportData.topicAnalysis.map((topic, index) => (
-              <div
-                key={index}
-                className={`rounded-xl p-6 border-2 ${getStrengthColor(
-                  topic.strength
-                )}`}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-semibold">{topic.topic}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold">{topic.score}</span>
+  // Report page
+  if (selectedReportType === "Subject Wise" && selectedSubject) {
+    const report = subjectWiseReports[selectedSubject];
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 print:p-4 print:bg-white">
+        <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg print:shadow-none print:rounded-none">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 rounded-t-xl print:rounded-none">
+            <h1 className="text-2xl font-bold mb-2">Subject Wise Report</h1>
+            <div className="mt-2">
+              <span className="font-medium">Year:</span> {year} <br />
+              <span className="font-medium">Student:</span> {selectedStudent.name} | 
+              <span className="font-medium">Class:</span> {selectedStudent.class}-{selectedStudent.division} | 
+              <span className="font-medium">Roll No:</span> {selectedStudent.rollNumber}
+            </div>
+            <div className="mt-2">
+              <span className="font-medium">Subject:</span> {selectedSubject}
+            </div>
+          </div>
+          <div className="p-8">
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+                <p className="text-blue-600 font-medium">Marks</p>
+                <p className="text-2xl font-bold text-blue-700">{report.obtainedMarks}/{report.totalMarks}</p>
+              </div>
+              <div className="bg-green-50 p-6 rounded-xl border border-green-200">
+                <p className="text-green-600 font-medium">Percentage</p>
+                <p className="text-2xl font-bold text-green-700">{report.percentage}%</p>
+              </div>
+            </div>
+            <div className="mb-6">
+              <p className="font-semibold text-gray-700">Grade: <span className="text-lg text-indigo-700 font-bold">{report.grade}</span></p>
+            </div>
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-2">Strengths</h3>
+              <ul className="list-disc ml-6 text-green-700">
+                {report.strengths.map((s, idx) => (
+                  <li key={idx}>{s}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-2">Weaknesses</h3>
+              <ul className="list-disc ml-6 text-red-700">
+                {report.weaknesses.map((w, idx) => (
+                  <li key={idx}>{w}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Recommendations</h3>
+              <ul className="list-disc ml-6 text-gray-700">
+                {report.recommendations.map((rec, idx) => (
+                  <li key={idx}>{rec}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          {/* Topic Wise Analysis */}
+          <div className="mt-8">
+            <h3 className="text-lg font-bold mb-4 text-indigo-700">Topic Wise Analysis</h3>
+            <div className="space-y-4">
+              {report.topicAnalysis.map((topic, idx) => (
+                <div
+                  key={idx}
+                  className={`rounded-xl p-4 border-2 ${getStrengthColor(topic.strength)}`}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold">{topic.topic}</span>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${
                         topic.strength === "strong"
@@ -406,48 +597,100 @@ const ExamReport = () => {
                       {topic.strength}
                     </span>
                   </div>
-                </div>
-                <p className="leading-relaxed">{topic.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recommendations */}
-        <div className="p-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-blue-600" />
-            Recommendations for Improvement
-          </h2>
-
-          <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-            <ul className="space-y-3">
-              {reportData.recommendations.map((rec, index) => (
-                <li key={index} className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">
-                    {index + 1}
+                  <div className="mt-2 text-gray-700">
+                    <span className="font-semibold">Score:</span> {topic.score}
                   </div>
-                  <p className="text-gray-700 leading-relaxed">{rec}</p>
-                </li>
+                  <div className="mt-1 text-sm text-gray-600">{topic.description}</div>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-gray-100 p-6 rounded-b-xl print:rounded-none text-center text-sm text-gray-600">
-          <p>
-            Generated by EDUAI - Intelligent Assessment Platform | Report Date:{" "}
-            {new Date().toLocaleDateString()}
-          </p>
-          <p className="mt-1">
-            This report provides comprehensive analysis based on AI-powered
-            evaluation of your answer sheet.
-          </p>
+          <div className="bg-gray-100 p-6 rounded-b-xl print:rounded-none text-center text-sm text-gray-600">
+            <button
+              onClick={handleBackToSelection}
+              className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors print:hidden mb-2"
+            >
+              ← Back to Selection
+            </button>
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors print:hidden"
+            >
+              <Download className="w-4 h-4" />
+              Download Report
+            </button>
+            <p className="mt-2">
+              Generated by EDUAI | Subject Wise report format
+            </p>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
 
-export default ExamReport;
+  if (selectedReportType === "Mid Term" || selectedReportType === "Final") {
+    const reportArr = allSubjectsReport[selectedReportType];
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 print:p-4 print:bg-white">
+        <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg print:shadow-none print:rounded-none">
+          <div className="bg-gradient-to-r from-green-600 to-blue-700 text-white p-8 rounded-t-xl print:rounded-none">
+            <h1 className="text-2xl font-bold mb-2">{selectedReportType} Report</h1>
+            <div className="mt-2">
+              <span className="font-medium">Year:</span> {year} <br />
+              <span className="font-medium">Student:</span> {selectedStudent.name} | 
+              <span className="font-medium">Class:</span> {selectedStudent.class}-{selectedStudent.division} | 
+              <span className="font-medium">Roll No:</span> {selectedStudent.rollNumber}
+            </div>
+          </div>
+          <div className="p-8">
+            <h2 className="text-xl font-bold mb-4 text-gray-700">Subject Summary</h2>
+            <table className="w-full border mb-6">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-2 border">Subject</th>
+                  <th className="p-2 border">Marks</th>
+                  <th className="p-2 border">Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportArr.map((r, idx) => (
+                  <tr key={idx}>
+                    <td className="p-2 border">{r.subject}</td>
+                    <td className="p-2 border">{r.marks}/{r.total}</td>
+                    <td className="p-2 border">{r.grade}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">General Recommendations</h3>
+              <ul className="list-disc ml-6 text-gray-700">
+                <li>Revise weak subjects before next exam.</li>
+                <li>Practice time management during tests.</li>
+                <li>Consult teachers for doubts in difficult topics.</li>
+              </ul>
+            </div>
+          </div>
+          <div className="bg-gray-100 p-6 rounded-b-xl print:rounded-none text-center text-sm text-gray-600">
+            <button
+              onClick={handleBackToSelection}
+              className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors print:hidden mb-2"
+            >
+              ← Back to Selection
+            </button>
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors print:hidden"
+            >
+              <Download className="w-4 h-4" />
+              Download Report
+            </button>
+            <p className="mt-2">
+              Generated by EDUAI | {selectedReportType} report format
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
