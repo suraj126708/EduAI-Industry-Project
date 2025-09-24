@@ -4,15 +4,78 @@ import { useNavigate } from "react-router-dom";
 
 function ExamPaperGenerator() {
   const navigate = useNavigate();
+  // Normalize/clean incoming paper JSON safely
+  const normalizePaper = useCallback((incoming, fallback) => {
+    const safeString = (v, fb = "") => {
+      if (typeof v === "string") {
+        const trimmed = v.trim();
+        return trimmed.length > 0 ? trimmed : fb;
+      }
+      return fb;
+    };
+    const safeNumber = (v, fb = 0) =>
+      Number.isFinite(Number(v)) ? Number(v) : fb;
+    const safeArray = (v) => (Array.isArray(v) ? v : []);
+
+    // Prefer incoming values; if missing/empty, keep fallback defaults
+    const incomingInstructions =
+      Array.isArray(incoming?.instructions) && incoming.instructions.length > 0
+        ? incoming.instructions
+        : fallback.instructions;
+    const incomingSections =
+      Array.isArray(incoming?.sections) && incoming.sections.length > 0
+        ? incoming.sections
+        : fallback.sections;
+
+    const normalized = {
+      collegeName: safeString(incoming?.collegeName, fallback.collegeName),
+      testName: safeString(incoming?.testName, fallback.testName),
+      subject: safeString(incoming?.subject, fallback.subject),
+      className: safeString(incoming?.className, fallback.className),
+      maxMarks: safeNumber(incoming?.maxMarks, fallback.maxMarks),
+      timeAllowed: safeString(incoming?.timeAllowed, fallback.timeAllowed),
+      semester: safeString(incoming?.semester, fallback.semester),
+      date: safeString(incoming?.date, fallback.date),
+      instructions: safeArray(incomingInstructions)
+        .map((i) => safeString(i))
+        .filter((i) => i && i.length > 0),
+      sections: safeArray(incomingSections).map((section, sIdx) => {
+        const questions = safeArray(section?.questions).map((q, qIdx) => {
+          const options = safeArray(q?.options)
+            .map((opt) => safeString(opt))
+            .filter((opt) => opt && opt.length > 0);
+          return {
+            questionNo: safeString(q?.questionNo, (qIdx + 1).toString()),
+            question: safeString(q?.question),
+            marks: safeNumber(q?.marks, 1),
+            ...(options.length > 0 ? { options } : {}),
+          };
+        });
+        return {
+          sectionName: safeString(section?.sectionName, `Section ${sIdx + 1}`),
+          sectionTitle: safeString(section?.sectionTitle),
+          description: safeString(section?.description),
+          questions,
+        };
+      }),
+    };
+
+    // If somehow instructions ended empty after filtering, keep fallback's instructions
+    if (!normalized.instructions || normalized.instructions.length === 0) {
+      normalized.instructions = fallback.instructions;
+    }
+
+    return normalized;
+  }, []);
   const [paperData, setPaperData] = useState({
-    collegeName: "Your College Name",
+    collegeName: "Vit pune",
     testName: "Unit Test",
     subject: "History",
     className: "Class 10",
     maxMarks: 30,
     timeAllowed: "1 hour",
     semester: "Fourth Semester",
-    date: "15th May 2025",
+    date: new Date().toISOString().split("T")[0],
     instructions: [
       "All questions are compulsory",
       "Read the questions carefully before attempting",
@@ -160,45 +223,8 @@ function ExamPaperGenerator() {
       if (!raw) return;
       const gen = JSON.parse(raw);
 
-      // Map incoming API response structure to paperData shape with safe fallbacks
-      setPaperData((prev) => {
-        const mapped = { ...prev };
-
-        // Map basic fields from API response
-        mapped.collegeName = gen.collegeName || mapped.collegeName;
-        mapped.testName = gen.testName || mapped.testName;
-        mapped.subject = gen.subject || mapped.subject;
-        mapped.className = gen.className || mapped.className;
-        mapped.timeAllowed = gen.timeAllowed || mapped.timeAllowed;
-        mapped.date = gen.date || mapped.date;
-        mapped.semester = gen.semester || mapped.semester;
-        mapped.maxMarks = gen.maxMarks || mapped.maxMarks;
-
-        // Map instructions
-        if (Array.isArray(gen.instructions) && gen.instructions.length > 0) {
-          mapped.instructions = gen.instructions;
-        }
-
-        // Map sections - API response should have sections array
-        if (Array.isArray(gen.sections) && gen.sections.length > 0) {
-          mapped.sections = gen.sections.map((section) => ({
-            sectionName:
-              section.sectionName || `Section ${section.sectionName || "A"}`,
-            sectionTitle: section.sectionTitle || "",
-            description: section.description || "",
-            questions: Array.isArray(section.questions)
-              ? section.questions.map((q, idx) => ({
-                  questionNo: q.questionNo || (idx + 1).toString(),
-                  question: q.question || "",
-                  marks: q.marks || 1,
-                  options: q.options || undefined,
-                }))
-              : [],
-          }));
-        }
-
-        return mapped;
-      });
+      // Normalize incoming API response structure to internal shape with safe fallbacks
+      setPaperData((prev) => normalizePaper(gen, prev));
     } catch (err) {
       // keep existing default paperData if parsing/mapping fails
       console.error(
@@ -246,13 +272,13 @@ function ExamPaperGenerator() {
   );
 
   const calculateTotalMarks = () => {
-    return paperData.sections.reduce((total, section) => {
-      return (
-        total +
-        section.questions.reduce((sectionTotal, question) => {
-          return sectionTotal + question.marks;
-        }, 0)
+    return (paperData.sections || []).reduce((total, section) => {
+      const sectionSum = (section.questions || []).reduce(
+        (sectionTotal, question) =>
+          sectionTotal + (Number(question.marks) || 0),
+        0
       );
+      return total + sectionSum;
     }, 0);
   };
 
@@ -496,7 +522,10 @@ function ExamPaperGenerator() {
             <div class="instructions">
               <h3>General Instructions:</h3>
               <ol>
-                ${paperData.instructions
+                ${(paperData.instructions || [])
+                  .filter(
+                    (instruction) => instruction && instruction.length > 0
+                  )
                   .map((instruction) => `<li>${instruction}</li>`)
                   .join("")}
               </ol>
@@ -512,43 +541,48 @@ function ExamPaperGenerator() {
                 </tr>
               </thead>
               <tbody>
-                ${paperData.sections
-                  .map(
-                    (section) => `
+                ${(paperData.sections || [])
+                  .map((section) => {
+                    const header = `
                   <tr>
                     <td colspan="3" class="section-header">
-                      <strong>${section.sectionName}: ${
-                      section.sectionTitle
-                    }</strong><br>
+                      <strong>${section.sectionName}</strong><br>
                       <em>${section.description}</em>
                     </td>
-                  </tr>
-                  ${section.questions
-                    .map(
-                      (question) => `
+                  </tr>`;
+                    const rows = (section.questions || [])
+                      .map((question) => {
+                        const opts = Array.isArray(question.options)
+                          ? question.options.filter((o) => o && o.length > 0)
+                          : [];
+                        const optsHtml =
+                          opts.length > 0
+                            ? `
+                          <div class="options">
+                            ${opts
+                              .map(
+                                (option, idx) =>
+                                  `<div>${String.fromCharCode(
+                                    97 + idx
+                                  )}) ${option}</div>`
+                              )
+                              .join("")}
+                          </div>
+                        `
+                            : "";
+                        return `
                     <tr>
                       <td class="question-no">${question.questionNo}</td>
                       <td class="question-cell">
                         ${question.question}
-                        ${
-                          question.options
-                            ? `
-                          <div class="options">
-                            ${question.options
-                              .map((option) => `<div>${option}</div>`)
-                              .join("")}
-                          </div>
-                        `
-                            : ""
-                        }
+                        ${optsHtml}
                       </td>
                       <td class="marks-cell">${question.marks}</td>
-                    </tr>
-                  `
-                    )
-                    .join("")}
-                `
-                  )
+                    </tr>`;
+                      })
+                      .join("");
+                    return header + rows;
+                  })
                   .join("")}
               </tbody>
             </table>
@@ -614,7 +648,7 @@ function ExamPaperGenerator() {
               General Instructions:
             </h3>
             <ul className="list-disc pl-6 text-sm text-gray-700">
-              {paperData.instructions.map((instruction, index) => (
+              {(paperData.instructions || []).map((instruction, index) => (
                 <li key={index} className="mb-1">
                   {instruction}
                 </li>
@@ -639,78 +673,57 @@ function ExamPaperGenerator() {
                 </tr>
               </thead>
               <tbody>
-                {/* Section A - Page 1 */}
-                <tr>
-                  <td
-                    colSpan="3"
-                    className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
-                  >
-                    <div className="font-bold text-blue-800">
-                      {paperData.sections[0].sectionName}:{" "}
-                      {paperData.sections[0].sectionTitle}
-                    </div>
-                    <div className="text-sm text-gray-600 italic">
-                      {paperData.sections[0].description}
-                    </div>
-                  </td>
-                </tr>
-
-                {paperData.sections[0].questions.map(
-                  (question, questionIndex) => (
-                    <tr key={questionIndex} className="hover:bg-gray-50">
-                      <td className="question-no border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.questionNo}
-                      </td>
-                      <td className="question-cell border border-gray-400 px-3 py-3">
-                        <div className="text-gray-800">{question.question}</div>
-                        {question.options && (
-                          <div className="options mt-2 text-sm text-gray-700">
-                            {question.options.map((option, optionIndex) => (
-                              <div key={optionIndex} className="ml-4">
-                                {option}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="marks-cell border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.marks}
+                {(paperData.sections || []).map((section, sIdx) => (
+                  <React.Fragment key={`section-${sIdx}`}>
+                    <tr>
+                      <td
+                        colSpan="3"
+                        className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
+                      >
+                        <div className="font-bold text-blue-800">
+                          {section.sectionName}
+                        </div>
+                        <div className="text-sm text-gray-600 italic">
+                          {section.description}
+                        </div>
                       </td>
                     </tr>
-                  )
-                )}
 
-                {/* Section B - Page 1 */}
-                <tr>
-                  <td
-                    colSpan="3"
-                    className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
-                  >
-                    <div className="font-bold text-blue-800">
-                      {paperData.sections[1].sectionName}:{" "}
-                      {paperData.sections[1].sectionTitle}
-                    </div>
-                    <div className="text-sm text-gray-600 italic">
-                      {paperData.sections[1].description}
-                    </div>
-                  </td>
-                </tr>
-
-                {paperData.sections[1].questions
-                  .slice(0, 3)
-                  .map((question, questionIndex) => (
-                    <tr key={questionIndex} className="hover:bg-gray-50">
-                      <td className="question-no border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.questionNo}
-                      </td>
-                      <td className="question-cell border border-gray-400 px-3 py-3">
-                        <div className="text-gray-800">{question.question}</div>
-                      </td>
-                      <td className="marks-cell border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.marks}
-                      </td>
-                    </tr>
-                  ))}
+                    {(section.questions || []).map(
+                      (question, questionIndex) => (
+                        <tr
+                          key={`q-${sIdx}-${questionIndex}`}
+                          className="hover:bg-gray-50"
+                        >
+                          <td className="question-no border border-gray-400 text-center px-2 py-3 font-medium">
+                            {question.questionNo}
+                          </td>
+                          <td className="question-cell border border-gray-400 px-3 py-3">
+                            <div className="text-gray-800">
+                              {question.question}
+                            </div>
+                            {Array.isArray(question.options) &&
+                              question.options.length > 0 && (
+                                <div className="options mt-2 text-sm text-gray-700">
+                                  {question.options.map(
+                                    (option, optionIndex) => (
+                                      <div key={optionIndex} className="ml-4">
+                                        {String.fromCharCode(97 + optionIndex)}){" "}
+                                        {option}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
+                          </td>
+                          <td className="marks-cell border border-gray-400 text-center px-2 py-3 font-medium">
+                            {question.marks}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </React.Fragment>
+                ))}
               </tbody>
             </table>
           </div>
@@ -724,83 +737,7 @@ function ExamPaperGenerator() {
           </div>
         </div>
 
-        {/* Page 2 */}
-        <div className="bg-white border-2 border-blue-400 rounded-xl shadow-lg px-8 py-6 min-h-[11in]">
-          {/* Page 2 Header */}
-          <div className="text-center border-b-2 border-blue-300 pb-3 mb-6">
-            <h2 className="text-lg font-semibold text-blue-800">
-              {paperData.testName} - {paperData.subject}
-            </h2>
-            <div className="text-sm text-gray-600">Continued...</div>
-          </div>
-
-          {/* Continue Questions Table */}
-          <div className="border border-gray-400 rounded-lg overflow-hidden">
-            <table className="w-full">
-              <tbody>
-                {/* Section B continued */}
-                {paperData.sections[1].questions
-                  .slice(3)
-                  .map((question, questionIndex) => (
-                    <tr key={questionIndex + 3} className="hover:bg-gray-50">
-                      <td className="question-no border border-gray-400 text-center px-2 py-3 font-medium w-16">
-                        {question.questionNo}
-                      </td>
-                      <td className="question-cell border border-gray-400 px-3 py-3">
-                        <div className="text-gray-800">{question.question}</div>
-                      </td>
-                      <td className="marks-cell border border-gray-400 text-center px-2 py-3 font-medium w-16">
-                        {question.marks}
-                      </td>
-                    </tr>
-                  ))}
-
-                {/* Section C */}
-                <tr>
-                  <td
-                    colSpan="3"
-                    className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
-                  >
-                    <div className="font-bold text-blue-800">
-                      {paperData.sections[2].sectionName}:{" "}
-                      {paperData.sections[2].sectionTitle}
-                    </div>
-                    <div className="text-sm text-gray-600 italic">
-                      {paperData.sections[2].description}
-                    </div>
-                  </td>
-                </tr>
-
-                {paperData.sections[2].questions.map(
-                  (question, questionIndex) => (
-                    <tr key={questionIndex} className="hover:bg-gray-50">
-                      <td className="question-no border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.questionNo}
-                      </td>
-                      <td className="question-cell border border-gray-400 px-3 py-3">
-                        <div className="text-gray-800">{question.question}</div>
-                      </td>
-                      <td className="marks-cell border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.marks}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Page 2 Footer */}
-          <div className="footer flex justify-between items-center mt-6 pt-4 border-t border-gray-300 text-xs text-gray-500">
-            <div>
-              © {new Date().getFullYear()} {paperData.collegeName}
-            </div>
-            <div className="font-medium">
-              Total Marks: {calculateTotalMarks()}
-            </div>
-            <div className="font-medium">Page 2 of 2</div>
-          </div>
-        </div>
+        {/* Page 2 removed in favor of dynamic single-table rendering to handle variable sections safely */}
       </div>
     </div>
   );
@@ -928,9 +865,9 @@ function ExamPaperGenerator() {
         </div>
 
         {/* Sections */}
-        {paperData.sections.map((section, sectionIndex) => (
+        {(paperData.sections || []).map((section, sectionIndex) => (
           <div
-            key={`section-${sectionIndex}-${section.sectionName}`}
+            key={`section-${sectionIndex}`}
             className="border border-gray-300 rounded-lg p-4 mb-4"
           >
             <h4 className="text-lg font-semibold text-gray-800 mb-3">
@@ -957,9 +894,9 @@ function ExamPaperGenerator() {
               />
             </div>
 
-            {section.questions.map((question, questionIndex) => (
+            {(section.questions || []).map((question, questionIndex) => (
               <div
-                key={`question-${sectionIndex}-${questionIndex}-${question.questionNo}`}
+                key={`question-${sectionIndex}-${questionIndex}`}
                 className="bg-gray-50 p-3 rounded-md mb-3"
               >
                 <div className="grid grid-cols-12 gap-2 mb-2">

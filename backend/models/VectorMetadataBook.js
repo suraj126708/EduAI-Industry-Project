@@ -23,12 +23,12 @@ const vectorMetadataBookSchema = new mongoose.Schema(
     },
 
     llmMetadata: {
-      type: mongoose.Schema.Types.Mixed, // JSON object
+      type: mongoose.Schema.Types.Mixed,
       default: null,
     },
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt
+    timestamps: true,
     collection: "vector_metadata_books",
   }
 );
@@ -60,7 +60,7 @@ vectorMetadataBookSchema.methods.getMetadataValue = function (key) {
   if (this.llmMetadata && typeof this.llmMetadata === "object") {
     return this.llmMetadata[key];
   }
-  return null;
+  return undefined;
 };
 
 vectorMetadataBookSchema.methods.setMetadataValue = function (key, value) {
@@ -68,6 +68,7 @@ vectorMetadataBookSchema.methods.setMetadataValue = function (key, value) {
     this.llmMetadata = {};
   }
   this.llmMetadata[key] = value;
+  return this.save();
 };
 
 // Static methods
@@ -127,10 +128,7 @@ vectorMetadataBookSchema.statics.getChunkCountByChapter = function (
   bookId,
   chapter
 ) {
-  return this.countDocuments({
-    bookId,
-    chapter: { $regex: chapter, $options: "i" },
-  });
+  return this.countDocuments({ bookId, chapter });
 };
 
 vectorMetadataBookSchema.statics.getMaxChunkIdByBook = function (bookId) {
@@ -154,3 +152,5 @@ const VectorMetadataBook = mongoose.model(
 );
 
 export default VectorMetadataBook;
+
+

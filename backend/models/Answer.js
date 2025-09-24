@@ -39,13 +39,6 @@ const answerSchema = new mongoose.Schema(
       default: false,
     },
 
-    vectorMatchScore: {
-      type: Number,
-      min: 0,
-      max: 1,
-      default: null,
-    },
-
     llmMetadata: {
       type: mongoose.Schema.Types.Mixed, // JSON object
       default: null,
@@ -62,7 +55,6 @@ answerSchema.index({ answerSheetId: 1 });
 answerSchema.index({ questionId: 1 });
 answerSchema.index({ marksAwarded: 1 });
 answerSchema.index({ evaluationByLlm: 1 });
-answerSchema.index({ vectorMatchScore: 1 });
 
 // Instance methods
 answerSchema.methods.getAnswerSheet = function () {
@@ -75,17 +67,6 @@ answerSchema.methods.getQuestion = function () {
 
 answerSchema.methods.isEvaluatedByLlm = function () {
   return this.evaluationByLlm === true;
-};
-
-answerSchema.methods.hasVectorMatch = function () {
-  return this.vectorMatchScore !== null && this.vectorMatchScore > 0;
-};
-
-answerSchema.methods.getVectorMatchPercentage = function () {
-  if (this.vectorMatchScore !== null) {
-    return Math.round(this.vectorMatchScore * 100);
-  }
-  return 0;
 };
 
 answerSchema.methods.isFullMarks = function () {
@@ -111,10 +92,6 @@ answerSchema.statics.findByMarksRange = function (minMarks, maxMarks) {
 
 answerSchema.statics.findEvaluatedByLlm = function () {
   return this.find({ evaluationByLlm: true });
-};
-
-answerSchema.statics.findByVectorMatchScore = function (minScore) {
-  return this.find({ vectorMatchScore: { $gte: minScore } });
 };
 
 answerSchema.statics.findFullMarksAnswers = function () {

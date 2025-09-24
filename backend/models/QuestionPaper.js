@@ -62,7 +62,7 @@ const questionPaperSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt
+    timestamps: true,
     collection: "question_papers",
   }
 );

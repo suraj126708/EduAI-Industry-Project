@@ -25,45 +25,30 @@ const subjectOptions = ["History", "Geography", "Science"];
 const examTypeOptions = ["Unit Test", "Midterm", "Final"];
 
 const mainTopics = [
-  "Nationalism in Europe",
-  "Nationalism in India",
-  "The Making of a Global World",
-  "The Age of Industrialisation",
-  "Print Culture and the Modern World",
+  "1. Historiography : Development in the West",
+  "2. Historiography : Indian Tradition",
+  "3. Applied History",
 ];
 
 // Full topic structure with subtopics for question rows
 const availableTopics = {
   history: {
-    "Nationalism in Europe": [
-      "French Revolution and Nationalism",
-      "Unification of Germany",
-      "Unification of Italy",
-      "Balkan Nationalism and Conflicts",
+    "1. Historiography : Development in the West": [
+      "1.1 Tradition  of  Historiography",
+      "1.2  Modern  Historiography",
+      "1.3 Development of Scientific Perspective in Europe and Historiography",
+      "1.4  Notable  Scholars",
     ],
-    "Nationalism in India": [
-      "First World War and Khilafat Movement",
-      "Non-Cooperation Movement",
-      "Civil Disobedience Movement",
-      "Quit India Movement",
+    "2. Historiography : Indian Tradition": [
+      "2.1 Tradition  of  Indian  Historiography",
+      "2.2 Indian Historiography : Various Ideological  Frameworks",
     ],
-    "The Making of a Global World": [
-      "Pre-modern World",
-      "Nineteenth Century Economy",
-      "Inter-war Economy",
-      "Globalisation and the World Economy",
-    ],
-    "The Age of Industrialisation": [
-      "Before the Industrial Revolution",
-      "Industrialisation in Britain",
-      "Industrialisation in Colonies",
-      "Industrial Workers and Social Change",
-    ],
-    "Print Culture and the Modern World": [
-      "Early Print in Europe",
-      "Growth of Press in the Nineteenth Century",
-      "Print and Nationalism in India",
-      "Impact on Society and Culture",
+    "3. Applied History": [
+      "3.1 What is Applied History?",
+      "3.2 Applied History and Research in Various Fields",
+      "3.3 Applied History and Our Present",
+      "3.4 Management of Cultural and Natural Heritage",
+      "3.5 Affiliated Professional Fields",
     ],
   },
 };
@@ -96,6 +81,11 @@ export default function MinimalQuestionPaperForm() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [generatedPaperData, setGeneratedPaperData] = useState(null);
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "success",
+  });
   const dropdownRefs = useRef({});
 
   // Close dropdowns when clicking outside
@@ -344,9 +334,11 @@ export default function MinimalQuestionPaperForm() {
         questionErrors.type = "Please select or enter a question type";
       }
 
+      // Validate that at least one main topic (units) or sub-topic is selected
       if (!q.units || q.units.length === 0) {
         if (!q.topics || q.topics.length === 0) {
-          questionErrors.topics = "Please select at least one unit or topic";
+          questionErrors.topics =
+            "Please select at least one main topic or sub-topic";
         }
       }
 
@@ -387,7 +379,7 @@ export default function MinimalQuestionPaperForm() {
     setIsGenerating(true);
 
     try {
-      // Prepare payload from current form state to match API format
+      // Prepare payload from current form state to match new API format
       const payload = {
         class: selectedClass,
         subject: selectedSubject,
@@ -398,10 +390,28 @@ export default function MinimalQuestionPaperForm() {
           hours: selectedHour,
           minutes: selectedMinute,
         },
+        question_type: [
+          ...new Set(
+            questions.map((q, idx) => {
+              const questionType =
+                q.type || questionTypeInputs[idx] || "custom";
+              // Convert internal format to display format
+              const typeMapping = {
+                single_correct: "Single Correct",
+                short_answer: "Short Answer",
+                long_answer: "Long Answer",
+                multiple_correct: "Multiple Correct",
+                fill_in_blank: "Fill in Blanks",
+                true_false: "True/False",
+              };
+              return typeMapping[questionType] || questionType;
+            })
+          ),
+        ],
         questions: questions.map((q, idx) => ({
           type: q.type || questionTypeInputs[idx] || "custom",
-          units: q.units || [],
-          topics: q.topics || [],
+          topics: q.units || [],
+          sub_topics: q.topics || [],
           numQuestions: q.numQuestions,
           marksPerQuestion: q.marksPerQuestion,
         })),
@@ -410,7 +420,7 @@ export default function MinimalQuestionPaperForm() {
       console.log("payload", payload);
 
       const res = await fetch(
-        "http://localhost:8002/generate_question_paper/",
+        "http://localhost:8000/generate_question_paper/",
         {
           method: "POST",
           headers: {
@@ -437,6 +447,14 @@ export default function MinimalQuestionPaperForm() {
       setGeneratedPaperData(data.question_paper);
       setShowSuccessModal(true);
       setErrors({});
+
+      // Show success toast
+      setToast({
+        visible: true,
+        message: "Question paper generated successfully",
+        type: "success",
+      });
+      setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
     } catch (error) {
       console.error("Generate error:", error);
 
@@ -455,6 +473,10 @@ export default function MinimalQuestionPaperForm() {
       setErrors({
         general: errorMessage,
       });
+
+      // Show error toast
+      setToast({ visible: true, message: errorMessage, type: "error" });
+      setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
     } finally {
       setIsGenerating(false);
     }
@@ -513,6 +535,16 @@ export default function MinimalQuestionPaperForm() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 pb-32">
       <div className="max-w-6xl mx-auto">
+        {/* Toast Notification */}
+        {toast.visible && (
+          <div
+            className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg text-white ${
+              toast.type === "success" ? "bg-green-600" : "bg-red-600"
+            }`}
+          >
+            {toast.message}
+          </div>
+        )}
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
