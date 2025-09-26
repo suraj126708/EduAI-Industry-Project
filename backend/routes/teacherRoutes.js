@@ -11,6 +11,12 @@ import {
   authorize,
 } from "../middleware/authMiddleware.js";
 
+import { pdfUpload } from "../middleware/uploadMiddleware.js";
+import {
+  teacherUploadBook,
+  getBooksByClassAndSubject,
+} from "../controllers/teacherController.js";
+
 const router = express.Router();
 
 // Validation middleware
@@ -212,6 +218,22 @@ router.put(
   teacherIdValidation,
   updateTeacherValidation,
   updateTeacher
+);
+
+/*----------- Teachers Routes --------------- */
+router.post(
+  "/upload-book",
+  authenticateFirebaseToken,
+  teacherIdValidation,
+  pdfUpload.single("pdf"),
+  teacherUploadBook
+);
+
+router.get(
+  "/fetch-books-metadata",
+  authenticateFirebaseToken,
+  authorize("teacher"),
+  getBooksByClassAndSubject
 );
 
 export default router;

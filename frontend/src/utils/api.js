@@ -7,9 +7,6 @@ const local_api = "http://localhost:5000/api/";
 
 const api = axios.create({
   baseURL: local_api,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 // Add request interceptor to dynamically set the Authorization header with Firebase ID token
@@ -117,53 +114,64 @@ export const getCurrentUser = () => {
   return auth.currentUser;
 };
 
+// fetch teacher profile (outside bookAPI)
+export async function fetchTeacherProfile() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("User not authenticated");
+  const idToken = await user.getIdToken();
+
+  const response = await api.get(`${local_api}auth/profile`, {
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  if (response.data.success) return response.data.data.user;
+  throw new Error("Failed to get profile");
+}
+
 // Book API functions
 export const bookAPI = {
-  // Upload book PDF
-  uploadBook: async (formData) => {
+  /**
+   * Upload book PDF with metadata using Axios to support progress tracking.
+   * @param {FormData} formData - The form data containing the file and metadata.
+   * @param {object} options - Axios config options, including onUploadProgress.
+   */
+  uploadBook: async (formData, options = {}) => {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error("User not authenticated");
-
-      const idToken = await user.getIdToken();
-
-      const response = await fetch(`${local_api}books/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Upload failed");
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Upload book error:", error);
-      throw error;
-    }
-  },
-
-  // Get all books
-  getAllBooks: async (params = {}) => {
-    try {
-      const queryParams = new URLSearchParams(params);
-      const response = await api.get(`books?${queryParams}`);
+      // Use the 'api' instance which has the interceptor for auth
+      const response = await api.post(
+        `${local_api}teachers/upload-book`, // Use relative path
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          ...options, // Spread the options, which includes onUploadProgress
+        }
+      );
       return response.data;
     } catch (error) {
-      console.error("Get all books error:", error);
-      throw error;
+      console.error("Upload book error:", error);
+      // Re-throw a more specific error for the component to catch
+      throw new Error(error.response?.data?.message || "Upload failed");
     }
   },
+
+  // Other helpers (optional)
 
   // Get book by ID
   getBookById: async (bookId) => {
     try {
-      const response = await api.get(`books/${bookId}`);
+      const user = auth.currentUser;
+      if (!user) throw new Error("User not authenticated");
+      const idToken = await user.getIdToken();
+
+      const response = await axios.get(`${local_api}books/${bookId}`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
       return response.data;
     } catch (error) {
       console.error("Get book by ID error:", error);
@@ -171,23 +179,22 @@ export const bookAPI = {
     }
   },
 
-  // Get books by filter (class and subject)
-  getBooksByFilter: async (classValue, subjectValue) => {
-    try {
-      const response = await api.get(
-        `books/filter?classValue=${classValue}&subjectValue=${subjectValue}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Get books by filter error:", error);
-      throw error;
-    }
-  },
-
   // Update book status
   updateBookStatus: async (bookId, status) => {
     try {
-      const response = await api.put(`books/${bookId}/status`, { status });
+      const user = auth.currentUser;
+      if (!user) throw new Error("User not authenticated");
+      const idToken = await user.getIdToken();
+
+      const response = await axios.put(
+        `${local_api}books/${bookId}/status`,
+        { status },
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
       return response.data;
     } catch (error) {
       console.error("Update book status error:", error);
@@ -198,7 +205,15 @@ export const bookAPI = {
   // Delete book
   deleteBook: async (bookId) => {
     try {
-      const response = await api.delete(`books/${bookId}`);
+      const user = auth.currentUser;
+      if (!user) throw new Error("User not authenticated");
+      const idToken = await user.getIdToken();
+
+      const response = await axios.delete(`${local_api}books/${bookId}`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
       return response.data;
     } catch (error) {
       console.error("Delete book error:", error);
