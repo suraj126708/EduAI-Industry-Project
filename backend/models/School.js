@@ -12,7 +12,7 @@ const schoolSchema = new mongoose.Schema(
     // New fields
     type: {
       type: String,
-      enum: ["government", "private"],
+      enum: ["government", "private", "public"],
       required: true,
     },
 
@@ -45,7 +45,7 @@ const schoolSchema = new mongoose.Schema(
 
     emailDomain: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       lowercase: true,
       // For example: to hold "vit.edu" to check teacher emails

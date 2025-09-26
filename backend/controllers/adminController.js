@@ -11,6 +11,7 @@ import admin from "../config/firebase.js";
 import XLSX from "xlsx";
 import path from "path";
 import fs from "fs";
+import { log } from "console";
 
 // -----------------------------
 // Admin Dashboard Data
@@ -252,6 +253,69 @@ export const getAllTeachers = async (req, res) => {
 };
 
 // -----------------------------
+// Create Teacher
+// -----------------------------
+export const createTeacher = async (req, res) => {
+  try {
+    const { name, email, phone, schoolId, specialization, experienceYears } =
+      req.body;
+
+    // Check if user with this email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User with this email already exists",
+      });
+    }
+
+    // Create User with teacher role
+    const user = new User({
+      name,
+      email,
+      role: "teacher",
+      phone,
+      schoolId,
+      status: "active",
+    });
+
+    await user.save();
+
+    // Create TeacherProfile if additional teacher-specific data is provided
+    let teacherProfile = null;
+    if (specialization || experienceYears) {
+      teacherProfile = new TeacherProfile({
+        userId: user._id,
+        specialization,
+        experienceYears,
+      });
+      await teacherProfile.save();
+    }
+
+    // Populate the user with school info
+    await user.populate("schoolId", "name");
+
+    res.status(201).json({
+      success: true,
+      message: "Teacher created successfully",
+      data: {
+        user: user.toJSON(),
+        teacherProfile: teacherProfile ? teacherProfile.toJSON() : null,
+      },
+    });
+
+    console.log(`🔧 Admin ${req.user.email} created teacher ${user.email}`);
+  } catch (error) {
+    console.error("Create teacher error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create teacher",
+      error: error.message,
+    });
+  }
+};
+
+// -----------------------------
 // Get Teacher by ID
 // -----------------------------
 export const getTeacherById = async (req, res) => {
@@ -287,6 +351,74 @@ export const getTeacherById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to retrieve teacher",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Something went wrong",
+    });
+  }
+};
+
+// -----------------------------
+// Update Teacher (General Update)
+// -----------------------------
+export const updateTeacher = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation errors",
+        errors: errors.array(),
+      });
+    }
+
+    const { name, email, role, status, schoolId, phone } = req.body;
+    const userId = req.params.id;
+
+    if (userId === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot update your own account",
+      });
+    }
+
+    const user = await User.findOne({ _id: userId, role: "teacher" });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found",
+      });
+    }
+
+    // Update fields if provided
+    if (name !== undefined) user.name = name;
+    if (email !== undefined) user.email = email;
+    if (role !== undefined) user.role = role;
+    if (status !== undefined) user.status = status;
+    if (schoolId !== undefined) user.schoolId = schoolId;
+    if (phone !== undefined) user.phone = phone;
+
+    await user.save();
+
+    // Populate school info for response
+    await user.populate("schoolId", "name");
+
+    console.log(`🔧 Admin ${req.user.email} updated teacher ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Teacher updated successfully",
+      data: {
+        teacher: user.toJSON(),
+      },
+    });
+  } catch (error) {
+    console.error("Update teacher error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update teacher",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
@@ -933,6 +1065,17 @@ export async function createSchool(req, res) {
     await school.save();
     res.status(201).json(school);
   } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: e.message });
+  }
+}
+
+// Get all schools
+export async function getSchools(req, res) {
+  try {
+    const schools = await School.find();
+    res.status(200).json(schools);
+  } catch (e) {
     res.status(500).json({ error: e.message });
   }
 }
@@ -941,6 +1084,7 @@ export async function createSchool(req, res) {
 export async function addOrUpdateClass(req, res) {
   try {
     const { schoolId, grade, division } = req.body;
+    console.log(req.body);
 
     let existingClass = await Class.findBySchoolGradeDivision(
       schoolId,
@@ -961,6 +1105,16 @@ export async function addOrUpdateClass(req, res) {
   }
 }
 
+// Get all classes
+export async function getClasses(req, res) {
+  try {
+    const classes = await Class.find();
+    res.status(200).json(classes);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
 // Delete a class by ID
 export async function deleteClass(req, res) {
   try {
@@ -976,6 +1130,7 @@ export async function deleteClass(req, res) {
 export async function addOrUpdateSubject(req, res) {
   try {
     const { schoolId, subjectId, name } = req.body;
+    console.log(req.body);
 
     let subject = await Subject.findOne({ schoolId, subjectId });
     if (subject) {
@@ -990,6 +1145,17 @@ export async function addOrUpdateSubject(req, res) {
     subject = new Subject({ schoolId, subjectId, name });
     await subject.save();
     res.status(201).json(subject);
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: e.message });
+  }
+}
+
+// Get all subjects
+export async function getSubjects(req, res) {
+  try {
+    const subjects = await Subject.find();
+    res.status(200).json(subjects);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1006,18 +1172,119 @@ export async function deleteSubject(req, res) {
   }
 }
 
+// Get all teacher assignments
+export async function getAssignments(req, res) {
+  try {
+    const assignments = await TeacherClassSubject.find()
+      .populate("teacherId", "name email")
+      .populate("classId", "grade division schoolId")
+      .populate("subjectId", "name subjectId")
+      .populate("classId.schoolId", "name")
+      .sort({ createdAt: -1 });
+
+    // Transform the data to include readable names
+    const transformedAssignments = assignments.map((assignment) => ({
+      _id: assignment._id,
+      teacherId: assignment.teacherId._id,
+      teacherName: assignment.teacherId.name,
+      teacherEmail: assignment.teacherId.email,
+      classId: assignment.classId._id,
+      className: `Grade ${assignment.classId.grade} - Division ${assignment.classId.division}`,
+      schoolName: assignment.classId.schoolId?.name || "Unknown School",
+      subjectId: assignment.subjectId._id,
+      subjectName: assignment.subjectId.name,
+      subjectCode: assignment.subjectId.subjectId,
+      assignedAt: assignment.assignedAt,
+      createdAt: assignment.createdAt,
+      updatedAt: assignment.updatedAt,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: transformedAssignments,
+    });
+  } catch (error) {
+    console.error("Get assignments error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+}
+
 // Assign teacher to class + subject
 export async function assignTeacher(req, res) {
   try {
     const { teacherId, classId, subjectId } = req.body;
 
+    // Validate that all required fields are provided
+    if (!teacherId || !classId || !subjectId) {
+      return res.status(400).json({
+        success: false,
+        error: "Teacher ID, Class ID, and Subject ID are required",
+      });
+    }
+
+    // Check if assignment already exists
     const existingAssignment = await TeacherClassSubject.findOne({
       teacherId,
       classId,
       subjectId,
     });
     if (existingAssignment) {
-      return res.status(400).json({ error: "Assignment already exists" });
+      return res.status(400).json({
+        success: false,
+        error: "Assignment already exists",
+      });
+    }
+
+    // Get teacher details to check school
+    const teacher = await User.findById(teacherId).populate("schoolId");
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        error: "Teacher not found",
+      });
+    }
+
+    // Get class details to check school
+    const classData = await Class.findById(classId).populate("schoolId");
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        error: "Class not found",
+      });
+    }
+
+    // Get subject details to check school
+    const subject = await Subject.findById(subjectId).populate("schoolId");
+    if (!subject) {
+      return res.status(404).json({
+        success: false,
+        error: "Subject not found",
+      });
+    }
+
+    // Validate school consistency
+    const teacherSchoolId = teacher.schoolId?._id?.toString();
+    const classSchoolId = classData.schoolId?._id?.toString();
+    const subjectSchoolId = subject.schoolId?._id?.toString();
+
+    if (!teacherSchoolId || !classSchoolId || !subjectSchoolId) {
+      return res.status(400).json({
+        success: false,
+        error: "Teacher, class, or subject must be associated with a school",
+      });
+    }
+
+    if (
+      teacherSchoolId !== classSchoolId ||
+      teacherSchoolId !== subjectSchoolId
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Teacher, class, and subject must belong to the same school",
+      });
     }
 
     const assignment = new TeacherClassSubject({
@@ -1026,9 +1293,17 @@ export async function assignTeacher(req, res) {
       subjectId,
     });
     await assignment.save();
-    res.status(201).json(assignment);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+
+    res.status(201).json({
+      success: true,
+      data: assignment,
+    });
+  } catch (error) {
+    console.error("Assign teacher error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 }
 
@@ -1036,9 +1311,27 @@ export async function assignTeacher(req, res) {
 export async function removeAssignment(req, res) {
   try {
     const { assignmentId } = req.params;
-    await TeacherClassSubject.findByIdAndDelete(assignmentId);
-    res.json({ message: "Assignment removed" });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    const deletedAssignment = await TeacherClassSubject.findByIdAndDelete(
+      assignmentId
+    );
+
+    if (!deletedAssignment) {
+      return res.status(404).json({
+        success: false,
+        error: "Assignment not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Assignment removed successfully",
+      data: deletedAssignment,
+    });
+  } catch (error) {
+    console.error("Remove assignment error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 }

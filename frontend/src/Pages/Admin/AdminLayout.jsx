@@ -5,14 +5,26 @@ import {
   FaUsers,
   FaFileAlt,
   FaChartBar,
+  FaSchool,
+  FaGraduationCap,
+  FaBook,
+  FaChalkboardTeacher,
 } from "react-icons/fa";
 
 const navItems = [
   { name: "Dashboard", path: "/admin/dashboard", icon: <FaTachometerAlt /> },
+  { name: "Schools", path: "/admin/schools", icon: <FaSchool /> },
+  { name: "Classes", path: "/admin/classes", icon: <FaGraduationCap /> },
+  { name: "Subjects", path: "/admin/subjects", icon: <FaBook /> },
   { name: "Teachers", path: "/admin/teachers", icon: <FaUsers /> },
+  {
+    name: "Assignments",
+    path: "/admin/assignments",
+    icon: <FaChalkboardTeacher />,
+  },
+  { name: "Students", path: "/admin/students", icon: <FaUsers /> },
   { name: "Question Papers", path: "/admin/papers", icon: <FaFileAlt /> },
   { name: "Results", path: "/admin/stats", icon: <FaChartBar /> },
-  { name: "Students", path: "/admin/students", icon: <FaUsers /> },
 ];
 
 const AdminLayout = () => (

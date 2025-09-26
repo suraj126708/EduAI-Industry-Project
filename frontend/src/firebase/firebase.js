@@ -409,6 +409,23 @@ class AuthService {
       }
     },
 
+    // Update user (general update)
+    async updateUser(userId, userData) {
+      try {
+        const response = await axios.put(`/admin/teachers/${userId}`, userData);
+        return {
+          success: true,
+          data: response.data.data,
+        };
+      } catch (error) {
+        console.error("Update user error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to update user",
+        };
+      }
+    },
+
     // Delete user
     async deleteUser(userId) {
       try {
@@ -463,6 +480,206 @@ class AuthService {
         return {
           success: false,
           error: error.response?.data?.message || "Failed to get statistics",
+        };
+      }
+    },
+
+    // School Management
+    async createSchool(schoolData) {
+      try {
+        const response = await axios.post("/admin/schools", schoolData);
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Create school error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to create school",
+        };
+      }
+    },
+
+    async getSchools() {
+      try {
+        const response = await axios.get("/admin/schools");
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Get schools error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to get schools",
+        };
+      }
+    },
+
+    async getClasses() {
+      try {
+        const response = await axios.get("/admin/classes");
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Get classes error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to get classes",
+        };
+      }
+    },
+
+    // Class Management
+
+    async getSubjects() {
+      try {
+        const response = await axios.get("/admin/subjects");
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Get subjects error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to get subjects",
+        };
+      }
+    },
+
+    async createClass(classData) {
+      try {
+        const response = await axios.post("/admin/classes", classData);
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Create class error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to create class",
+        };
+      }
+    },
+
+    async deleteClass(classId) {
+      try {
+        const response = await axios.delete(`/admin/classes/${classId}`);
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Delete class error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to delete class",
+        };
+      }
+    },
+
+    // Subject Management
+    async createSubject(subjectData) {
+      try {
+        const response = await axios.post("/admin/subjects", subjectData);
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Create subject error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to create subject",
+        };
+      }
+    },
+
+    async deleteSubject(subjectId) {
+      try {
+        const response = await axios.delete(`/admin/subjects/${subjectId}`);
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Delete subject error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to delete subject",
+        };
+      }
+    },
+
+    // Teacher Assignment Management
+    async getAssignments() {
+      try {
+        const response = await axios.get("/admin/assignments");
+        return {
+          success: true,
+          data: response.data.data,
+        };
+      } catch (error) {
+        console.error("Get assignments error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to get assignments",
+        };
+      }
+    },
+
+    async assignTeacher(assignmentData) {
+      try {
+        const response = await axios.post("/admin/assignments", assignmentData);
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Assign teacher error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to assign teacher",
+        };
+      }
+    },
+
+    async removeAssignment(assignmentId) {
+      try {
+        const response = await axios.delete(
+          `/admin/assignments/${assignmentId}`
+        );
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Remove assignment error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to remove assignment",
+        };
+      }
+    },
+
+    // Create Teacher
+    async createTeacher(teacherData) {
+      try {
+        const response = await axios.post("/admin/teachers", teacherData);
+        return {
+          success: true,
+          data: response.data,
+        };
+      } catch (error) {
+        console.error("Create teacher error:", error);
+        return {
+          success: false,
+          error: error.response?.data?.message || "Failed to create teacher",
         };
       }
     },

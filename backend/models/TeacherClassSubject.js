@@ -5,7 +5,7 @@ const teacherClassSubjectSchema = new mongoose.Schema(
   {
     teacherId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Teacher",
+      ref: "User",
       required: true,
     },
 
@@ -43,7 +43,7 @@ teacherClassSubjectSchema.index(
 
 // Instance methods
 teacherClassSubjectSchema.methods.getTeacher = function () {
-  return mongoose.model("Teacher").findById(this.teacherId);
+  return mongoose.model("User").findById(this.teacherId);
 };
 
 teacherClassSubjectSchema.methods.getClass = function () {

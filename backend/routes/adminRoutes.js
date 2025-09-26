@@ -6,6 +6,7 @@ import {
   getSystemStats,
   getAllTeachers,
   getTeacherById,
+  updateTeacher,
   updateTeacherRole,
   updateTeacherStatus,
   deleteTeacher,
@@ -23,6 +24,11 @@ import {
   deleteSubject,
   assignTeacher,
   removeAssignment,
+  getAssignments,
+  getSchools,
+  getClasses,
+  getSubjects,
+  createTeacher,
 } from "../controllers/adminController.js";
 import {
   authenticateFirebaseToken,
@@ -280,6 +286,16 @@ router.get(
   getAllTeachers
 );
 
+// @route POST /api/admin/teachers
+// @desc Create teacher
+// @access Private (Admin)
+router.post(
+  "/teachers",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  createTeacher
+);
+
 // @route   GET /api/admin/teachers/:id
 // @desc    Get teacher by ID
 // @access  Private (Admin, Moderator)
@@ -301,6 +317,17 @@ router.put(
   teacherIdValidation,
   roleValidation,
   updateTeacherRole
+);
+
+// @route   PUT /api/admin/teachers/:id
+// @desc    Update teacher (general update)
+// @access  Private (Admin)
+router.put(
+  "/teachers/:id",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  teacherIdValidation,
+  updateTeacher
 );
 
 // @route   PUT /api/admin/teachers/:id/status
@@ -424,12 +451,26 @@ router.post(
   createSchool
 );
 
+router.get(
+  "/schools",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  getSchools
+);
+
 // Classes
 router.post(
   "/classes",
   authenticateFirebaseToken,
   authorize("admin"),
   addOrUpdateClass
+);
+
+router.get(
+  "/classes",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  getClasses
 );
 
 router.delete(
@@ -447,6 +488,13 @@ router.post(
   addOrUpdateSubject
 );
 
+router.get(
+  "/subjects",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  getSubjects
+);
+
 router.delete(
   "/subjects/:subjectId",
   authenticateFirebaseToken,
@@ -455,6 +503,13 @@ router.delete(
 );
 
 // Teacher assignments to class + subject
+router.get(
+  "/assignments",
+  authenticateFirebaseToken,
+  authorize("admin"),
+  getAssignments
+);
+
 router.post(
   "/assignments",
   authenticateFirebaseToken,

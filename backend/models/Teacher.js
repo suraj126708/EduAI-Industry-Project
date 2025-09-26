@@ -6,10 +6,30 @@ const teacherProfileSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       unique: true,
-      required: true,
+      required: false, // Made optional since teachers can exist as User documents
     },
-    specialization: String,
-    experienceYears: Number,
+    specialization: {
+      type: String,
+      trim: true,
+    },
+    experienceYears: {
+      type: Number,
+      min: 0,
+      max: 50,
+    },
+    qualifications: [
+      {
+        degree: String,
+        institution: String,
+        year: Number,
+      },
+    ],
+    subjects: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Subject",
+      },
+    ],
     // Add other teacher-specific fields here
   },
   {

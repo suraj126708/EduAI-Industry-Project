@@ -24,6 +24,10 @@ import AdminUsers from "./Pages/Admin/Users";
 import AdminPapers from "./Pages/Admin/Papers";
 import AdminResults from "./Pages/Admin/Results";
 import AdminStudents from "./Pages/Admin/Students";
+import Schools from "./Pages/Admin/Schools";
+import Classes from "./Pages/Admin/Classes";
+import Subjects from "./Pages/Admin/Subjects";
+import TeacherAssignments from "./Pages/Admin/TeacherAssignments";
 
 function App() {
   return (
@@ -59,10 +63,14 @@ function App() {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="schools" element={<Schools />} />
+              <Route path="classes" element={<Classes />} />
+              <Route path="subjects" element={<Subjects />} />
               <Route path="teachers" element={<AdminUsers />} />
+              <Route path="assignments" element={<TeacherAssignments />} />
+              <Route path="students" element={<AdminStudents />} />
               <Route path="papers" element={<AdminPapers />} />
               <Route path="stats" element={<AdminResults />} />
-              <Route path="students" element={<AdminStudents />} />
             </Route>
 
             {/* Redirect root to /home */}
