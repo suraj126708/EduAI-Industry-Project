@@ -469,7 +469,7 @@ router.post(
 router.get(
   "/classes",
   authenticateFirebaseToken,
-  authorize("admin"),
+  authorize("admin", "teacher"),
   getClasses
 );
 
@@ -491,7 +491,7 @@ router.post(
 router.get(
   "/subjects",
   authenticateFirebaseToken,
-  authorize("admin"),
+  authorize("admin", "teacher"),
   getSubjects
 );
 

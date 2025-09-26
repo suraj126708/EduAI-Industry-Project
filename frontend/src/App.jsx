@@ -11,6 +11,7 @@ import Login from "./Pages/Login";
 import Register from "./Pages/Register";
 import Home from "./Pages/Home";
 import Unauthorized from "./components/Unauthorized";
+import { Navbar } from "./components";
 import QuestionPaperForm from "./Pages/QuestionPaperGeneration";
 import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
 import AnswerSheetUpload from "./Pages/AnswerSheetUpload";
@@ -34,6 +35,7 @@ function App() {
     <Router>
       <AuthProvider>
         <div className="App">
+          <Navbar />
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
@@ -41,22 +43,33 @@ function App() {
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* Protected routes */}
-            <Route path="/home" element={<Home />} />
-            <Route path="/upload" element={<ExamPlatformUpload />} />
+            <Route
+              path="/home"
+              element={<ProtectedRoute>{<Home />}</ProtectedRoute>}
+            />
+            <Route
+              path="/upload"
+              element={
+                <ProtectedRoute>{<ExamPlatformUpload />}</ProtectedRoute>
+              }
+            />
             <Route
               path="/answer-sheet-upload"
-              element={<AnswerSheetUpload />}
+              element={<ProtectedRoute>{<AnswerSheetUpload />}</ProtectedRoute>}
             />
             <Route
               path="/question-paper-generation"
-              element={<QuestionPaperForm />}
+              element={<ProtectedRoute>{<QuestionPaperForm />}</ProtectedRoute>}
             />
-            <Route path="/reports" element={<ReportGeneration />} />
+            <Route
+              path="/reports"
+              element={<ProtectedRoute>{<ReportGeneration />}</ProtectedRoute>}
+            />
 
             <Route
               path="/admin/*"
               element={
-                <ProtectedRoute allowedRoles={["admin"]}>
+                <ProtectedRoute requiredRoles={["admin"]}>
                   <AdminLayout />
                 </ProtectedRoute>
               }

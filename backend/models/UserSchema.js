@@ -5,7 +5,7 @@ const UserSchema = new mongoose.Schema(
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "School",
-      required: false, // Optional if users can belong to a school
+      required: false,
     },
 
     firebaseUid: {

@@ -269,7 +269,7 @@ export const createTeacher = async (req, res) => {
       });
     }
 
-    // Create User with teacher role
+    // Create User with teacher role (Mongo)
     const user = new User({
       name,
       email,
@@ -278,6 +278,50 @@ export const createTeacher = async (req, res) => {
       schoolId,
       status: "active",
     });
+
+    // Generate a temporary password and create Firebase Auth user
+    // Do not store this password in the database
+    const generateTempPassword = () => {
+      const charset =
+        "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*";
+      let pwd = "";
+      for (let i = 0; i < 12; i++) {
+        pwd += charset[Math.floor(Math.random() * charset.length)];
+      }
+      return `Temp@${pwd}`;
+    };
+
+    let tempPassword = generateTempPassword();
+    let firebaseUser;
+    try {
+      firebaseUser = await admin.auth().createUser({
+        email,
+        password: tempPassword,
+        displayName: name,
+        disabled: false,
+      });
+    } catch (firebaseCreateErr) {
+      // If Firebase user exists already, try to fetch and proceed
+      if (firebaseCreateErr?.code === "auth/email-already-exists") {
+        firebaseUser = await admin.auth().getUserByEmail(email);
+        // If the user already exists in Firebase, do not attempt to reset password here automatically
+        // Force temp password to null to indicate existing credentials should be used
+        tempPassword = null;
+      } else {
+        throw firebaseCreateErr;
+      }
+    }
+
+    if (firebaseUser?.uid) {
+      try {
+        await admin.auth().setCustomUserClaims(firebaseUser.uid, {
+          role: "teacher",
+        });
+      } catch (claimsErr) {
+        console.error("Firebase custom claims update error:", claimsErr);
+      }
+      user.firebaseUid = firebaseUser.uid;
+    }
 
     await user.save();
 
@@ -301,6 +345,8 @@ export const createTeacher = async (req, res) => {
       data: {
         user: user.toJSON(),
         teacherProfile: teacherProfile ? teacherProfile.toJSON() : null,
+        // Return a one-time temporary password only in this response (not persisted)
+        temporaryPassword: tempPassword,
       },
     });
 

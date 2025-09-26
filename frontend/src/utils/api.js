@@ -158,6 +158,28 @@ export const bookAPI = {
     }
   },
 
+  // Fetch classes (admin or public)
+  getClasses: async () => {
+    try {
+      const response = await api.get(`${local_api}admin/classes`);
+      return response;
+    } catch (error) {
+      console.error("Get classes error:", error);
+      return { data: { data: [] } };
+    }
+  },
+
+  // Fetch subjects (admin or public)
+  getSubjects: async () => {
+    try {
+      const response = await api.get(`${local_api}admin/subjects`);
+      return response;
+    } catch (error) {
+      console.error("Get subjects error:", error);
+      return { data: { data: [] } };
+    }
+  },
+
   // Other helpers (optional)
 
   // Get book by ID

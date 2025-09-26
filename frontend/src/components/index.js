@@ -22,3 +22,4 @@ export {
 // Page Components
 export { default as PageNotFound } from "./PageNotFound";
 export { default as Unauthorized } from "./Unauthorized";
+export { default as Navbar } from "./Navbar";

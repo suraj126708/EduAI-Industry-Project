@@ -11,39 +11,17 @@ import {
   Loader2,
   Search,
   BookOpen,
+  CloudUpload,
+  FileCheck,
+  Zap,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { bookAPI, fetchTeacherProfile } from "../utils/api.js";
 
 // --- Constants ---
-const classes = [
-  { value: "01", label: "Class 01" },
-  { value: "02", label: "Class 02" },
-  { value: "03", label: "Class 03" },
-  { value: "04", label: "Class 04" },
-  { value: "05", label: "Class 05" },
-  { value: "06", label: "Class 06" },
-  { value: "07", label: "Class 07" },
-  { value: "08", label: "Class 08" },
-  { value: "09", label: "Class 09" },
-  { value: "10", label: "Class 10" },
-  { value: "11", label: "Class 11" },
-  { value: "12", label: "Class 12" },
-];
-const subjects = [
-  { value: "mathematics", label: "Mathematics" },
-  { value: "physics", label: "Physics" },
-  { value: "chemistry", label: "Chemistry" },
-  { value: "biology", label: "Biology" },
-  { value: "english", label: "English" },
-  { value: "history", label: "History" },
-  { value: "geography", label: "Geography" },
-  { value: "economics", label: "Economics" },
-  { value: "political_science", label: "Political Science" },
-  { value: "computer_science", label: "Computer Science" },
-];
 
-// --- Helper Components (Unchanged) ---
+// --- Helper Components ---
 const StatusBadge = ({ status }) => {
   const config = {
     pending: { label: "Pending", classes: "bg-gray-100 text-gray-700" },
@@ -57,6 +35,177 @@ const StatusBadge = ({ status }) => {
     >
       {config.label}
     </span>
+  );
+};
+
+// Enhanced Upload Loader Component
+const UploadLoader = ({
+  isVisible,
+  progress,
+  currentFile,
+  totalFiles,
+  currentStep,
+}) => {
+  const steps = [
+    { id: "upload", label: "Uploading PDF", icon: CloudUpload },
+    { id: "process", label: "Processing Content", icon: Zap },
+    { id: "analyze", label: "Analyzing Text", icon: FileCheck },
+    { id: "complete", label: "Finalizing", icon: Sparkles },
+  ];
+
+  const getStepMessage = (step) => {
+    const messages = {
+      upload: "Uploading your PDF file to our secure servers...",
+      process: "Sending PDF to our AI processing engine...",
+      analyze: "Extracting and analyzing text content...",
+      complete: "Finalizing and saving processed data...",
+    };
+    return messages[step] || "Processing your document...";
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
+      >
+        {/* Header */}
+        <div className="text-center mb-8">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-4"
+          >
+            <CloudUpload className="text-white text-2xl" />
+          </motion.div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            Processing Your Book
+          </h3>
+          <p className="text-sm text-gray-600">
+            {currentFile} ({currentFile ? 1 : 0} of {totalFiles})
+          </p>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mb-6">
+          <div className="flex justify-between text-sm text-gray-600 mb-2">
+            <span>Progress</span>
+            <span>{Math.round(progress)}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <motion.div
+              className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            />
+          </div>
+        </div>
+
+        {/* Steps */}
+        <div className="space-y-4 mb-6">
+          {steps.map((step, index) => {
+            const isActive = step.id === currentStep;
+            const isCompleted =
+              steps.findIndex((s) => s.id === currentStep) > index;
+            const Icon = step.icon;
+
+            return (
+              <motion.div
+                key={step.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ${
+                  isActive
+                    ? "bg-blue-50 border-2 border-blue-200"
+                    : isCompleted
+                    ? "bg-green-50 border-2 border-green-200"
+                    : "bg-gray-50 border-2 border-gray-200"
+                }`}
+              >
+                <div
+                  className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 ${
+                    isActive
+                      ? "bg-blue-500 text-white"
+                      : isCompleted
+                      ? "bg-green-500 text-white"
+                      : "bg-gray-300 text-gray-600"
+                  }`}
+                >
+                  {isCompleted ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : isActive ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                    >
+                      <Loader2 className="w-5 h-5" />
+                    </motion.div>
+                  ) : (
+                    <Icon className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p
+                    className={`font-medium transition-colors duration-300 ${
+                      isActive
+                        ? "text-blue-700"
+                        : isCompleted
+                        ? "text-green-700"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {step.label}
+                  </p>
+                  {isActive && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-xs text-gray-500 mt-1"
+                    >
+                      {getStepMessage(step.id)}
+                    </motion.p>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Animated Dots */}
+        <div className="flex justify-center space-x-1">
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              className="w-2 h-2 bg-blue-500 rounded-full"
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.5, 1, 0.5],
+              }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                delay: i * 0.2,
+              }}
+            />
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 };
 const ProgressBar = ({ progress }) => (
@@ -120,6 +269,8 @@ const FileUploader = ({ onFileSelect }) => {
 // --- Main Component ---
 const ExamPlatformUpload = () => {
   const [activeTab, setActiveTab] = useState("upload");
+  const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [documentRows, setDocumentRows] = useState([
     {
       id: Date.now(),
@@ -133,6 +284,12 @@ const ExamPlatformUpload = () => {
   ]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResults, setUploadResults] = useState([]);
+
+  // Enhanced loader states
+  const [showLoader, setShowLoader] = useState(false);
+  const [loaderProgress, setLoaderProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState("upload");
+  const [currentFileName, setCurrentFileName] = useState("");
 
   // States for fetching schoolId and handling profile loading
   const [schoolId, setSchoolId] = useState(null);
@@ -166,6 +323,74 @@ const ExamPlatformUpload = () => {
       }
     }
     loadProfile();
+  }, []);
+
+  // Fetch classes and subjects options
+  useEffect(() => {
+    const loadMeta = async () => {
+      try {
+        const [clsRes, subjRes] = await Promise.all([
+          bookAPI.getClasses().catch(() => ({ data: { data: [] } })),
+          bookAPI.getSubjects().catch(() => ({ data: { data: [] } })),
+        ]);
+
+        const cls = (clsRes?.data?.data || []).map((c) =>
+          typeof c === "string"
+            ? { value: c, label: `Class ${c}` }
+            : {
+                value: c?.grade || c?.value || "",
+                label: c?.label || `Class ${c?.grade || c?.value || ""}`,
+              }
+        );
+        const subj = (subjRes?.data?.data || []).map((s) =>
+          typeof s === "string"
+            ? { value: s, label: s.replace(/_/g, " ") }
+            : {
+                value: s?.code || s?.value || "",
+                label: s?.label || (s?.name || "").replace(/_/g, " "),
+              }
+        );
+
+        // Fallbacks if empty
+        setClasses(
+          cls.length
+            ? cls
+            : [
+                { value: "01", label: "Class 01" },
+                { value: "02", label: "Class 02" },
+                { value: "03", label: "Class 03" },
+                { value: "04", label: "Class 04" },
+                { value: "05", label: "Class 05" },
+                { value: "06", label: "Class 06" },
+                { value: "07", label: "Class 07" },
+                { value: "08", label: "Class 08" },
+                { value: "09", label: "Class 09" },
+                { value: "10", label: "Class 10" },
+                { value: "11", label: "Class 11" },
+                { value: "12", label: "Class 12" },
+              ]
+        );
+        setSubjects(
+          subj.length
+            ? subj
+            : [
+                { value: "mathematics", label: "Mathematics" },
+                { value: "physics", label: "Physics" },
+                { value: "chemistry", label: "Chemistry" },
+                { value: "biology", label: "Biology" },
+                { value: "english", label: "English" },
+                { value: "history", label: "History" },
+                { value: "geography", label: "Geography" },
+                { value: "economics", label: "Economics" },
+                { value: "political_science", label: "Political Science" },
+                { value: "computer_science", label: "Computer Science" },
+              ]
+        );
+      } catch (_) {
+        // Already covered by fallbacks
+      }
+    };
+    loadMeta();
   }, []);
 
   // Row management functions
@@ -236,9 +461,14 @@ const ExamPlatformUpload = () => {
 
     setIsUploading(true);
     setUploadResults([]);
+    setShowLoader(true);
+    setLoaderProgress(0);
+    setCurrentStep("upload");
+    setCurrentFileName(validRows[0]?.file?.name || "");
+
     validRows.forEach((r) => updateRow(r.id, "status", "uploading"));
 
-    const promises = validRows.map(async (row) => {
+    const promises = validRows.map(async (row, index) => {
       // --- formData is created HERE for each row ---
       const formData = new FormData();
 
@@ -262,16 +492,55 @@ const ExamPlatformUpload = () => {
       // --- End of FIX ---
 
       try {
-        await bookAPI.uploadBook(formData, {
-          onUploadProgress: (e) =>
-            updateRow(
-              row.id,
-              "progress",
-              Math.round((e.loaded * 100) / e.total)
-            ),
+        // Update loader progress and step
+        const baseProgress = (index / validRows.length) * 100;
+        setLoaderProgress(baseProgress);
+        setCurrentFileName(row.file.name);
+
+        // Simulate step progression
+        const stepProgression = async () => {
+          setCurrentStep("upload");
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          setCurrentStep("process");
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          setCurrentStep("analyze");
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          setCurrentStep("complete");
+        };
+
+        const apiResult = await bookAPI.uploadBook(formData, {
+          onUploadProgress: (e) => {
+            const progress = Math.round((e.loaded * 100) / e.total);
+            updateRow(row.id, "progress", progress);
+            setLoaderProgress(baseProgress + progress * 0.8); // 80% of this file's progress
+          },
         });
-        updateRow(row.id, "status", "processed");
-        return { success: true, filename: row.file.name };
+
+        // Run step progression
+        await stepProgression();
+
+        // Backend returns { message, book }
+        const returnedBook = apiResult?.book;
+        const processedStatus = returnedBook?.processedStatus || "pending";
+        const chunks = returnedBook?.noOfChunks ?? null;
+        updateRow(
+          row.id,
+          "status",
+          processedStatus === "processed"
+            ? "processed"
+            : processedStatus === "failed"
+            ? "error"
+            : "pending"
+        );
+        updateRow(row.id, "progress", 100);
+        setLoaderProgress(((index + 1) / validRows.length) * 100);
+
+        return {
+          success: processedStatus === "processed",
+          filename: row.file.name,
+          chunks,
+          status: processedStatus,
+        };
       } catch (err) {
         updateRow(row.id, "status", "error");
         updateRow(row.id, "error", err.message || "Upload failed");
@@ -282,6 +551,14 @@ const ExamPlatformUpload = () => {
     const results = await Promise.all(promises);
     setUploadResults(results);
     setIsUploading(false);
+
+    // Hide loader after a brief delay
+    setTimeout(() => {
+      setShowLoader(false);
+      setLoaderProgress(0);
+      setCurrentStep("upload");
+      setCurrentFileName("");
+    }, 1000);
   };
 
   const fetchBooksMetadata = async () => {
@@ -326,6 +603,17 @@ const ExamPlatformUpload = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+      {/* Enhanced Upload Loader */}
+      <UploadLoader
+        isVisible={showLoader}
+        progress={loaderProgress}
+        currentFile={currentFileName}
+        totalFiles={
+          documentRows.filter((r) => r.file && r.status === "pending").length
+        }
+        currentStep={currentStep}
+      />
+
       <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
         <header className="p-6 border-b border-gray-200">
           <h1 className="text-2xl font-bold text-gray-900">Book Management</h1>
@@ -524,14 +812,22 @@ const ExamPlatformUpload = () => {
                                   ) : (
                                     <AlertCircle className="text-red-500 mt-0.5" />
                                   )}
-                                  <p className="text-gray-700">
-                                    <span className="font-medium text-gray-900">
-                                      {res.filename}
-                                    </span>{" "}
-                                    {res.success
-                                      ? `was uploaded successfully.`
-                                      : `- Failed: ${res.error}`}
-                                  </p>
+                                  <div className="text-gray-700">
+                                    <div>
+                                      <span className="font-medium text-gray-900">
+                                        {res.filename}
+                                      </span>{" "}
+                                      {res.success
+                                        ? `was uploaded successfully.`
+                                        : `- Failed: ${res.error}`}
+                                    </div>
+                                    {res.success &&
+                                      typeof res.chunks === "number" && (
+                                        <div className="text-xs text-gray-600 mt-1">
+                                          Chunks processed: {res.chunks}
+                                        </div>
+                                      )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -598,6 +894,7 @@ const ExamPlatformUpload = () => {
                           <th className="p-3">Class</th>
                           <th className="p-3">Subject</th>
                           <th className="p-3">Status</th>
+                          <th className="p-3">Chunks</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -616,6 +913,7 @@ const ExamPlatformUpload = () => {
                             <td className="p-3">
                               <StatusBadge status={book.processedStatus} />
                             </td>
+                            <td className="p-3">{book.noOfChunks ?? "-"}</td>
                           </tr>
                         ))}
                       </tbody>

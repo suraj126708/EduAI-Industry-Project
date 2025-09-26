@@ -23,21 +23,21 @@ const BookSchema = new mongoose.Schema(
 
     title: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       maxlength: 200,
     },
 
     author: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       maxlength: 100,
     },
 
     year: {
       type: Number,
-      required: true,
+      required: false,
       min: 1900,
       max: new Date().getFullYear() + 5,
     },
@@ -58,9 +58,14 @@ const BookSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+
+    noOfChunks: {
+      type: Number,
+      default: 0,
+    },
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt
+    timestamps: true,
     collection: "books",
   }
 );

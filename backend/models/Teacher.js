@@ -6,7 +6,7 @@ const teacherProfileSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       unique: true,
-      required: false, // Made optional since teachers can exist as User documents
+      required: false,
     },
     specialization: {
       type: String,

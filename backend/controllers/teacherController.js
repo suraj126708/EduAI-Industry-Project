@@ -1,6 +1,9 @@
 import User from "../models/UserSchema.js"; // Changed from Teacher to User
 import { validationResult } from "express-validator";
 import path from "path";
+import fs from "fs";
+import axios from "axios";
+import FormData from "form-data";
 import Book from "../models/BookSchema.js";
 import Class from "../models/Class.js";
 
@@ -212,6 +215,55 @@ export const teacherUploadBook = async (req, res) => {
     });
 
     await book.save();
+
+    // Send the uploaded PDF to external processor (with retry on field name)
+    try {
+      const sendToProcessor = async (fieldName) => {
+        const fileStream = fs.createReadStream(req.file.path);
+        const form = new FormData();
+        form.append(fieldName, fileStream, {
+          filename: path.basename(req.file.path),
+          contentType: "application/pdf",
+        });
+        const response = await axios.post(
+          "http://127.0.0.1:8000/process_pdf/",
+          form,
+          {
+            headers: {
+              ...form.getHeaders(),
+            },
+            timeout: 5 * 60 * 1000,
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+            validateStatus: (s) => s >= 200 && s < 500, // handle 422 gracefully
+          }
+        );
+        return response;
+      };
+
+      // First try common field name 'file', then fallback to 'pdf' if needed
+      let response = await sendToProcessor("file");
+      if (response.status === 422) {
+        response = await sendToProcessor("pdf");
+      }
+
+      const { status, chunks } = response.data || {};
+      if (status === "success" && Number.isFinite(chunks)) {
+        book.processedStatus = "processed";
+        book.noOfChunks = chunks;
+      } else if (response.status >= 200 && response.status < 300) {
+        // 2xx but unexpected body
+        book.processedStatus = "failed";
+      } else {
+        // non-2xx
+        book.processedStatus = "failed";
+      }
+      await book.save();
+    } catch (procErr) {
+      console.error("PDF processing error:", procErr?.message || procErr);
+      book.processedStatus = "failed";
+      await book.save();
+    }
 
     res.status(201).json({
       message: "Book uploaded successfully.",
