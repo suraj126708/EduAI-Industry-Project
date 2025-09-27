@@ -535,9 +535,7 @@ const ExamPlatformUpload = () => {
       formData.append("schoolId", schoolId);
       formData.append(
         "title",
-        `${(selectedSubject?.label || row.subject).replace("_", " ")} - Class ${
-          selectedClass?.grade || row.class
-        }`
+        selectedSubject?.label || row.subject.replace("_", " ")
       );
       formData.append("author", "System");
       formData.append("year", new Date().getFullYear());
@@ -655,10 +653,10 @@ const ExamPlatformUpload = () => {
       const selectedSubject = subjects.find((s) => s.value === fetchSubject);
 
       const response = await bookAPI.getBooks({
-        classId: selectedClass?._id || fetchClass,
+        classId: selectedClass?._id,
         subject: selectedSubject?.value || fetchSubject,
       });
-      setBooks(response.data.data);
+      setBooks(response.data || []);
     } catch (error) {
       setFetchError(error.response?.data?.message || "Failed to fetch books.");
       setBooks([]);
@@ -979,9 +977,9 @@ const ExamPlatformUpload = () => {
                     <table className="w-full text-sm text-left text-gray-600">
                       <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
-                          <th className="p-3">Title</th>
-                          <th className="p-3">Class</th>
                           <th className="p-3">Subject</th>
+                          <th className="p-3">Class</th>
+
                           <th className="p-3">Status</th>
                           <th className="p-3">Chunks</th>
                         </tr>
@@ -995,10 +993,14 @@ const ExamPlatformUpload = () => {
                             <td className="p-3 font-medium text-gray-900">
                               {book.title}
                             </td>
-                            <td className="p-3">{book.classId}</td>
-                            <td className="p-3 capitalize">
-                              {book.subject?.replace("_", " ")}
+
+                            {/* --- FIX: Display the populated class grade --- */}
+                            <td className="p-3">
+                              {book.classId
+                                ? `Class ${book.classId.grade}`
+                                : "N/A"}
                             </td>
+
                             <td className="p-3">
                               <StatusBadge status={book.processedStatus} />
                             </td>

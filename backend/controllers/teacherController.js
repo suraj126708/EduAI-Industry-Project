@@ -321,12 +321,18 @@ export const getBooksByClassAndSubject = async (req, res) => {
 
     const query = {};
     if (classId) query.classId = classId;
-    if (subject) query.title = { $regex: subject, $options: "i" };
+    if (subject)
+      query.title = { $regex: subject.replace(/_/g, " "), $options: "i" };
+    if (!classId && !subject) {
+      return res.status(200).json({ success: true, data: [] });
+    }
 
-    const books = await Book.find(query).sort({ createdAt: -1 });
+    const books = await Book.find(query)
+      .populate("classId", "grade")
+      .sort({ createdAt: -1 });
 
     if (!books.length) {
-      return res.status(404).json({
+      return res.status(200).json({
         success: false,
         message: "No books found",
       });

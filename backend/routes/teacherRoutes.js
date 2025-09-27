@@ -249,6 +249,13 @@ router.get(
 );
 
 router.get(
+  "/fetch-books-metadata",
+  authenticateFirebaseToken,
+  authorize("teacher"),
+  getBooksByClassAndSubject
+);
+
+router.get(
   "/:id",
   authenticateFirebaseToken,
   teacherIdValidation,
@@ -342,13 +349,6 @@ router.post(
   teacherIdValidation,
   pdfUpload.single("pdf"),
   teacherUploadBook
-);
-
-router.get(
-  "/fetch-books-metadata",
-  authenticateFirebaseToken,
-  authorize("teacher"),
-  getBooksByClassAndSubject
 );
 
 export default router;

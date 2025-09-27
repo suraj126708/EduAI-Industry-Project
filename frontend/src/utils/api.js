@@ -149,6 +149,21 @@ export const bookAPI = {
     }
   },
 
+  // Fetch books filtered by classId and/or subject string
+  getBooks: async (params = {}) => {
+    try {
+      // params: { classId: string, subject: string }
+      // Make GET request to the backend endpoint
+      const response = await api.get("teachers/fetch-books-metadata", {
+        params,
+      });
+      return response.data; // expected { success, data: [...] }
+    } catch (error) {
+      console.error("Error fetching books metadata:", error);
+      throw error;
+    }
+  },
+
   // Fetch classes (admin or public)
   getClasses: async () => {
     try {
