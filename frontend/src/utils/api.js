@@ -180,6 +180,23 @@ export const bookAPI = {
     }
   },
 
+  // Get teacher assignments (classes and subjects)
+  getTeacherAssignments: async (schoolId, email) => {
+    try {
+      const params = new URLSearchParams();
+      if (schoolId) params.append("schoolId", schoolId);
+      if (email) params.append("email", email);
+
+      const response = await api.get(
+        `${local_api}teachers/assignments?${params.toString()}`
+      );
+      return response;
+    } catch (error) {
+      console.error("Get teacher assignments error:", error);
+      throw error;
+    }
+  },
+
   // Other helpers (optional)
 
   // Get book by ID

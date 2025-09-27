@@ -5,6 +5,7 @@ import {
   getAllTeachers,
   getTeacherById,
   updateTeacher,
+  getTeacherAssignments,
 } from "../controllers/teacherController.js";
 import {
   authenticateFirebaseToken,
@@ -133,6 +134,120 @@ router.get("/", authenticateFirebaseToken, authorize("admin"), getAllTeachers);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+/**
+ * @swagger
+ * /api/teachers/assignments:
+ *   get:
+ *     summary: Get teacher assignments (classes and subjects)
+ *     description: Retrieve classes and subjects assigned to a teacher
+ *     tags: [Teachers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: schoolId
+ *         schema:
+ *           type: string
+ *         description: School ID to filter by
+ *       - in: query
+ *         name: email
+ *         schema:
+ *           type: string
+ *         description: Teacher email to filter by
+ *     responses:
+ *       200:
+ *         description: Teacher assignments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Teacher assignments retrieved successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     teacher:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         schoolId:
+ *                           type: string
+ *                     classes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                           grade:
+ *                             type: number
+ *                           division:
+ *                             type: string
+ *                           schoolName:
+ *                             type: string
+ *                     subjects:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           subjectId:
+ *                             type: string
+ *                           schoolName:
+ *                             type: string
+ *                     assignments:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                           class:
+ *                             type: object
+ *                           subject:
+ *                             type: object
+ *                           assignedAt:
+ *                             type: string
+ *                             format: date-time
+ *       400:
+ *         description: Bad request - missing required parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Teacher not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get(
+  "/assignments",
+  authenticateFirebaseToken,
+  authorize("teacher"),
+  getTeacherAssignments
+);
+
 router.get(
   "/:id",
   authenticateFirebaseToken,

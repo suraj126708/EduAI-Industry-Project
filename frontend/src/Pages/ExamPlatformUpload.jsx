@@ -303,6 +303,10 @@ const ExamPlatformUpload = () => {
   const [fetchError, setFetchError] = useState(null);
   const [fetchLoading, setFetchLoading] = useState(false);
 
+  // States for teacher assignments loading
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [assignmentsError, setAssignmentsError] = useState(null);
+
   // Fetch Teacher Profile on component mount
   useEffect(() => {
     async function loadProfile() {
@@ -325,33 +329,50 @@ const ExamPlatformUpload = () => {
     loadProfile();
   }, []);
 
-  // Fetch classes and subjects options
+  // Fetch teacher assignments (classes and subjects)
   useEffect(() => {
-    const loadMeta = async () => {
+    const loadTeacherAssignments = async () => {
+      if (!schoolId) return; // Wait for schoolId to be loaded
+
+      setAssignmentsLoading(true);
+      setAssignmentsError(null);
+
       try {
-        const [clsRes, subjRes] = await Promise.all([
-          bookAPI.getClasses().catch(() => ({ data: { data: [] } })),
-          bookAPI.getSubjects().catch(() => ({ data: { data: [] } })),
-        ]);
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          console.error("No current user found");
+          setAssignmentsError("No current user found");
+          return;
+        }
 
-        const cls = (clsRes?.data?.data || []).map((c) =>
-          typeof c === "string"
-            ? { value: c, label: `Class ${c}` }
-            : {
-                value: c?.grade || c?.value || "",
-                label: c?.label || `Class ${c?.grade || c?.value || ""}`,
-              }
+        const response = await bookAPI.getTeacherAssignments(
+          schoolId,
+          currentUser.email
         );
-        const subj = (subjRes?.data?.data || []).map((s) =>
-          typeof s === "string"
-            ? { value: s, label: s.replace(/_/g, " ") }
-            : {
-                value: s?.code || s?.value || "",
-                label: s?.label || (s?.name || "").replace(/_/g, " "),
-              }
-        );
+        const { classes: assignedClasses, subjects: assignedSubjects } =
+          response.data.data;
 
-        // Fallbacks if empty
+        console.log("Teacher assignments loaded:", {
+          assignedClasses,
+          assignedSubjects,
+        });
+
+        // Transform classes data
+        const cls = assignedClasses.map((c) => ({
+          value: c.grade.toString().padStart(2, "0"), // Convert to string with leading zero
+          label: `Class ${c.grade}${c.division ? ` - ${c.division}` : ""}`,
+          _id: c._id,
+          schoolName: c.schoolName,
+        }));
+
+        // Transform subjects data
+        const subj = assignedSubjects.map((s) => ({
+          value: s.subjectId || s.name.toLowerCase().replace(/\s+/g, "_"),
+          label: s.name,
+          _id: s._id,
+          schoolName: s.schoolName,
+        }));
+
         setClasses(
           cls.length
             ? cls
@@ -370,6 +391,7 @@ const ExamPlatformUpload = () => {
                 { value: "12", label: "Class 12" },
               ]
         );
+
         setSubjects(
           subj.length
             ? subj
@@ -386,12 +408,45 @@ const ExamPlatformUpload = () => {
                 { value: "computer_science", label: "Computer Science" },
               ]
         );
-      } catch (_) {
-        // Already covered by fallbacks
+      } catch (error) {
+        console.error("Failed to load teacher assignments:", error);
+        setAssignmentsError(
+          error.message || "Failed to load teacher assignments"
+        );
+        // Use fallback data
+        setClasses([
+          { value: "01", label: "Class 01" },
+          { value: "02", label: "Class 02" },
+          { value: "03", label: "Class 03" },
+          { value: "04", label: "Class 04" },
+          { value: "05", label: "Class 05" },
+          { value: "06", label: "Class 06" },
+          { value: "07", label: "Class 07" },
+          { value: "08", label: "Class 08" },
+          { value: "09", label: "Class 09" },
+          { value: "10", label: "Class 10" },
+          { value: "11", label: "Class 11" },
+          { value: "12", label: "Class 12" },
+        ]);
+        setSubjects([
+          { value: "mathematics", label: "Mathematics" },
+          { value: "physics", label: "Physics" },
+          { value: "chemistry", label: "Chemistry" },
+          { value: "biology", label: "Biology" },
+          { value: "english", label: "English" },
+          { value: "history", label: "History" },
+          { value: "geography", label: "Geography" },
+          { value: "economics", label: "Economics" },
+          { value: "political_science", label: "Political Science" },
+          { value: "computer_science", label: "Computer Science" },
+        ]);
+      } finally {
+        setAssignmentsLoading(false);
       }
     };
-    loadMeta();
-  }, []);
+
+    loadTeacherAssignments();
+  }, [schoolId]); // Depend on schoolId
 
   // Row management functions
   const updateRow = (id, key, value) =>
@@ -472,14 +527,20 @@ const ExamPlatformUpload = () => {
       // --- formData is created HERE for each row ---
       const formData = new FormData();
 
+      // Find the actual class and subject IDs from the assigned classes and subjects
+      const selectedClass = classes.find((c) => c.value === row.class);
+      const selectedSubject = subjects.find((s) => s.value === row.subject);
+
       // --- All .append() calls must happen AFTER the line above ---
       formData.append("pdf", row.file);
-      formData.append("classId", row.class);
-      formData.append("subject", row.subject);
+      formData.append("classId", selectedClass?.grade || row.class);
+      formData.append("subject", selectedSubject?.value || row.subject);
       formData.append("schoolId", schoolId);
       formData.append(
         "title",
-        `${row.subject.replace("_", " ")} - Class ${row.class}`
+        `${(selectedSubject?.label || row.subject).replace("_", " ")} - Class ${
+          selectedClass?.grade || row.class
+        }`
       );
       formData.append("author", "System");
       formData.append("year", new Date().getFullYear());
@@ -571,9 +632,13 @@ const ExamPlatformUpload = () => {
     setFetchError(null);
     setBooks([]);
     try {
+      // Find the actual class and subject IDs from the assigned classes and subjects
+      const selectedClass = classes.find((c) => c.value === fetchClass);
+      const selectedSubject = subjects.find((s) => s.value === fetchSubject);
+
       const response = await bookAPI.getBooks({
-        classId: fetchClass,
-        subject: fetchSubject,
+        classId: selectedClass?._id || fetchClass,
+        subject: selectedSubject?.value || fetchSubject,
       });
       setBooks(response.data.data);
     } catch (error) {
@@ -638,23 +703,29 @@ const ExamPlatformUpload = () => {
             >
               {activeTab === "upload" && (
                 <div>
-                  {isProfileLoading ? (
+                  {isProfileLoading || assignmentsLoading ? (
                     <div className="flex flex-col items-center justify-center p-8 text-center">
                       <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                       <p className="mt-4 font-semibold text-gray-700">
-                        Loading Teacher Profile...
+                        {isProfileLoading
+                          ? "Loading Teacher Profile..."
+                          : "Loading Teacher Assignments..."}
                       </p>
                       <p className="text-sm text-gray-500">
                         Please wait, preparing the uploader.
                       </p>
                     </div>
-                  ) : profileError ? (
+                  ) : profileError || assignmentsError ? (
                     <div className="flex flex-col items-center justify-center p-8 text-center text-red-700 bg-red-50 rounded-lg">
                       <AlertCircle className="h-8 w-8" />
                       <p className="mt-4 font-semibold">
-                        Could not load profile
+                        {profileError
+                          ? "Could not load profile"
+                          : "Could not load assignments"}
                       </p>
-                      <p className="text-sm">{profileError}</p>
+                      <p className="text-sm">
+                        {profileError || assignmentsError}
+                      </p>
                     </div>
                   ) : (
                     <>

@@ -6,6 +6,8 @@ import axios from "axios";
 import FormData from "form-data";
 import Book from "../models/BookSchema.js";
 import Class from "../models/Class.js";
+import Subject from "../models/Subject.js";
+import TeacherClassSubject from "../models/TeacherClassSubject.js";
 
 // @desc    Get all teachers (Admin only)
 // @route   GET /api/teachers
@@ -311,6 +313,134 @@ export const getBooksByClassAndSubject = async (req, res) => {
       success: false,
       message: "Failed to retrieve books",
       error: error.message,
+    });
+  }
+};
+
+// @desc    Get teacher assignments (classes and subjects)
+// @route   GET /api/teachers/assignments
+// @access  Private (Teacher)
+export const getTeacherAssignments = async (req, res) => {
+  try {
+    const { schoolId, email } = req.query;
+
+    if (!schoolId && !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Either schoolId or email must be provided",
+      });
+    }
+
+    // Find the teacher by schoolId and/or email
+    const teacherQuery = { role: "teacher" };
+    if (schoolId) teacherQuery.schoolId = schoolId;
+    if (email) teacherQuery.email = email;
+
+    const teacher = await User.findOne(teacherQuery);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found",
+      });
+    }
+
+    // Get teacher assignments with populated class and subject data
+    const assignments = await TeacherClassSubject.find({
+      teacherId: teacher._id,
+    })
+      .populate({
+        path: "classId",
+        select: "grade division schoolId",
+        populate: {
+          path: "schoolId",
+          select: "name",
+        },
+      })
+      .populate({
+        path: "subjectId",
+        select: "name subjectId schoolId",
+        populate: {
+          path: "schoolId",
+          select: "name",
+        },
+      })
+      .sort({ assignedAt: -1 });
+
+    // Extract unique classes and subjects
+    const classes = [];
+    const subjects = [];
+    const classMap = new Map();
+    const subjectMap = new Map();
+
+    assignments.forEach((assignment) => {
+      if (
+        assignment.classId &&
+        !classMap.has(assignment.classId._id.toString())
+      ) {
+        classes.push({
+          _id: assignment.classId._id,
+          grade: assignment.classId.grade,
+          division: assignment.classId.division,
+          schoolName: assignment.classId.schoolId?.name || "Unknown School",
+        });
+        classMap.set(assignment.classId._id.toString(), true);
+      }
+
+      if (
+        assignment.subjectId &&
+        !subjectMap.has(assignment.subjectId._id.toString())
+      ) {
+        subjects.push({
+          _id: assignment.subjectId._id,
+          name: assignment.subjectId.name,
+          subjectId: assignment.subjectId.subjectId,
+          schoolName: assignment.subjectId.schoolId?.name || "Unknown School",
+        });
+        subjectMap.set(assignment.subjectId._id.toString(), true);
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Teacher assignments retrieved successfully",
+      data: {
+        teacher: {
+          _id: teacher._id,
+          name: teacher.name,
+          email: teacher.email,
+          schoolId: teacher.schoolId,
+        },
+        classes,
+        subjects,
+        assignments: assignments.map((assignment) => ({
+          _id: assignment._id,
+          class: assignment.classId
+            ? {
+                _id: assignment.classId._id,
+                grade: assignment.classId.grade,
+                division: assignment.classId.division,
+              }
+            : null,
+          subject: assignment.subjectId
+            ? {
+                _id: assignment.subjectId._id,
+                name: assignment.subjectId.name,
+                subjectId: assignment.subjectId.subjectId,
+              }
+            : null,
+          assignedAt: assignment.assignedAt,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Get teacher assignments error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve teacher assignments",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Something went wrong",
     });
   }
 };
