@@ -9,27 +9,20 @@ const api = axios.create({
   baseURL: local_api,
 });
 
-// Add request interceptor to dynamically set the Authorization header with Firebase ID token
+// Add request interceptor to dynamically set the Authorization header
 api.interceptors.request.use(
   async (config) => {
     try {
-      // Get current user from Firebase Auth
       const user = auth.currentUser;
-
       if (user) {
-        // Get fresh ID token
         const idToken = await user.getIdToken();
         config.headers.Authorization = `Bearer ${idToken}`;
       }
-
-      // Log request details
+      // Optional: Keep logs for debugging during development
       console.log("=== API REQUEST ===");
       console.log("URL:", config.baseURL + config.url);
       console.log("Method:", config.method?.toUpperCase());
-      console.log("Headers:", config.headers);
-      console.log("Data:", config.data);
       console.log("==================");
-
       return config;
     } catch (error) {
       console.error("Error getting Firebase ID token:", error);
@@ -42,50 +35,47 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor for logging and error handling
+// Add response interceptor for logging and clean error handling
 api.interceptors.response.use(
   (response) => {
-    // Log successful response
+    // Log successful responses for debugging
     console.log("=== API RESPONSE SUCCESS ===");
-    console.log("URL:", response.config.url);
     console.log("Status:", response.status);
-    console.log("Status Text:", response.statusText);
-    console.log("Data:", response.data);
-    console.log("Headers:", response.headers);
+    console.log("URL:", response.config.url);
     console.log("============================");
     return response;
   },
   async (error) => {
-    // Log error response
+    // Log error responses for debugging
     console.error("=== API RESPONSE ERROR ===");
     console.error("URL:", error.config?.url);
     console.error("Status:", error.response?.status);
-    console.error("Status Text:", error.response?.statusText);
     console.error("Error Data:", error.response?.data);
-    console.error("Error Headers:", error.response?.headers);
-    console.error("Error Message:", error.message);
-    console.error("Error Code:", error.code);
     console.error("==========================");
 
-    // Handle token expiration (401 Unauthorized)
-    if (error.response?.status === 401) {
+    // --- The Single, Correct Logic for 401 Authentication Errors ---
+    const isUnauthorized = error.response?.status === 401;
+    const isNotPostRequest = error.config?.method !== "post";
+
+    // Only attempt to refresh the token and retry if the error is 401
+    // AND it's a safe request (i.e., NOT a POST request).
+    if (isUnauthorized && isNotPostRequest) {
       try {
-        // Try to refresh the token
         const user = auth.currentUser;
         if (user) {
           const newToken = await user.getIdToken(true); // Force refresh
           error.config.headers.Authorization = `Bearer ${newToken}`;
-
-          // Retry the original request with new token
+          // Retry the original safe request (e.g., GET) with the new token.
           return api.request(error.config);
         }
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
-        // Redirect to login or handle authentication failure
-        // You might want to dispatch an action to clear user state
       }
     }
 
+    // For all other errors (like 409 Conflict) or for 401 errors on POST requests,
+    // immediately reject the promise. This stops any retry loops and sends the error
+    // straight to your React component's .catch() block.
     return Promise.reject(error);
   }
 );
@@ -153,8 +143,9 @@ export const bookAPI = {
       return response.data;
     } catch (error) {
       console.error("Upload book error:", error);
-      // Re-throw a more specific error for the component to catch
-      throw new Error(error.response?.data?.message || "Upload failed");
+      // --- FIX: Re-throw the ORIGINAL error instead of creating a new one ---
+      // This preserves all details like response status, data, etc.
+      throw error;
     }
   },
 

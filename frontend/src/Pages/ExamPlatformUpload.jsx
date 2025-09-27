@@ -28,6 +28,7 @@ const StatusBadge = ({ status }) => {
     uploading: { label: "Uploading", classes: "bg-blue-100 text-blue-700" },
     processed: { label: "Processed", classes: "bg-green-100 text-green-700" },
     error: { label: "Error", classes: "bg-red-100 text-red-700" },
+    duplicate: { label: "Duplicate", classes: "bg-yellow-100 text-yellow-700" },
   }[status] || { label: "Pending", classes: "bg-gray-100 text-gray-700" };
   return (
     <span
@@ -524,14 +525,10 @@ const ExamPlatformUpload = () => {
     validRows.forEach((r) => updateRow(r.id, "status", "uploading"));
 
     const promises = validRows.map(async (row, index) => {
-      // --- formData is created HERE for each row ---
       const formData = new FormData();
-
-      // Find the actual class and subject IDs from the assigned classes and subjects
       const selectedClass = classes.find((c) => c.value === row.class);
       const selectedSubject = subjects.find((s) => s.value === row.subject);
 
-      // --- All .append() calls must happen AFTER the line above ---
       formData.append("pdf", row.file);
       formData.append("classId", selectedClass?.grade || row.class);
       formData.append("subject", selectedSubject?.value || row.subject);
@@ -545,78 +542,99 @@ const ExamPlatformUpload = () => {
       formData.append("author", "System");
       formData.append("year", new Date().getFullYear());
 
-      // --- FIX: This logic is now correctly placed inside the loop ---
       const currentUser = auth.currentUser;
       if (currentUser) {
         formData.append("teacherId", currentUser.uid);
       }
-      // --- End of FIX ---
+
+      // --- FIX: Declare apiResult here, outside the try block ---
+      let apiResult;
 
       try {
-        // Update loader progress and step
         const baseProgress = (index / validRows.length) * 100;
-        setLoaderProgress(baseProgress);
         setCurrentFileName(row.file.name);
+        setLoaderProgress(baseProgress);
 
-        // Simulate step progression
+        // --- FIX: Simplified to a single try block. The API call is now here. ---
+        apiResult = await bookAPI.uploadBook(formData, {
+          onUploadProgress: (e) => {
+            const progress = Math.round((e.loaded * 100) / e.total);
+            updateRow(row.id, "progress", progress);
+            setLoaderProgress(baseProgress + progress * 0.8);
+          },
+        });
+
+        // --- This part only runs on SUCCESS ---
         const stepProgression = async () => {
-          setCurrentStep("upload");
-          await new Promise((resolve) => setTimeout(resolve, 500));
           setCurrentStep("process");
           await new Promise((resolve) => setTimeout(resolve, 500));
           setCurrentStep("analyze");
           await new Promise((resolve) => setTimeout(resolve, 500));
           setCurrentStep("complete");
         };
-
-        const apiResult = await bookAPI.uploadBook(formData, {
-          onUploadProgress: (e) => {
-            const progress = Math.round((e.loaded * 100) / e.total);
-            updateRow(row.id, "progress", progress);
-            setLoaderProgress(baseProgress + progress * 0.8); // 80% of this file's progress
-          },
-        });
-
-        // Run step progression
         await stepProgression();
 
-        // Backend returns { message, book }
         const returnedBook = apiResult?.book;
         const processedStatus = returnedBook?.processedStatus || "pending";
         const chunks = returnedBook?.noOfChunks ?? null;
         updateRow(
           row.id,
           "status",
-          processedStatus === "processed"
-            ? "processed"
-            : processedStatus === "failed"
-            ? "error"
-            : "pending"
+          processedStatus === "processed" ? "processed" : "pending"
         );
         updateRow(row.id, "progress", 100);
         setLoaderProgress(((index + 1) / validRows.length) * 100);
 
         return {
-          success: processedStatus === "processed",
+          success: true,
           filename: row.file.name,
           chunks,
           status: processedStatus,
         };
       } catch (err) {
+        // --- FIX: Gracefully handle the 409 Conflict error as a special case ---
+        if (err.response?.status === 409) {
+          // Show the user-friendly alert
+          alert(
+            err.response.data.message ||
+              `A book already exists for this class and subject: "${row.file.name}"`
+          );
+          // Reset the row's UI to allow the user to make a correction
+          updateRow(row.id, "status", "duplicate");
+          updateRow(row.id, "error", "This book already exists.");
+          updateRow(row.id, "progress", 0);
+          // Return a specific result for the summary
+          return {
+            success: false,
+            filename: row.file.name,
+            error: "Duplicate entry. User was notified.",
+          };
+        }
+
+        // --- FIX: Handle all OTHER errors normally ---
+        console.error("Upload error:", err);
         updateRow(row.id, "status", "error");
         updateRow(row.id, "error", err.message || "Upload failed");
-        return { success: false, filename: row.file.name, error: err.message };
+        return {
+          success: false,
+          filename: row.file.name,
+          error: err.message,
+        };
       }
     });
 
     const results = await Promise.all(promises);
-    setUploadResults(results);
+
+    // Filter out the duplicate notifications from the final summary if you want
+    const finalResults = results.filter(
+      (res) => res.error !== "Duplicate entry. User was notified."
+    );
+    setUploadResults(finalResults);
+
     setIsUploading(false);
 
-    // Hide loader after a brief delay
     setTimeout(() => {
       setShowLoader(false);
-      setLoaderProgress(0);
       setCurrentStep("upload");
       setCurrentFileName("");
     }, 1000);

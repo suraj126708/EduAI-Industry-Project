@@ -79,6 +79,7 @@ BookSchema.index({ title: 1 });
 BookSchema.index({ author: 1 });
 BookSchema.index({ year: 1 });
 BookSchema.index({ createdAt: -1 });
+BookSchema.index({ classId: 1, title: 1, schoolId: 1 }, { unique: true });
 
 // Instance methods
 BookSchema.methods.getSchool = function () {

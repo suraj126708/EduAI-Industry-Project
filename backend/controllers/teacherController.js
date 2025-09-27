@@ -165,9 +165,9 @@ export const updateTeacher = async (req, res) => {
 
 export const teacherUploadBook = async (req, res) => {
   try {
-    const { classId, subject, author, year, schoolId, teacherId } = req.body;
+    const { classId, subject, author, year, schoolId, teacherId, title } =
+      req.body;
 
-    // --- FIX: Improved Validation ---
     if (!req.file) {
       return res.status(400).json({ message: "PDF file is required." });
     }
@@ -179,37 +179,63 @@ export const teacherUploadBook = async (req, res) => {
       year,
       schoolId,
       teacherId,
+      title,
     };
     for (const [field, value] of Object.entries(requiredFields)) {
       if (!value) {
+        await fs.promises.unlink(req.file.path);
         return res
           .status(400)
           .json({ message: `${field} is a required field.` });
       }
     }
+
     const teacher = await User.findOne({
       firebaseUid: teacherId,
       role: "teacher",
     });
     if (!teacher) {
+      await fs.promises.unlink(req.file.path);
       return res
         .status(404)
         .json({ message: `Teacher with ID '${teacherId}' not found.` });
     }
 
-    const classDoc = await Class.findOne({ grade: classId }); // Assuming your Class model has a 'name' field like "01"
+    const classDoc = await Class.findOne({ grade: classId });
     if (!classDoc) {
+      await fs.promises.unlink(req.file.path);
       return res
         .status(404)
         .json({ message: `Class with ID '${classId}' not found.` });
     }
-    // --- End of FIX ---
+
+    const duplicateBook = await Book.findOne({
+      classId: classDoc._id,
+      title: title,
+      schoolId: schoolId,
+    });
+
+    if (duplicateBook) {
+      // --- FIX: This block now correctly deletes the orphaned file ---
+      try {
+        await fs.promises.unlink(req.file.path);
+        console.log(`Deleted orphaned duplicate file: ${req.file.path}`);
+      } catch (err) {
+        console.error(`Error deleting orphaned file ${req.file.path}:`, err);
+      }
+      return res.status(409).json({
+        success: false,
+        message:
+          "A book already exists for this class and subject in your school",
+      });
+    }
 
     const book = new Book({
       schoolId: schoolId,
-      classId: classDoc._id, // Use the actual ObjectId from the found document
+      classId: classDoc._id,
       uploadedBy: teacher._id,
-      title: subject,
+      title: title,
+      subject: subject,
       author,
       year,
       fileUrl: req.file.path,
@@ -218,7 +244,6 @@ export const teacherUploadBook = async (req, res) => {
 
     await book.save();
 
-    // Send the uploaded PDF to external processor (with retry on field name)
     try {
       const sendToProcessor = async (fieldName) => {
         const fileStream = fs.createReadStream(req.file.path);
@@ -231,19 +256,16 @@ export const teacherUploadBook = async (req, res) => {
           "http://127.0.0.1:8000/process_pdf/",
           form,
           {
-            headers: {
-              ...form.getHeaders(),
-            },
+            headers: { ...form.getHeaders() },
             timeout: 5 * 60 * 1000,
             maxBodyLength: Infinity,
             maxContentLength: Infinity,
-            validateStatus: (s) => s >= 200 && s < 500, // handle 422 gracefully
+            validateStatus: (s) => s >= 200 && s < 500,
           }
         );
         return response;
       };
 
-      // First try common field name 'file', then fallback to 'pdf' if needed
       let response = await sendToProcessor("file");
       if (response.status === 422) {
         response = await sendToProcessor("pdf");
@@ -253,11 +275,7 @@ export const teacherUploadBook = async (req, res) => {
       if (status === "success" && Number.isFinite(chunks)) {
         book.processedStatus = "processed";
         book.noOfChunks = chunks;
-      } else if (response.status >= 200 && response.status < 300) {
-        // 2xx but unexpected body
-        book.processedStatus = "failed";
       } else {
-        // non-2xx
         book.processedStatus = "failed";
       }
       await book.save();
@@ -272,6 +290,17 @@ export const teacherUploadBook = async (req, res) => {
       book,
     });
   } catch (error) {
+    if (req.file && req.file.path) {
+      try {
+        await fs.promises.access(req.file.path);
+        await fs.promises.unlink(req.file.path);
+        console.log(`Cleaned up file due to error: ${req.file.path}`);
+      } catch (cleanupErr) {
+        if (cleanupErr.code !== "ENOENT") {
+          console.error(`Error during file cleanup:`, cleanupErr);
+        }
+      }
+    }
     console.error("Book upload error:", error);
     res.status(500).json({
       message: "Failed to upload book.",
