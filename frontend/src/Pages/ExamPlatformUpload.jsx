@@ -654,7 +654,9 @@ const ExamPlatformUpload = () => {
 
       const response = await bookAPI.getBooks({
         classId: selectedClass?._id,
-        subject: selectedSubject?.value || fetchSubject,
+        subject: selectedSubject?.label || fetchSubject,
+        schoolId: schoolId,
+        _cacheBust: new Date().getTime(),
       });
       setBooks(response.data || []);
     } catch (error) {

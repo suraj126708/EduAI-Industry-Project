@@ -313,9 +313,10 @@ export const teacherUploadBook = async (req, res) => {
 
 export const getBooksByClassAndSubject = async (req, res) => {
   try {
-    const { classId, subject } = req.query;
+    const { classId, subject, schoolId } = req.query;
 
     const query = {};
+    if (schoolId) query.schoolId = schoolId;
     if (classId) query.classId = classId;
     if (subject)
       query.title = { $regex: subject.replace(/_/g, " "), $options: "i" };
