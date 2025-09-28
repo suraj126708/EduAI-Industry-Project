@@ -28,7 +28,8 @@ const classOptions = ["Class 10"];
 const subjectOptions = ["History", "Geography", "Science"];
 const examTypeOptions = ["Unit Test", "Midterm", "Final"];
 
-const mainTopics = [
+// Default topics - will be replaced by dynamic data from API
+const defaultMainTopics = [
   "1. Historiography : Development in the West",
   "2. Historiography : Indian Tradition",
   "3. Applied History",
@@ -123,6 +124,8 @@ export default function MinimalQuestionPaperForm() {
   const [selectedExamType, setSelectedExamType] = useState("");
   const [selectedMainTopics, setSelectedMainTopics] = useState([]);
   const [numberOfPapers, setNumberOfPapers] = useState(1);
+  const [dynamicTopics, setDynamicTopics] = useState([]);
+  const [isLoadingTopics, setIsLoadingTopics] = useState(false);
   const [questions, setQuestions] = useState(initialQuestions);
   const [openDropdowns, setOpenDropdowns] = useState({});
   const [questionTypeInputs, setQuestionTypeInputs] = useState({});
@@ -143,6 +146,68 @@ export default function MinimalQuestionPaperForm() {
     type: "success",
   });
   const dropdownRefs = useRef({});
+
+  // Function to fetch chapters from API
+  const fetchChapters = useCallback(async (subject, classId) => {
+    if (!subject || !classId) return;
+
+    setIsLoadingTopics(true);
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/teachers/chapters?subject=${encodeURIComponent(
+          subject
+        )}&classId=${encodeURIComponent(classId)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            // Add authorization header if needed
+            // "Authorization": `Bearer ${token}`
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.chapters && data.chapters.length > 0) {
+        // Transform API response to match our format
+        const transformedTopics = data.chapters.map((chapter) => ({
+          topic: `${chapter.chapter_no}. ${chapter.chapter_title}`,
+          value: `${chapter.chapter_no}. ${chapter.chapter_title}`,
+          chapter_no: chapter.chapter_no,
+          chapter_title: chapter.chapter_title,
+          source_book: chapter.source_book,
+          author: chapter.author,
+        }));
+
+        setDynamicTopics(transformedTopics);
+        console.log("Fetched dynamic topics:", transformedTopics);
+      } else {
+        // Fallback to default topics if no chapters found
+        console.log("No chapters found, using default topics");
+        setDynamicTopics([]);
+      }
+    } catch (error) {
+      console.error("Error fetching chapters:", error);
+      // Fallback to default topics on error
+      setDynamicTopics([]);
+    } finally {
+      setIsLoadingTopics(false);
+    }
+  }, []);
+
+  // Fetch chapters when subject or class changes
+  useEffect(() => {
+    if (selectedSubject && selectedClass) {
+      fetchChapters(selectedSubject, selectedClass);
+    } else {
+      setDynamicTopics([]);
+    }
+  }, [selectedSubject, selectedClass, fetchChapters]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -276,6 +341,33 @@ export default function MinimalQuestionPaperForm() {
   };
 
   const getSubjectTopics = useCallback(() => {
+    // If we have dynamic topics, create a simplified structure
+    if (dynamicTopics.length > 0) {
+      const allTopics = {};
+
+      // Create topic structure from dynamic topics
+      dynamicTopics.forEach((topic) => {
+        allTopics[topic.value] = []; // No subtopics for now, just main topics
+      });
+
+      // If no main topics are selected, return all topics
+      if (selectedMainTopics.length === 0) {
+        return allTopics;
+      }
+
+      // Filter topics based on selected main topics (chapters)
+      const filteredTopics = {};
+      Object.entries(allTopics).forEach(([unit, topics]) => {
+        // If this unit (chapter) is selected in main topics, include it
+        if (selectedMainTopics.includes(unit)) {
+          filteredTopics[unit] = topics;
+        }
+      });
+
+      return filteredTopics;
+    }
+
+    // Fallback to static topics for backward compatibility
     const allTopics = availableTopics.history || {};
 
     // If no main topics are selected, return all topics
@@ -293,15 +385,20 @@ export default function MinimalQuestionPaperForm() {
     });
 
     return filteredTopics;
-  }, [selectedMainTopics]);
+  }, [selectedMainTopics, dynamicTopics]);
 
   const getAllMainTopicsForSubject = useCallback(() => {
-    // Return main topics (chapters) for the top dropdown
-    return mainTopics.map((topic) => ({
+    // Use dynamic topics if available, otherwise fallback to default
+    if (dynamicTopics.length > 0) {
+      return dynamicTopics;
+    }
+
+    // Fallback to default topics
+    return defaultMainTopics.map((topic) => ({
       topic,
       value: topic,
     }));
-  }, []);
+  }, [dynamicTopics]);
 
   const handleMainTopicToggle = useCallback(
     (topicValue) => {
@@ -601,6 +698,7 @@ export default function MinimalQuestionPaperForm() {
           isAllMainTopicsSelected={isAllMainTopicsSelected()}
           numberOfPapers={numberOfPapers}
           setNumberOfPapers={setNumberOfPapers}
+          isLoadingTopics={isLoadingTopics}
           showDurationPicker={showDurationPicker}
           setShowDurationPicker={setShowDurationPicker}
           selectedHour={selectedHour}

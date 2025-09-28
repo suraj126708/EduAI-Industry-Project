@@ -163,6 +163,86 @@ export const updateTeacher = async (req, res) => {
 
 /*---------Upload controller---------*/
 
+export const getChaptersBySubjectAndClass = async (req, res) => {
+  try {
+    const { subject, classId } = req.query;
+
+    if (!subject || !classId) {
+      return res.status(400).json({
+        success: false,
+        message: "Subject and classId are required parameters",
+      });
+    }
+
+    // Find the class document to get the ObjectId
+    const classDoc = await Class.findOne({ grade: classId });
+    if (!classDoc) {
+      return res.status(404).json({
+        success: false,
+        message: `Class with grade '${classId}' not found`,
+      });
+    }
+
+    // Get all books for the subject and class with chapters
+    const books = await Book.getChaptersBySubjectAndClass(
+      subject,
+      classDoc._id
+    );
+
+    if (books.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No processed books found for subject '${subject}' and class '${classId}'`,
+      });
+    }
+
+    // Extract and combine all chapters from all books
+    const allChapters = [];
+    books.forEach((book) => {
+      if (book.chapters && book.chapters.length > 0) {
+        book.chapters.forEach((chapter) => {
+          // Avoid duplicates by checking if chapter already exists
+          const existingChapter = allChapters.find(
+            (c) =>
+              c.chapter_no === chapter.chapter_no &&
+              c.chapter_title === chapter.chapter_title
+          );
+          if (!existingChapter) {
+            allChapters.push({
+              chapter_no: chapter.chapter_no,
+              chapter_title: chapter.chapter_title,
+              source_book: book.title,
+              author: book.author,
+            });
+          }
+        });
+      }
+    });
+
+    // Sort chapters by chapter number
+    allChapters.sort((a, b) => {
+      const numA = parseInt(a.chapter_no) || 0;
+      const numB = parseInt(b.chapter_no) || 0;
+      return numA - numB;
+    });
+
+    res.status(200).json({
+      success: true,
+      subject,
+      classId,
+      totalBooks: books.length,
+      chapters: allChapters,
+    });
+  } catch (error) {
+    console.error("Get chapters error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch chapters",
+      error: error.message,
+    });
+  }
+};
+
 export const teacherUploadBook = async (req, res) => {
   try {
     const { classId, subject, author, year, schoolId, teacherId, title } =
@@ -273,10 +353,14 @@ export const teacherUploadBook = async (req, res) => {
         response = await sendToProcessor("pdf");
       }
 
-      const { status, chunks } = response.data || {};
+      const { status, chunks, chapters } = response.data || {};
       if (status === "success" && Number.isFinite(chunks)) {
         book.processedStatus = "processed";
         book.noOfChunks = chunks;
+        // Store chapters if available
+        if (chapters && Array.isArray(chapters)) {
+          book.chapters = chapters;
+        }
       } else {
         book.processedStatus = "failed";
       }

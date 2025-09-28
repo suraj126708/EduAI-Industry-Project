@@ -29,6 +29,7 @@ const PaperDetailsForm = ({
   setOpenDropdowns,
   handleMainTopicToggle,
   getAllMainTopicsForSubject,
+  isLoadingTopics,
   errors,
 }) => {
   return (
@@ -102,6 +103,7 @@ const PaperDetailsForm = ({
               onMainTopicToggle={handleMainTopicToggle}
               getAllMainTopicsForSubject={getAllMainTopicsForSubject}
               isAllMainTopicsSelected={() => isAllMainTopicsSelected}
+              isLoadingTopics={isLoadingTopics}
               error={errors.topic}
             />
           </div>

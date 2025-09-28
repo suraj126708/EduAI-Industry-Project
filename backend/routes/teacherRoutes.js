@@ -17,6 +17,7 @@ import { pdfUpload } from "../middleware/uploadMiddleware.js";
 import {
   teacherUploadBook,
   getBooksByClassAndSubject,
+  getChaptersBySubjectAndClass,
 } from "../controllers/teacherController.js";
 
 const router = express.Router();
@@ -254,6 +255,13 @@ router.get(
   authenticateFirebaseToken,
   authorize("teacher"),
   getBooksByClassAndSubject
+);
+
+router.get(
+  "/chapters",
+  authenticateFirebaseToken,
+  authorize("teacher"),
+  getChaptersBySubjectAndClass
 );
 
 router.get(

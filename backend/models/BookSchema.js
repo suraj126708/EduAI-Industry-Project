@@ -63,6 +63,19 @@ const BookSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    chapters: [
+      {
+        chapter_no: {
+          type: String,
+          required: true,
+        },
+        chapter_title: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -137,6 +150,15 @@ BookSchema.statics.findProcessedBooks = function () {
 
 BookSchema.statics.findPendingBooks = function () {
   return this.find({ processedStatus: "pending" });
+};
+
+BookSchema.statics.getChaptersBySubjectAndClass = function (subject, classId) {
+  return this.find({
+    subject: { $regex: subject, $options: "i" },
+    classId: classId,
+    processedStatus: "processed",
+    chapters: { $exists: true, $not: { $size: 0 } },
+  }).select("chapters title author");
 };
 
 // Transform output
