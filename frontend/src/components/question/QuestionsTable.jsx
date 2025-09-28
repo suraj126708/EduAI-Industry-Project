@@ -38,7 +38,8 @@ const QuestionsTable = ({
             <Search className="w-4 h-4 text-green-500" />
             Topics
           </div>
-          <div className="col-span-2 text-center">Questions</div>
+          <div className="col-span-1 text-center">Difficulty</div>
+          <div className="col-span-1 text-center">Questions</div>
           <div className="col-span-1 text-center">Marks</div>
           <div className="col-span-1 text-center">Total</div>
         </div>

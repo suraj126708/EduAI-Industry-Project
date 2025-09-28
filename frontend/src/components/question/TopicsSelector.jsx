@@ -24,8 +24,7 @@ const TopicsSelector = ({
         }`}
       >
         <div className="flex-1">
-          {(question.units && question.units.length > 0) ||
-          (question.topics && question.topics.length > 0) ? (
+          {question.units && question.units.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {question.units &&
                 question.units.slice(0, 2).map((unit, unitIdx) => (
@@ -46,38 +45,9 @@ const TopicsSelector = ({
                   </span>
                 ))}
 
-              {question.topics &&
-                question.topics
-                  .slice(0, Math.max(0, 3 - (question.units?.length || 0)))
-                  .map((topic, topicIdx) => (
-                    <span
-                      key={`topic-${topicIdx}`}
-                      className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-md font-medium"
-                    >
-                      {topic}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const unit = Object.keys(getSubjectTopics()).find(
-                            (u) => getSubjectTopics()[u].includes(topic)
-                          );
-                          if (unit) onToggleTopic(questionIndex, topic, unit);
-                        }}
-                        className="ml-1 hover:bg-green-200 rounded-full p-0.5"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-
-              {(question.units?.length || 0) + (question.topics?.length || 0) >
-                3 && (
+              {(question.units?.length || 0) > 2 && (
                 <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
-                  +
-                  {(question.units?.length || 0) +
-                    (question.topics?.length || 0) -
-                    3}{" "}
-                  more
+                  +{(question.units?.length || 0) - 2} more
                 </span>
               )}
             </div>
@@ -116,33 +86,10 @@ const TopicsSelector = ({
                     <div className="font-medium text-gray-900 text-sm">
                       {unit}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {topics.length} topics
-                    </div>
+                    {/* Subtopics hidden intentionally */}
                   </div>
                 </label>
-
-                {/* Topics */}
-                <div className="ml-8 mt-2 space-y-1">
-                  {topics.map((topic) => (
-                    <label
-                      key={topic}
-                      className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer rounded-md"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={
-                          question.topics && question.topics.includes(topic)
-                        }
-                        onChange={() =>
-                          onToggleTopic(questionIndex, topic, unit)
-                        }
-                        className="mr-3 text-green-600 focus:ring-green-500 rounded"
-                      />
-                      <span className="text-sm text-gray-700">{topic}</span>
-                    </label>
-                  ))}
-                </div>
+                {/* Sub-topic selection removed */}
               </div>
             ))
           ) : (

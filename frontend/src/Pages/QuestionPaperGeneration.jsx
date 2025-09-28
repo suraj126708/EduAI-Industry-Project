@@ -18,6 +18,10 @@ import {
   QuestionsTable,
   DurationPickerModal,
   SuccessModal,
+  Modal,
+  ModalHeader,
+  ModalContent,
+  ModalCloseButton,
 } from "../components";
 
 const classOptions = ["Class 10"];
@@ -104,7 +108,9 @@ const initialQuestions = [
   {
     type: "",
     units: [],
+    // topics field deprecated; keeping for backward compatibility but unused
     topics: [],
+    difficulty: "medium",
     numQuestions: 10,
     marksPerQuestion: 1,
   },
@@ -128,6 +134,9 @@ export default function MinimalQuestionPaperForm() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [generatedPaperData, setGeneratedPaperData] = useState(null);
+  const [llmNote, setLlmNote] = useState("");
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [tempNote, setTempNote] = useState("");
   const [toast, setToast] = useState({
     visible: false,
     message: "",
@@ -178,7 +187,15 @@ export default function MinimalQuestionPaperForm() {
   const addQuestion = useCallback(() => {
     setQuestions((prev) => [
       ...prev,
-      { type: "", units: [], topics: [], numQuestions: 1, marksPerQuestion: 1 },
+      {
+        type: "",
+        units: [],
+        // topics deprecated
+        topics: [],
+        difficulty: "medium",
+        numQuestions: 1,
+        marksPerQuestion: 1,
+      },
     ]);
   }, []);
 
@@ -249,39 +266,7 @@ export default function MinimalQuestionPaperForm() {
     }
   };
 
-  const toggleTopic = (questionIndex, topic, unit) => {
-    const currentTopics = questions[questionIndex].topics || [];
-    const currentUnits = questions[questionIndex].units || [];
-    const unitTopics = getSubjectTopics()[unit] || [];
-
-    if (currentTopics.includes(topic)) {
-      // Deselect topic
-      const newTopics = currentTopics.filter((t) => t !== topic);
-      updateQuestion(questionIndex, "topics", newTopics);
-
-      // If no topics from this unit remain, deselect the unit
-      const hasTopicsFromUnit = newTopics.some((t) => unitTopics.includes(t));
-      if (!hasTopicsFromUnit && currentUnits.includes(unit)) {
-        updateQuestion(
-          questionIndex,
-          "units",
-          currentUnits.filter((u) => u !== unit)
-        );
-      }
-    } else {
-      // Select topic
-      const newTopics = [...currentTopics, topic];
-      updateQuestion(questionIndex, "topics", newTopics);
-
-      // If all topics from this unit are now selected, select the unit
-      const allUnitTopicsSelected = unitTopics.every((t) =>
-        newTopics.includes(t)
-      );
-      if (allUnitTopicsSelected && !currentUnits.includes(unit)) {
-        updateQuestion(questionIndex, "units", [...currentUnits, unit]);
-      }
-    }
-  };
+  // Sub-topic selection logic removed. We keep only main topics (units).
 
   const toggleDropdown = (questionIndex) => {
     setOpenDropdowns((prev) => ({
@@ -381,12 +366,9 @@ export default function MinimalQuestionPaperForm() {
         questionErrors.type = "Please select or enter a question type";
       }
 
-      // Validate that at least one main topic (units) or sub-topic is selected
+      // Require at least one main topic (unit). Sub-topics are disabled.
       if (!q.units || q.units.length === 0) {
-        if (!q.topics || q.topics.length === 0) {
-          questionErrors.topics =
-            "Please select at least one main topic or sub-topic";
-        }
+        questionErrors.topics = "Please select at least one main topic";
       }
 
       if (!q.numQuestions || q.numQuestions <= 0) {
@@ -415,130 +397,120 @@ export default function MinimalQuestionPaperForm() {
     questionTypeInputs,
   ]);
 
-  const handleGenerate = useCallback(async () => {
-    const validationErrors = validateForm();
+  const handleGenerate = useCallback(
+    async (noteOverride = undefined) => {
+      setIsGenerating(true);
 
+      try {
+        // Prepare payload from current form state to match new API format
+        const finalLlmNote =
+          typeof noteOverride === "string" ? noteOverride : llmNote;
+        if (typeof noteOverride === "string") {
+          setLlmNote(noteOverride);
+        }
+
+        // Generate PDF name based on class, subject, and timestamp
+        const timestamp = new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace(/[-:]/g, "")
+          .replace("T", "");
+        const pdfName = `questionPaper${selectedClass}${selectedSubject}${timestamp}`;
+
+        const payload = {
+          class: selectedClass,
+          subject: selectedSubject,
+          Pdf_name: pdfName,
+        };
+
+        console.log("payload", payload);
+
+        const res = await fetch(
+          "http://localhost:3000/api/teachers/generate-question-paper",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+
+        const data = await res.json();
+        console.log(data);
+        if (
+          !res.ok ||
+          !data ||
+          data.status !== "success" ||
+          !data.question_paper
+        ) {
+          throw new Error(
+            (data && data.message) || "Failed to generate question paper"
+          );
+        }
+
+        // Use the returned question_paper from the API
+        setGeneratedPaperData(data.question_paper);
+        setShowSuccessModal(true);
+        setErrors({});
+
+        // Show success toast
+        setToast({
+          visible: true,
+          message: "Question paper generated successfully",
+          type: "success",
+        });
+        setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
+      } catch (error) {
+        console.error("Generate error:", error);
+
+        let errorMessage =
+          "Failed to generate question paper. Please try again.";
+
+        if (
+          error.name === "TypeError" &&
+          error.message.includes("Failed to fetch")
+        ) {
+          errorMessage =
+            "Unable to connect to the server. Please check if the backend server is running on localhost:8000";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+
+        setErrors({
+          general: errorMessage,
+        });
+
+        // Show error toast
+        setToast({ visible: true, message: errorMessage, type: "error" });
+        setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [
+      selectedClass,
+      selectedSubject,
+      selectedExamType,
+      selectedMainTopics,
+      numberOfPapers,
+      selectedHour,
+      selectedMinute,
+      questions,
+      questionTypeInputs,
+      llmNote,
+    ]
+  );
+
+  const handleGenerateClick = useCallback(() => {
+    const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-
-    setIsGenerating(true);
-
-    try {
-      // Prepare payload from current form state to match new API format
-      const payload = {
-        class: selectedClass,
-        subject: selectedSubject,
-        examType: selectedExamType,
-        topics: selectedMainTopics,
-        numberOfPapers,
-        duration: {
-          hours: selectedHour,
-          minutes: selectedMinute,
-        },
-        question_type: [
-          ...new Set(
-            questions.map((q, idx) => {
-              const questionType =
-                q.type || questionTypeInputs[idx] || "custom";
-              // Convert internal format to display format
-              const typeMapping = {
-                single_correct: "Single Correct",
-                short_answer: "Short Answer",
-                long_answer: "Long Answer",
-                multiple_correct: "Multiple Correct",
-                fill_in_blank: "Fill in Blanks",
-                true_false: "True/False",
-              };
-              return typeMapping[questionType] || questionType;
-            })
-          ),
-        ],
-        questions: questions.map((q, idx) => ({
-          type: q.type || questionTypeInputs[idx] || "custom",
-          topics: q.units || [],
-          sub_topics: q.topics || [],
-          numQuestions: q.numQuestions,
-          marksPerQuestion: q.marksPerQuestion,
-        })),
-      };
-
-      console.log("payload", payload);
-
-      const res = await fetch(
-        "http://localhost:8000/generate_question_paper/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const data = await res.json();
-      console.log(data);
-      if (
-        !res.ok ||
-        !data ||
-        data.status !== "success" ||
-        !data.question_paper
-      ) {
-        throw new Error(
-          (data && data.message) || "Failed to generate question paper"
-        );
-      }
-
-      // Use the returned question_paper from the API
-      setGeneratedPaperData(data.question_paper);
-      setShowSuccessModal(true);
-      setErrors({});
-
-      // Show success toast
-      setToast({
-        visible: true,
-        message: "Question paper generated successfully",
-        type: "success",
-      });
-      setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
-    } catch (error) {
-      console.error("Generate error:", error);
-
-      let errorMessage = "Failed to generate question paper. Please try again.";
-
-      if (
-        error.name === "TypeError" &&
-        error.message.includes("Failed to fetch")
-      ) {
-        errorMessage =
-          "Unable to connect to the server. Please check if the backend server is running on localhost:8000";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      setErrors({
-        general: errorMessage,
-      });
-
-      // Show error toast
-      setToast({ visible: true, message: errorMessage, type: "error" });
-      setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [
-    validateForm,
-    selectedClass,
-    selectedSubject,
-    selectedExamType,
-    selectedMainTopics,
-    numberOfPapers,
-    selectedHour,
-    selectedMinute,
-    questions,
-    questionTypeInputs,
-  ]);
+    setTempNote(llmNote || "");
+    setShowNoteModal(true);
+  }, [validateForm, llmNote]);
 
   const totalQuestions = useMemo(
     () => questions.reduce((sum, q) => sum + q.numQuestions, 0),
@@ -664,7 +636,7 @@ export default function MinimalQuestionPaperForm() {
           questionTypeSuggestions={questionTypeSuggestions}
           onToggleDropdown={toggleDropdown}
           onToggleUnit={toggleUnit}
-          onToggleTopic={toggleTopic}
+          onToggleTopic={() => {}}
           getSubjectTopics={getSubjectTopics}
           openDropdowns={openDropdowns}
           dropdownRefs={dropdownRefs}
@@ -684,7 +656,7 @@ export default function MinimalQuestionPaperForm() {
           </Button>
 
           <Button
-            onClick={handleGenerate}
+            onClick={handleGenerateClick}
             disabled={isGenerating}
             className={`flex items-center gap-2 ${
               isGenerating ? "cursor-not-allowed" : ""
@@ -713,6 +685,46 @@ export default function MinimalQuestionPaperForm() {
             </Button>
           )}
         </div>
+
+        {/* Note Modal */}
+        <Modal isOpen={showNoteModal} onClose={() => setShowNoteModal(false)}>
+          <ModalHeader className="bg-gradient-to-r from-blue-600 to-purple-600">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                Add note for LLM (optional)
+              </h3>
+              <ModalCloseButton onClose={() => setShowNoteModal(false)} />
+            </div>
+          </ModalHeader>
+          <ModalContent>
+            <div className="space-y-4">
+              <textarea
+                value={tempNote}
+                onChange={(e) => setTempNote(e.target.value)}
+                placeholder="Any specific instructions, style, constraints, or exclusions"
+                className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm border-gray-300 focus:border-transparent min-h-[120px]"
+              />
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowNoteModal(false)}
+                  className="px-4"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowNoteModal(false);
+                    handleGenerate(tempNote);
+                  }}
+                  className="px-4"
+                >
+                  Continue
+                </Button>
+              </div>
+            </div>
+          </ModalContent>
+        </Modal>
 
         {/* Success Modal */}
         {/* <SuccessModal

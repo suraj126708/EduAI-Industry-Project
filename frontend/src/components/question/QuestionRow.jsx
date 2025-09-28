@@ -59,8 +59,23 @@ const QuestionRow = ({
           />
         </div>
 
+        {/* Difficulty */}
+        <div className="col-span-1">
+          <select
+            value={question.difficulty || "medium"}
+            onChange={(e) =>
+              onUpdateQuestion(questionIndex, "difficulty", e.target.value)
+            }
+            className="w-full p-2 border rounded-md min-h-[48px] focus:ring-2 focus:ring-blue-500 text-sm text-left border-gray-300 focus:border-transparent"
+          >
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
         {/* Number of Questions */}
-        <div className="col-span-2">
+        <div className="col-span-1">
           <input
             type="number"
             min="1"

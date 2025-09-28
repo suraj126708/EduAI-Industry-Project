@@ -6,6 +6,7 @@ import {
   getTeacherById,
   updateTeacher,
   getTeacherAssignments,
+  generateQuestionPaper,
 } from "../controllers/teacherController.js";
 import {
   authenticateFirebaseToken,
@@ -349,6 +350,14 @@ router.post(
   teacherIdValidation,
   pdfUpload.single("pdf"),
   teacherUploadBook
+);
+
+// Generate question paper endpoint
+router.post(
+  "/generate-question-paper",
+  authenticateFirebaseToken,
+  authorize(["teacher"]),
+  generateQuestionPaper
 );
 
 export default router;

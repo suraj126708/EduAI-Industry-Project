@@ -168,6 +168,8 @@ export const teacherUploadBook = async (req, res) => {
     const { classId, subject, author, year, schoolId, teacherId, title } =
       req.body;
 
+    console.log(req.body);
+
     if (!req.file) {
       return res.status(400).json({ message: "PDF file is required." });
     }
@@ -470,6 +472,71 @@ export const getTeacherAssignments = async (req, res) => {
         process.env.NODE_ENV === "development"
           ? error.message
           : "Something went wrong",
+    });
+  }
+};
+
+// @desc    Generate question paper with PDF data
+// @route   POST /api/teachers/generate-question-paper
+// @access  Private (Teacher)
+export const generateQuestionPaper = async (req, res) => {
+  try {
+    const { class: classValue, subject, Pdf_name } = req.body;
+
+    console.log("Question paper generation request:", req.body);
+
+    // Validate required fields
+    if (!classValue || !subject || !Pdf_name) {
+      return res.status(400).json({
+        success: false,
+        message: "Class, subject, and PDF name are required fields.",
+      });
+    }
+
+    // Prepare payload for external API
+    const payload = {
+      class: classValue,
+      subject: subject,
+      Pdf_name: Pdf_name,
+    };
+
+    console.log("Sending to external API:", payload);
+
+    // Send to external question generation API
+    const response = await axios.post(
+      "http://127.0.0.1:8000/generate_question_paper/",
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        timeout: 5 * 60 * 1000, // 5 minutes timeout
+        validateStatus: (status) => status >= 200 && status < 500,
+      }
+    );
+
+    console.log("External API response status:", response.status);
+    console.log("External API response data:", response.data);
+
+    if (response.status === 200 && response.data.status === "success") {
+      res.status(200).json({
+        success: true,
+        message: "Question paper generated successfully",
+        data: response.data,
+      });
+    } else {
+      res.status(response.status || 500).json({
+        success: false,
+        message: response.data?.message || "Failed to generate question paper",
+        error: response.data,
+      });
+    }
+  } catch (error) {
+    console.error("Question paper generation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate question paper",
+      error: error.message,
     });
   }
 };
