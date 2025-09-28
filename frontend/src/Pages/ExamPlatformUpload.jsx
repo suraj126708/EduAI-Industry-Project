@@ -361,7 +361,7 @@ const ExamPlatformUpload = () => {
         // Transform classes data
         const cls = assignedClasses.map((c) => ({
           value: c.grade.toString().padStart(2, "0"), // Convert to string with leading zero
-          label: `Class ${c.grade}${c.division ? ` - ${c.division}` : ""}`,
+          label: `${c.grade}`,
           _id: c._id,
           schoolName: c.schoolName,
         }));

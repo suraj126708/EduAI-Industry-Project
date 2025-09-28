@@ -6,9 +6,11 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
+import { auth } from "../firebase/firebase";
 import { useNavigate } from "react-router-dom";
-import { Plus, FileText, AlertCircle } from "lucide-react";
+import { Plus, FileText, AlertCircle, Loader2 } from "lucide-react";
 import questionTypes from "../assets/QuestionType.json";
+import { bookAPI, fetchTeacherProfile } from "../utils/api";
 
 // Import reusable components
 import {
@@ -24,8 +26,8 @@ import {
   ModalCloseButton,
 } from "../components";
 
-const classOptions = ["Class 10"];
-const subjectOptions = ["History", "Geography", "Science"];
+//const classOptions = ["Class 10"];
+//const subjectOptions = ["History", "Geography", "Science"];
 const examTypeOptions = ["Unit Test", "Midterm", "Final"];
 
 const mainTopics = [
@@ -118,6 +120,12 @@ const initialQuestions = [
 
 export default function MinimalQuestionPaperForm() {
   const navigate = useNavigate();
+  //ADD: The missing state variables for your dropdowns, loading, and errors
+  const [classOptions, setClassOptions] = useState([]);
+  const [subjectOptions, setSubjectOptions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedExamType, setSelectedExamType] = useState("");
@@ -175,6 +183,55 @@ export default function MinimalQuestionPaperForm() {
     numberOfPapers,
     questions,
   ]);
+
+  // --- DATA FETCHING LOGIC ---
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      setIsLoading(true);
+      setFetchError(null);
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser || !currentUser.email) {
+          throw new Error("User not authenticated. Please log in.");
+        }
+
+        const profile = await fetchTeacherProfile();
+        const schoolId = profile?.schoolId;
+
+        if (!schoolId) {
+          throw new Error(
+            "Your profile is missing a School ID. Please contact support."
+          );
+        }
+
+        const response = await bookAPI.getTeacherAssignments(
+          schoolId,
+          currentUser.email
+        );
+
+        if (response.data.success) {
+          const { classes, subjects } = response.data.data;
+
+          const formattedClasses = classes.map((c) => c.grade.toString());
+          const formattedSubjects = subjects.map((s) => s.name);
+
+          setClassOptions(formattedClasses);
+          setSubjectOptions(formattedSubjects);
+        } else {
+          throw new Error(
+            response.data.message || "Could not retrieve your assignments."
+          );
+        }
+      } catch (err) {
+        console.error("Error fetching assignments:", err);
+        setFetchError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAssignments();
+  }, []);
 
   const updateQuestion = useCallback((index, key, value) => {
     setQuestions((prev) => {
@@ -551,6 +608,34 @@ export default function MinimalQuestionPaperForm() {
     setGeneratedPaperData(null);
   }, []);
 
+  // --- LOADING AND ERROR UI ---
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <p className="mt-4 text-lg font-semibold text-gray-700">
+          Loading Your Assignments...
+        </p>
+        <p className="text-sm text-gray-500">
+          Please wait while we fetch your assigned classes and subjects.
+        </p>
+      </div>
+    );
+  }
+  if (fetchError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center p-4">
+        <div className="p-8 bg-red-50 border border-red-200 rounded-lg shadow-md">
+          <AlertCircle className="h-10 w-10 text-red-600 mx-auto" />
+          <p className="mt-4 text-lg font-semibold text-red-800">
+            Failed to Load Data
+          </p>
+          <p className="text-sm text-red-700 mt-1">{fetchError}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 pb-32">
       <div className="max-w-6xl mx-auto">
@@ -564,6 +649,7 @@ export default function MinimalQuestionPaperForm() {
             {toast.message}
           </div>
         )}
+
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
@@ -622,8 +708,6 @@ export default function MinimalQuestionPaperForm() {
           onMinuteChange={setSelectedMinute}
         />
 
-        {/* Number of Papers Input */}
-
         {/* Questions Table */}
         <QuestionsTable
           questions={questions}
@@ -645,7 +729,7 @@ export default function MinimalQuestionPaperForm() {
         />
 
         {/* Action Buttons */}
-        <div className="flex gap-4 justify-center mb-8">
+        <div className="flex gap-4 justify-center mt-8">
           <Button
             onClick={addQuestion}
             variant="secondary"
@@ -675,7 +759,6 @@ export default function MinimalQuestionPaperForm() {
             )}
           </Button>
 
-          {/* View Paper button shown when a generated paper exists */}
           {generatedPaperData && (
             <Button
               onClick={handleViewPaper}
@@ -727,14 +810,14 @@ export default function MinimalQuestionPaperForm() {
         </Modal>
 
         {/* Success Modal */}
-        {/* <SuccessModal
+        <SuccessModal
           isOpen={showSuccessModal}
           onClose={handleCloseModal}
           onViewPaper={handleViewPaper}
           generatedPaperData={generatedPaperData}
           totalQuestions={totalQuestions}
           totalMarks={totalMarks}
-        /> */}
+        />
       </div>
     </div>
   );
