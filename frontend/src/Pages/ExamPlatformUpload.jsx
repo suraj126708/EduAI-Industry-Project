@@ -361,7 +361,7 @@ const ExamPlatformUpload = () => {
         // Transform classes data
         const cls = assignedClasses.map((c) => ({
           value: c.grade.toString().padStart(2, "0"), // Convert to string with leading zero
-          label: `Class ${c.grade}${c.division ? ` - ${c.division}` : ""}`,
+          label: `${c.grade}`,
           _id: c._id,
           schoolName: c.schoolName,
         }));
@@ -654,7 +654,9 @@ const ExamPlatformUpload = () => {
 
       const response = await bookAPI.getBooks({
         classId: selectedClass?._id,
-        subject: selectedSubject?.value || fetchSubject,
+        subject: selectedSubject?.label || fetchSubject,
+        schoolId: schoolId,
+        _cacheBust: new Date().getTime(),
       });
       setBooks(response.data || []);
     } catch (error) {
