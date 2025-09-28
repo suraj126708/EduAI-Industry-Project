@@ -90,11 +90,8 @@ const testRecords = [
 const students = [
   { name: "Alex Johnson", rollNumber: "3", class: "10", division: "A" },
   { name: "Sara Lee", rollNumber: "5", class: "10", division: "A" },
-  { name: "Rahul Mehta", rollNumber: "8", class: "10", division: "A" },
   { name: "Priya Singh", rollNumber: "7", class: "10", division: "B" },
-  { name: "Rohan Gupta", rollNumber: "11", class: "10", division: "B" },
   { name: "Amit Patel", rollNumber: "13", class: "9", division: "A" },
-  { name: "Neha Sharma", rollNumber: "14", class: "9", division: "A" },
 ];
 
 const classOptions = ["9", "10"];
@@ -215,85 +212,213 @@ const subjectWiseReports = {
   },
 };
 
-const getDummyReportData = (student, selectedClass, selectedDivision, selectedTestType) => ({
-  student: {
-    name: student.name,
-    rollNumber: student.rollNumber,
-    class: selectedClass,
-    division: selectedDivision,
-    examDate: "2025-09-22",
-  },
-  exam: {
-    subject: "Science",
-    title: selectedTestType,
-    duration: "2 hr",
-    totalMarks: 50,
-  },
-  performance: {
-    obtainedMarks: 38,
-    percentage: 76,
-    grade: "B+",
-    rank: 5,
-    totalStudents: 30,
-  },
-  questionAnalysis: [
-    {
-      qNo: 1,
-      topic: "Living Things",
-      obtainedMarks: 2,
-      maxMarks: 3,
-      status: "good",
-      userAnswer: "Plants make their own food.",
-      correctAnswer: "Plants are autotrophs.",
-      feedback: "Good understanding, but use scientific terms.",
+const getDummyReportData = (student, selectedClass, selectedDivision, selectedTestType, selectedSubject) => {
+  if (selectedSubject === "Science") {
+    return {
+      student: {
+        name: student.name,
+        rollNumber: student.rollNumber,
+        class: selectedClass,
+        division: selectedDivision,
+        examDate: "2025-09-22",
+      },
+      exam: {
+        subject: "Science",
+        title: selectedTestType,
+        duration: "2 hr",
+        totalMarks: 50,
+      },
+      performance: {
+        obtainedMarks: 45,
+        percentage: 90,
+        grade: "A+",
+        rank: 2,
+        totalStudents: 30,
+      },
+      questionAnalysis: [
+        {
+          qNo: 1,
+          topic: "Living Things",
+          aim: "Test understanding of autotrophic nutrition.",
+          userAnswer: "Plants make their own food.",
+          correctAnswer: "Plants are autotrophs.",
+          obtainedMarks: 2,
+          maxMarks: 3,
+          status: "good",
+          feedback: "Good understanding, but use scientific terms.",
+          insight: "Student knows the concept but should use precise terminology. Indicates a practical grasp but needs academic polish."
+        },
+        {
+          qNo: 2,
+          topic: "Materials and Substances",
+          aim: "Check knowledge of boiling points.",
+          userAnswer: "Water boils at 90°C.",
+          correctAnswer: "Water boils at 100°C.",
+          obtainedMarks: 1,
+          maxMarks: 2,
+          status: "needs_work",
+          feedback: "Revise boiling points of substances.",
+          insight: "Student confused the boiling point, suggesting a need for factual revision. Shows gaps in memory for key facts."
+        },
+        {
+          qNo: 3,
+          topic: "Natural Phenomena",
+          aim: "Assess understanding of lightning formation.",
+          userAnswer: "Lightning is caused by electric discharge.",
+          correctAnswer: "Lightning is caused by electric discharge.",
+          obtainedMarks: 2,
+          maxMarks: 2,
+          status: "excellent",
+          feedback: "Excellent answer.",
+          insight: "Student has clear conceptual understanding and can recall facts accurately."
+        },
+        {
+          qNo: 4,
+          topic: "Human Body",
+          aim: "Test knowledge of respiratory organs.",
+          userAnswer: "Lungs help us breathe.",
+          correctAnswer: "Lungs are the main respiratory organs in humans.",
+          obtainedMarks: 2,
+          maxMarks: 2,
+          status: "good",
+          feedback: "Correct, but could elaborate more.",
+          insight: "Student understands the basics but should provide more detailed explanations."
+        },
+        {
+          qNo: 5,
+          topic: "Ecology",
+          aim: "Evaluate understanding of food chains.",
+          userAnswer: "Plants are eaten by animals.",
+          correctAnswer: "Plants are producers, eaten by primary consumers.",
+          obtainedMarks: 1,
+          maxMarks: 2,
+          status: "needs_work",
+          feedback: "Revise the structure of food chains.",
+          insight: "Student has a general idea but lacks clarity on ecological terms."
+        },
+      ],
+      topicAnalysis: [
+        {
+          topic: "Living Things",
+          score: "8/10",
+          strength: "moderate",
+          description: "Understands basic concepts but needs to use scientific language more consistently.",
+        },
+        {
+          topic: "Materials and Substances",
+          score: "6/10",
+          strength: "weak",
+          description: "Needs to memorize key facts and revise properties of substances.",
+        },
+        {
+          topic: "Natural Phenomena",
+          score: "10/10",
+          strength: "strong",
+          description: "Excellent conceptual clarity and recall.",
+        },
+        {
+          topic: "Human Body",
+          score: "7/10",
+          strength: "moderate",
+          description: "Knows main functions but should elaborate answers.",
+        },
+        {
+          topic: "Ecology",
+          score: "5/10",
+          strength: "weak",
+          description: "Basic understanding present, but needs to learn terminology and structure.",
+        },
+      ],
+      recommendations: [
+        "Revise factual information, especially boiling points and food chain structure.",
+        "Practice using scientific terms in answers.",
+        "Attempt more descriptive answers for full marks.",
+        "Review ecology concepts and terminology."
+      ],
+    };
+  }
+  // Add similar blocks for Math and English...
+  // Fallback (old data)
+  return {
+    student: {
+      name: student.name,
+      rollNumber: student.rollNumber,
+      class: selectedClass,
+      division: selectedDivision,
+      examDate: "2025-09-22",
     },
-    {
-      qNo: 2,
-      topic: "Materials and Substances",
-      obtainedMarks: 1,
-      maxMarks: 2,
-      status: "needs_work",
-      userAnswer: "Water boils at 90°C.",
-      correctAnswer: "Water boils at 100°C.",
-      feedback: "Revise boiling points of substances.",
+    exam: {
+      subject: "Science",
+      title: selectedTestType,
+      duration: "2 hr",
+      totalMarks: 50,
     },
-    {
-      qNo: 3,
-      topic: "Natural Phenomena",
-      obtainedMarks: 2,
-      maxMarks: 2,
-      status: "excellent",
-      userAnswer: "Lightning is caused by electric discharge.",
-      correctAnswer: "Lightning is caused by electric discharge.",
-      feedback: "Excellent answer.",
+    performance: {
+      obtainedMarks: 38,
+      percentage: 76,
+      grade: "B+",
+      rank: 5,
+      totalStudents: 30,
     },
-  ],
-  topicAnalysis: [
-    {
-      topic: "Living Things",
-      score: "7/10",
-      strength: "moderate",
-      description: "Basic concepts are clear. Practice scientific terminology for better scores.",
-    },
-    {
-      topic: "Materials and Substances",
-      score: "5/10",
-      strength: "weak",
-      description: "Needs revision of key facts and properties.",
-    },
-    {
-      topic: "Natural Phenomena",
-      score: "9/10",
-      strength: "strong",
-      description: "Excellent grasp of concepts.",
-    },
-  ],
-  recommendations: [
-    "Revise boiling points and physical properties of substances.",
-    "Use more scientific terms in answers.",
-    "Continue practicing Natural Phenomena topics.",
-  ],
-});
+    questionAnalysis: [
+      {
+        qNo: 1,
+        topic: "Living Things",
+        obtainedMarks: 2,
+        maxMarks: 3,
+        status: "good",
+        userAnswer: "Plants make their own food.",
+        correctAnswer: "Plants are autotrophs.",
+        feedback: "Good understanding, but use scientific terms.",
+      },
+      {
+        qNo: 2,
+        topic: "Materials and Substances",
+        obtainedMarks: 1,
+        maxMarks: 2,
+        status: "needs_work",
+        userAnswer: "Water boils at 90°C.",
+        correctAnswer: "Water boils at 100°C.",
+        feedback: "Revise boiling points of substances.",
+      },
+      {
+        qNo: 3,
+        topic: "Natural Phenomena",
+        obtainedMarks: 2,
+        maxMarks: 2,
+        status: "excellent",
+        userAnswer: "Lightning is caused by electric discharge.",
+        correctAnswer: "Lightning is caused by electric discharge.",
+        feedback: "Excellent answer.",
+      },
+    ],
+    topicAnalysis: [
+      {
+        topic: "Living Things",
+        score: "7/10",
+        strength: "moderate",
+        description: "Basic concepts are clear. Practice scientific terminology for better scores.",
+      },
+      {
+        topic: "Materials and Substances",
+        score: "5/10",
+        strength: "weak",
+        description: "Needs revision of key facts and properties.",
+      },
+      {
+        topic: "Natural Phenomena",
+        score: "9/10",
+        strength: "strong",
+        description: "Excellent grasp of concepts.",
+      },
+    ],
+    recommendations: [
+      "Revise boiling points and physical properties of substances.",
+      "Use more scientific terms in answers.",
+      "Continue practicing Natural Phenomena topics.",
+    ],
+  };
+};
 
 // Helper functions for styling
 const getStatusColor = (status) => {
@@ -520,22 +645,35 @@ export default function ExamReport() {
   // Report page
   if (selectedReportType === "Subject Wise" && selectedSubject) {
     const report = subjectWiseReports[selectedSubject];
+    const dummy = getDummyReportData(selectedStudent, selectedStudent.class, selectedStudent.division, selectedReportType);
+
     return (
       <div className="min-h-screen bg-gray-50 p-8 print:p-4 print:bg-white">
         <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg print:shadow-none print:rounded-none">
+          {/* 1. Paper Details */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 rounded-t-xl print:rounded-none">
             <h1 className="text-2xl font-bold mb-2">Subject Wise Report</h1>
             <div className="mt-2">
               <span className="font-medium">Year:</span> {year} <br />
-              <span className="font-medium">Student:</span> {selectedStudent.name} | 
-              <span className="font-medium">Class:</span> {selectedStudent.class}-{selectedStudent.division} | 
-              <span className="font-medium">Roll No:</span> {selectedStudent.rollNumber}
-            </div>
-            <div className="mt-2">
-              <span className="font-medium">Subject:</span> {selectedSubject}
+              <span className="font-medium">Subject:</span> {selectedSubject} <br />
+              <span className="font-medium">Exam:</span> {dummy.exam.title} <br />
+              <span className="font-medium">Date:</span> {dummy.student.examDate} <br />
+              <span className="font-medium">Duration:</span> {dummy.exam.duration} <br />
+              <span className="font-medium">Total Marks:</span> {dummy.exam.totalMarks}
             </div>
           </div>
-          <div className="p-8">
+          {/* 2. Student Details */}
+          <div className="p-8 pb-2">
+            <h2 className="text-lg font-bold mb-2 text-indigo-700">Student Details</h2>
+            <div className="mb-4 text-gray-700">
+              <div><b>Name:</b> {selectedStudent.name}</div>
+              <div><b>Class:</b> {selectedStudent.class}-{selectedStudent.division}</div>
+              <div><b>Roll No:</b> {selectedStudent.rollNumber}</div>
+            </div>
+          </div>
+          {/* 3. Performance Summary */}
+          <div className="px-8">
+            <h2 className="text-lg font-bold mb-2 text-indigo-700">Performance Summary</h2>
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
                 <p className="text-blue-600 font-medium">Marks</p>
@@ -549,34 +687,65 @@ export default function ExamReport() {
             <div className="mb-6">
               <p className="font-semibold text-gray-700">Grade: <span className="text-lg text-indigo-700 font-bold">{report.grade}</span></p>
             </div>
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-2">Strengths</h3>
-              <ul className="list-disc ml-6 text-green-700">
-                {report.strengths.map((s, idx) => (
-                  <li key={idx}>{s}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-2">Weaknesses</h3>
-              <ul className="list-disc ml-6 text-red-700">
-                {report.weaknesses.map((w, idx) => (
-                  <li key={idx}>{w}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Recommendations</h3>
-              <ul className="list-disc ml-6 text-gray-700">
-                {report.recommendations.map((rec, idx) => (
-                  <li key={idx}>{rec}</li>
-                ))}
-              </ul>
+          </div>
+          {/* 4. Insights */}
+          <div className="px-8 mb-6">
+            <h2 className="text-lg font-bold mb-2 text-indigo-700">Insights</h2>
+            <div className="text-gray-700">
+              <p>
+                <b>Summary:</b> The student has demonstrated a solid grasp of <b>{selectedSubject}</b> concepts, with notable strengths in {report.strengths.join(", ")}. However, attention is needed in {report.weaknesses.join(", ")}. The following analysis provides a breakdown of performance and actionable feedback.
+              </p>
             </div>
           </div>
-          {/* Topic Wise Analysis */}
-          <div className="mt-8">
-            <h3 className="text-lg font-bold mb-4 text-indigo-700">Topic Wise Analysis</h3>
+          {/* 5. Question-wise Analysis */}
+        <div className="px-8 mb-6">
+          <h2 className="text-lg font-bold mb-2 text-indigo-700">Question-wise Analysis</h2>
+          <div className="space-y-6">
+            {getDummyReportData(selectedStudent, selectedStudent.class, selectedStudent.division, selectedReportType, selectedSubject).questionAnalysis.map((q, idx) => (
+              <div
+                key={idx}
+                className={`rounded-xl p-4 border ${getStatusColor(q.status)} shadow-sm`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-bold text-indigo-700">Q{q.qNo}:</span>
+                  <span className="font-semibold">{q.topic}</span>
+                  <span className="ml-2">{getStatusIcon(q.status)}</span>
+                </div>
+                <div className="mb-1">
+                  <span className="font-semibold text-gray-700">What this question aims:</span>
+                  <span className="ml-2 text-gray-900">{q.aim}</span>
+                </div>
+                <div className="mb-1">
+                  <span className="font-semibold text-gray-700">Your Answer:</span>
+                  <span className="ml-2 text-gray-900">{q.userAnswer}</span>
+                </div>
+                <div className="mb-1">
+                  <span className="font-semibold text-gray-700">Correct Answer:</span>
+                  <span className="ml-2 text-green-700">{q.correctAnswer}</span>
+                </div>
+                <div className="mb-1">
+                  <span className="font-semibold text-gray-700">Marks Awarded:</span>
+                  <span className="ml-2">{q.obtainedMarks} / {q.maxMarks}</span>
+                </div>
+                <div className="mt-2 text-sm text-gray-600">
+                  <span className="font-semibold">Feedback:</span> {q.feedback}
+                </div>
+                <div className="mt-2 text-sm text-indigo-700">
+                  <span className="font-semibold">What we learn:</span> {q.insight}
+                </div>
+                {q.status === "needs_work" && (
+                  <div className="mt-2 text-red-700 text-xs">
+                    <AlertCircle className="inline w-4 h-4 mr-1" />
+                    Common mistake: Review this topic for better understanding.
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+          {/* 6. Topic-wise Analysis */}
+          <div className="px-8 mb-6">
+            <h2 className="text-lg font-bold mb-2 text-indigo-700">Topic-wise Analysis</h2>
             <div className="space-y-4">
               {report.topicAnalysis.map((topic, idx) => (
                 <div
@@ -601,9 +770,63 @@ export default function ExamReport() {
                     <span className="font-semibold">Score:</span> {topic.score}
                   </div>
                   <div className="mt-1 text-sm text-gray-600">{topic.description}</div>
+                  {topic.strength === "weak" && (
+                    <div className="mt-2 text-red-700 text-xs">
+                      Needs focused revision and more practice questions on this topic.
+                    </div>
+                  )}
+                  {topic.strength === "moderate" && (
+                    <div className="mt-2 text-blue-700 text-xs">
+                      Understanding is good, but can be improved with regular study.
+                    </div>
+                  )}
+                  {topic.strength === "strong" && (
+                    <div className="mt-2 text-green-700 text-xs">
+                      Excellent performance. Keep up the good work!
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+          </div>
+          {/* 7. Strengths */}
+          <div className="px-8 mb-4">
+            <h2 className="text-lg font-bold mb-2 text-green-700">Strengths</h2>
+            <ul className="list-disc ml-6 text-green-700">
+              {report.strengths.map((s, idx) => (
+                <li key={idx}>{s}</li>
+              ))}
+            </ul>
+          </div>
+          {/* 8. Weaknesses */}
+          <div className="px-8 mb-4">
+            <h2 className="text-lg font-bold mb-2 text-red-700">Weaknesses</h2>
+            <ul className="list-disc ml-6 text-red-700">
+              {report.weaknesses.map((w, idx) => (
+                <li key={idx}>{w}</li>
+              ))}
+            </ul>
+          </div>
+          {/* 9. Student’s Knowledge & Focus Areas */}
+          <div className="px-8 mb-4">
+            <h2 className="text-lg font-bold mb-2 text-indigo-700">Knowledge & Focus Areas</h2>
+            <div className="text-gray-700">
+              <p>
+                The student has a good foundational understanding of the subject. To further improve, focus should be placed on weak topics and consistent practice of moderate areas. Mastery of strong topics should be maintained by periodic revision. Applying concepts to real-life examples and attempting higher-order questions will help deepen understanding.
+              </p>
+            </div>
+          </div>
+          {/* 10. Recommendations */}
+          <div className="px-8 mb-8">
+            <h2 className="text-lg font-bold mb-2 text-indigo-700">Recommendations</h2>
+            <ul className="list-disc ml-6 text-gray-700">
+              {report.recommendations.map((rec, idx) => (
+                <li key={idx}>{rec}</li>
+              ))}
+              <li>Attempt additional practice papers and quizzes.</li>
+              <li>Seek clarification from teachers on confusing topics.</li>
+              <li>Participate in group discussions to enhance conceptual clarity.</li>
+            </ul>
           </div>
           <div className="bg-gray-100 p-6 rounded-b-xl print:rounded-none text-center text-sm text-gray-600">
             <button
