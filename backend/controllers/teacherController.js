@@ -312,12 +312,6 @@ export const teacherUploadBook = async (req, res) => {
 export const getBooksByClassAndSubject = async (req, res) => {
   try {
     const { classId, subject } = req.query;
-    if (!classId && !subject) {
-      return res.status(400).json({
-        success: false,
-        message: "At least one of classId or subject must be provided",
-      });
-    }
 
     const query = {};
     if (classId) query.classId = classId;
@@ -331,16 +325,16 @@ export const getBooksByClassAndSubject = async (req, res) => {
       .populate("classId", "grade")
       .sort({ createdAt: -1 });
 
-    if (!books.length) {
+    /*if (!books.length) {
       return res.status(200).json({
         success: false,
         message: "No books found",
       });
-    }
+    }*/
 
     res.status(200).json({
       success: true,
-      data: books,
+      data: books || [],
     });
   } catch (error) {
     console.error("Get books error:", error);
