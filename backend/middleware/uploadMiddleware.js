@@ -1,8 +1,20 @@
+/**
+ * Upload Middleware
+ *
+ * Handles file uploads for PDFs, Excel files, and other documents
+ * with proper validation and storage configuration.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Configure multer storage to save files in 'uploads' folder with original names
+/**
+ * Configure multer storage to save files in 'uploads' folder with original names
+ */
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = "uploads";
@@ -22,6 +34,12 @@ const storage = multer.diskStorage({
   },
 });
 
+/**
+ * File filter for general uploads (Excel, CSV, PDF)
+ * @param {Object} req - Express request object
+ * @param {Object} file - Multer file object
+ * @param {Function} cb - Callback function
+ */
 const fileFilter = (req, file, cb) => {
   // Accept Excel, CSV, and PDF files
   if (
@@ -48,7 +66,12 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // Limit 5MB
 });
 
-// PDF-specific upload middleware with larger file size limit
+/**
+ * PDF-specific file filter with larger file size limit
+ * @param {Object} req - Express request object
+ * @param {Object} file - Multer file object
+ * @param {Function} cb - Callback function
+ */
 const pdfFileFilter = (req, file, cb) => {
   // Accept only PDF files
   if (file.mimetype === "application/pdf") {

@@ -1,4 +1,13 @@
-// Enhanced routes with RBAC - routes/adminRoutes.js
+/**
+ * Admin Routes
+ *
+ * Handles all administrative endpoints including user management,
+ * system statistics, school management, and bulk operations.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
 import express from "express";
 import { body, param } from "express-validator";
 import {

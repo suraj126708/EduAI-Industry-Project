@@ -1,4 +1,13 @@
-// routes/teacherRoutes.js
+/**
+ * Teacher Routes
+ *
+ * Handles all teacher-related endpoints including teacher management,
+ * book uploads, question paper generation, and teacher assignments.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
 import express from "express";
 import { body, param } from "express-validator";
 import {
@@ -250,6 +259,35 @@ router.get(
   getTeacherAssignments
 );
 
+/**
+ * @swagger
+ * /api/teachers/fetch-books-metadata:
+ *   get:
+ *     summary: Get books metadata by class and subject
+ *     tags: [Teachers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: classId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: subjectId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: schoolId
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Books metadata retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Teacher access required
+ */
 router.get(
   "/fetch-books-metadata",
   authenticateFirebaseToken,
@@ -257,10 +295,45 @@ router.get(
   getBooksByClassAndSubject
 );
 
+/**
+ * @swagger
+ * /api/teachers/chapters:
+ *   get:
+ *     summary: Get chapters by subject and class
+ *     tags: [Teachers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: subjectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: classId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: schoolId
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Chapters retrieved successfully
+ *       400:
+ *         description: Bad request - missing required parameters
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Teacher or Admin access required
+ *       404:
+ *         description: No chapters found
+ */
 router.get(
   "/chapters",
   authenticateFirebaseToken,
-  authorize("teacher"),
+  authorize("teacher", "admin"),
   getChaptersBySubjectAndClass
 );
 
@@ -351,6 +424,61 @@ router.put(
   updateTeacher
 );
 
+/**
+ * @swagger
+ * /api/teachers/upload-book:
+ *   post:
+ *     summary: Upload a book PDF
+ *     tags: [Teachers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pdf
+ *               - title
+ *               - author
+ *               - classId
+ *               - subjectId
+ *               - schoolId
+ *             properties:
+ *               pdf:
+ *                 type: string
+ *                 format: binary
+ *               title:
+ *                 type: string
+ *               author:
+ *                 type: string
+ *               classId:
+ *                 type: string
+ *               subjectId:
+ *                 type: string
+ *               schoolId:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Book uploaded successfully
+ *       400:
+ *         description: Bad request - validation error
+ *       401:
+ *         description: Unauthorized
+ *       413:
+ *         description: File too large
+ *       415:
+ *         description: Unsupported media type
+ */
 /*----------- Teachers Routes --------------- */
 router.post(
   "/upload-book",
@@ -360,6 +488,50 @@ router.post(
   teacherUploadBook
 );
 
+/**
+ * @swagger
+ * /api/teachers/generate-question-paper:
+ *   post:
+ *     summary: Generate question paper
+ *     tags: [Teachers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - classId
+ *               - subjectId
+ *               - schoolId
+ *               - questions
+ *             properties:
+ *               classId:
+ *                 type: string
+ *               subjectId:
+ *                 type: string
+ *               schoolId:
+ *                 type: string
+ *               questions:
+ *                 type: array
+ *               title:
+ *                 type: string
+ *               duration:
+ *                 type: number
+ *               totalMarks:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Question paper generated successfully
+ *       400:
+ *         description: Bad request - validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Teacher access required
+ */
 // Generate question paper endpoint
 router.post(
   "/generate-question-paper",

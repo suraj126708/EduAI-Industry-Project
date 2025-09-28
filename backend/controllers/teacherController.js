@@ -1,4 +1,14 @@
-import User from "../models/UserSchema.js"; // Changed from Teacher to User
+/**
+ * Teacher Controller
+ *
+ * Handles teacher management, book uploads, question paper generation,
+ * and teacher assignments for the Teacher Management System.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
+import User from "../models/UserSchema.js";
 import { validationResult } from "express-validator";
 import path from "path";
 import fs from "fs";
@@ -9,9 +19,14 @@ import Class from "../models/Class.js";
 import Subject from "../models/Subject.js";
 import TeacherClassSubject from "../models/TeacherClassSubject.js";
 
-// @desc    Get all teachers (Admin only)
-// @route   GET /api/teachers
-// @access  Private (Admin)
+/**
+ * Get all teachers (Admin only)
+ * @desc    Retrieve all teachers with pagination and filtering
+ * @route   GET /api/teachers
+ * @access  Private (Admin)
+ * @param   {Object} req - Express request object
+ * @param   {Object} res - Express response object
+ */
 export const getAllTeachers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -51,7 +66,7 @@ export const getAllTeachers = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get all teachers error:", error);
+    console.error("Teacher Error - Get all teachers:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve teachers",
@@ -86,7 +101,7 @@ export const getTeacherById = async (req, res) => {
       data: { teacher },
     });
   } catch (error) {
-    console.error("Get teacher by ID error:", error);
+    console.error("Teacher Error - Get teacher by ID:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve teacher",
@@ -149,7 +164,7 @@ export const updateTeacher = async (req, res) => {
       data: { teacher },
     });
   } catch (error) {
-    console.error("Update teacher error:", error);
+    console.error("Teacher Error - Update teacher:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to update teacher",
@@ -176,6 +191,7 @@ export const getChaptersBySubjectAndClass = async (req, res) => {
 
     // Find the class document to get the ObjectId
     const classDoc = await Class.findOne({ grade: classId });
+
     if (!classDoc) {
       return res.status(404).json({
         success: false,
@@ -234,7 +250,7 @@ export const getChaptersBySubjectAndClass = async (req, res) => {
       chapters: allChapters,
     });
   } catch (error) {
-    console.error("Get chapters error:", error);
+    console.error("Teacher Error - Get chapters:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to fetch chapters",
@@ -247,8 +263,6 @@ export const teacherUploadBook = async (req, res) => {
   try {
     const { classId, subject, author, year, schoolId, teacherId, title } =
       req.body;
-
-    console.log(req.body);
 
     if (!req.file) {
       return res.status(400).json({ message: "PDF file is required." });
@@ -298,12 +312,11 @@ export const teacherUploadBook = async (req, res) => {
     });
 
     if (duplicateBook) {
-      // --- FIX: This block now correctly deletes the orphaned file ---
+      // Clean up orphaned file
       try {
         await fs.promises.unlink(req.file.path);
-        console.log(`Deleted orphaned duplicate file: ${req.file.path}`);
       } catch (err) {
-        console.error(`Error deleting orphaned file ${req.file.path}:`, err);
+        console.error("Error deleting orphaned file:", err.message);
       }
       return res.status(409).json({
         success: false,
@@ -330,10 +343,23 @@ export const teacherUploadBook = async (req, res) => {
       const sendToProcessor = async (fieldName) => {
         const fileStream = fs.createReadStream(req.file.path);
         const form = new FormData();
+
+        // Prepare subject data
+        const subjectData = {
+          class: classId,
+          subject: subject,
+          Pdf_name: `${title}_${classId}_${subject}.pdf`,
+        };
+
+        // Add the subject data as JSON string
+        form.append("subject_data", JSON.stringify(subjectData));
+
+        // Add the file
         form.append(fieldName, fileStream, {
           filename: path.basename(req.file.path),
           contentType: "application/pdf",
         });
+
         const response = await axios.post(
           "http://127.0.0.1:8000/process_pdf/",
           form,
@@ -380,14 +406,13 @@ export const teacherUploadBook = async (req, res) => {
       try {
         await fs.promises.access(req.file.path);
         await fs.promises.unlink(req.file.path);
-        console.log(`Cleaned up file due to error: ${req.file.path}`);
       } catch (cleanupErr) {
         if (cleanupErr.code !== "ENOENT") {
-          console.error(`Error during file cleanup:`, cleanupErr);
+          console.error("Error during file cleanup:", cleanupErr.message);
         }
       }
     }
-    console.error("Book upload error:", error);
+    console.error("Teacher Error - Book upload:", error.message);
     res.status(500).json({
       message: "Failed to upload book.",
       error: error.message,
@@ -424,7 +449,7 @@ export const getBooksByClassAndSubject = async (req, res) => {
       data: books || [],
     });
   } catch (error) {
-    console.error("Get books error:", error);
+    console.error("Teacher Error - Get books:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve books",
@@ -549,7 +574,7 @@ export const getTeacherAssignments = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get teacher assignments error:", error);
+    console.error("Teacher Error - Get teacher assignments:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve teacher assignments",
@@ -568,8 +593,6 @@ export const generateQuestionPaper = async (req, res) => {
   try {
     const { class: classValue, subject, Pdf_name } = req.body;
 
-    console.log("Question paper generation request:", req.body);
-
     // Validate required fields
     if (!classValue || !subject || !Pdf_name) {
       return res.status(400).json({
@@ -585,8 +608,6 @@ export const generateQuestionPaper = async (req, res) => {
       Pdf_name: Pdf_name,
     };
 
-    console.log("Sending to external API:", payload);
-
     // Send to external question generation API
     const response = await axios.post(
       "http://127.0.0.1:8000/generate_question_paper/",
@@ -599,9 +620,6 @@ export const generateQuestionPaper = async (req, res) => {
         validateStatus: (status) => status >= 200 && status < 500,
       }
     );
-
-    console.log("External API response status:", response.status);
-    console.log("External API response data:", response.data);
 
     if (response.status === 200 && response.data.status === "success") {
       res.status(200).json({
@@ -617,7 +635,7 @@ export const generateQuestionPaper = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Question paper generation error:", error);
+    console.error("Teacher Error - Question paper generation:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to generate question paper",

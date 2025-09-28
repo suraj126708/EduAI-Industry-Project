@@ -1,6 +1,18 @@
-// middlewares/errorMiddleware.js
+/**
+ * Error Middleware
+ *
+ * Handles global error processing, custom error classes,
+ * and standardized error responses for the Teacher Management System.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
 
-// Custom Error class
+/**
+ * Custom Error class for application-specific errors
+ * @param {string} message - Error message
+ * @param {number} statusCode - HTTP status code
+ */
 export class AppError extends Error {
   constructor(message, statusCode) {
     super(message);
@@ -12,17 +24,21 @@ export class AppError extends Error {
   }
 }
 
-// Error handling middleware
+/**
+ * Global error handling middleware
+ * @param {Error} err - Error object
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
+ */
 export const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  console.error("🚨 Error Details:", {
+  console.error("Error Details:", {
     message: err.message,
-    stack: err.stack,
     url: req.originalUrl,
     method: req.method,
-    body: req.body,
     user: req.user?.email || "Anonymous",
   });
 
@@ -98,12 +114,21 @@ export const errorHandler = (err, req, res, next) => {
   });
 };
 
-// Async error handler wrapper
+/**
+ * Async error handler wrapper
+ * @param {Function} fn - Async function to wrap
+ * @returns {Function} Wrapped function with error handling
+ */
 export const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// 404 handler
+/**
+ * 404 handler for undefined routes
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
+ */
 export const notFound = (req, res, next) => {
   const error = new AppError(`Route ${req.originalUrl} not found`, 404);
   next(error);

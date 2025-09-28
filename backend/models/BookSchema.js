@@ -154,11 +154,14 @@ BookSchema.statics.findPendingBooks = function () {
 
 BookSchema.statics.getChaptersBySubjectAndClass = function (subject, classId) {
   return this.find({
-    subject: { $regex: subject, $options: "i" },
+    $or: [
+      { subject: { $regex: subject, $options: "i" } },
+      { title: { $regex: subject, $options: "i" } },
+    ],
     classId: classId,
     processedStatus: "processed",
     chapters: { $exists: true, $not: { $size: 0 } },
-  }).select("chapters title author");
+  }).select("chapters title author subject");
 };
 
 // Transform output

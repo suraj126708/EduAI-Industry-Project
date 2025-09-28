@@ -1,7 +1,22 @@
+/**
+ * Authentication Middleware
+ *
+ * Handles Firebase token verification, user authentication,
+ * role-based authorization, and permission checking for the Teacher Management System.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
 import admin from "../config/firebase.js";
 import User from "../models/UserSchema.js";
 
-// Middleware to verify Firebase ID token and attach user to request
+/**
+ * Middleware to verify Firebase ID token and attach user to request
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
+ */
 export const authenticateFirebaseToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -48,10 +63,6 @@ export const authenticateFirebaseToken = async (req, res, next) => {
       };
       user = new User(userData);
       await user.save();
-
-      console.log(
-        `✨ New user created: ${user.email} (${user.firebaseUid}) with role: ${user.role}`
-      );
     } else {
       user.lastLoginAt = new Date();
 
@@ -75,7 +86,7 @@ export const authenticateFirebaseToken = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error("🔒 Auth middleware error:", error.message);
+    console.error("Auth Middleware Error:", error.message);
 
     if (error.code === "auth/id-token-expired") {
       return res.status(401).json({
@@ -130,9 +141,6 @@ export const authorize = (...allowedRoles) => {
       });
     }
 
-    console.log(
-      `✅ User ${req.user.email} authorized with role: ${req.user.role}`
-    );
     next();
   };
 };
@@ -182,11 +190,6 @@ export const checkPermissions = (...permissions) => {
       });
     }
 
-    console.log(
-      `✅ User ${
-        req.user.email
-      } authorized with permissions: ${permissions.join(", ")}`
-    );
     next();
   };
 };
@@ -328,7 +331,7 @@ export const optionalAuth = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.warn("⚠️ Optional auth failed:", error.message);
+    console.warn("Optional auth failed:", error.message);
     next();
   }
 };

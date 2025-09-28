@@ -1,4 +1,14 @@
-// server.js
+/**
+ * Teacher Management System Backend Server
+ *
+ * This is the main server file for the Teacher Management System API.
+ * It handles authentication, teacher management, question paper generation,
+ * and administrative functions.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -35,7 +45,7 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-// CORS middleware
+// CORS middleware configuration
 const corsOptions = {
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
   credentials: true,
@@ -50,7 +60,7 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Logging middleware
+// Request logging middleware (development only)
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
@@ -132,16 +142,15 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server started on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-  console.log("\n======================================\n");
 });
 
-// Graceful shutdown
+// Graceful shutdown handlers
 process.on("SIGINT", () => {
-  console.log("\n🛑 Received SIGINT. Graceful shutdown...");
+  console.log("🛑 Received SIGINT. Graceful shutdown...");
   mongoose.connection.close(() => {
     console.log("📊 MongoDB connection closed.");
     process.exit(0);
@@ -149,7 +158,7 @@ process.on("SIGINT", () => {
 });
 
 process.on("SIGTERM", () => {
-  console.log("\n🛑 Received SIGTERM. Graceful shutdown...");
+  console.log("🛑 Received SIGTERM. Graceful shutdown...");
   mongoose.connection.close(() => {
     console.log("📊 MongoDB connection closed.");
     process.exit(0);

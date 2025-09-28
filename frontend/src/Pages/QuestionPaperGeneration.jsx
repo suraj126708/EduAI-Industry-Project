@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus, FileText, AlertCircle, Loader2 } from "lucide-react";
 import questionTypes from "../assets/QuestionType.json";
 import { bookAPI, fetchTeacherProfile } from "../utils/api";
+import api from "../utils/api";
 
 // Import reusable components
 import {
@@ -32,80 +33,81 @@ const examTypeOptions = ["Unit Test", "Midterm", "Final"];
 
 // Default topics - will be replaced by dynamic data from API
 const defaultMainTopics = [
-  "1. Historiography : Development in the West",
-  "2. Historiography : Indian Tradition",
-  "3. Applied History",
-  "4. History of Indian Arts",
-  "5. Mass Media and History",
-  "6. Entertainment and History",
-  "7. Sports and History",
-  "8. Tourism and History",
-  "9. Heritage Management",
+  // "1. Historiography : Development in the West",
+  // "2. Historiography : Indian Tradition",
+  // "3. Applied History",
+  // "4. History of Indian Arts",
+  // "5. Mass Media and History",
+  // "6. Entertainment and History",
+  // "7. Sports and History",
+  // "8. Tourism and History",
+  // "9. Heritage Management",
+  // "10. History of India",
 ];
 
 // Full topic structure with subtopics for question rows
-const availableTopics = {
-  history: {
-    "1. Historiography : Development in the West": [
-      "1.1 Tradition of Historiography",
-      "1.2 Modern Historiography",
-      "1.3 Development of Scientific Perspective in Europe and Historiography",
-      "1.4 Notable Scholars",
-    ],
-    "2. Historiography : Indian Tradition": [
-      "2.1 Tradition of Indian Historiography",
-      "2.2 Indian Historiography : Various Ideological Frameworks",
-    ],
-    "3. Applied History": [
-      "3.1 What is Applied History?",
-      "3.2 Applied History and Research in Various Fields",
-      "3.3 Applied History and Our Present",
-      "3.4 Management of Cultural and Natural Heritage",
-      "3.5 Affiliated Professional Fields",
-    ],
-    "4. History of Indian Arts": [
-      "4.1 Literature",
-      "4.2 Various Styles of Indian Paintings",
-      "4.3 Modern Painting",
-      "4.4 Sculpture and Theatre",
-      "4.5 Cinema and Art",
-    ],
-    "5. Mass Media and History": [
-      "5.1 Print Media",
-      "5.2 Television and History",
-      "5.3 Films and Theatre",
-      "5.4 Electronic Media and History",
-      "5.5 Social Media and History",
-    ],
-    "6. Entertainment and History": [
-      "6.1 Theatre",
-      "6.2 Cinema",
-      "6.3 Folk Theatre",
-      "6.4 Television",
-      "6.5 Jatra",
-      "6.6 Tamasha",
-      "6.7 Puppetry",
-    ],
-    "7. Sports and History": [
-      "7.1 Ancient Games and Sports",
-      "7.2 Sports and Development of Nationalism",
-      "7.3 Globalisation and Sports",
-      "7.4 Sports and Technology",
-    ],
-    "8. Tourism and History": [
-      "8.1 Types of Tourism",
-      "8.2 Tourism and History",
-      "8.3 Development of Tourism in India",
-      "8.4 Conservation of Historical Tourism",
-    ],
-    "9. Heritage Management": [
-      "9.1 Concept of Heritage",
-      "9.2 Preservation and Conservation of Heritage",
-      "9.3 Heritage Management Programmes",
-      "9.4 Professional Opportunities in Heritage Management",
-    ],
-  },
-};
+// const availableTopics = {
+//   history: {
+//     "1. Historiography : Development in the West": [
+//       "1.1 Tradition of Historiography",
+//       "1.2 Modern Historiography",
+//       "1.3 Development of Scientific Perspective in Europe and Historiography",
+//       "1.4 Notable Scholars",
+//     ],
+//     "2. Historiography : Indian Tradition": [
+//       "2.1 Tradition of Indian Historiography",
+//       "2.2 Indian Historiography : Various Ideological Frameworks",
+//     ],
+//     "3. Applied History": [
+//       "3.1 What is Applied History?",
+//       "3.2 Applied History and Research in Various Fields",
+//       "3.3 Applied History and Our Present",
+//       "3.4 Management of Cultural and Natural Heritage",
+//       "3.5 Affiliated Professional Fields",
+//     ],
+//     "4. History of Indian Arts": [
+//       "4.1 Literature",
+//       "4.2 Various Styles of Indian Paintings",
+//       "4.3 Modern Painting",
+//       "4.4 Sculpture and Theatre",
+//       "4.5 Cinema and Art",
+//     ],
+//     "5. Mass Media and History": [
+//       "5.1 Print Media",
+//       "5.2 Television and History",
+//       "5.3 Films and Theatre",
+//       "5.4 Electronic Media and History",
+//       "5.5 Social Media and History",
+//     ],
+//     "6. Entertainment and History": [
+//       "6.1 Theatre",
+//       "6.2 Cinema",
+//       "6.3 Folk Theatre",
+//       "6.4 Television",
+//       "6.5 Jatra",
+//       "6.6 Tamasha",
+//       "6.7 Puppetry",
+//     ],
+//     "7. Sports and History": [
+//       "7.1 Ancient Games and Sports",
+//       "7.2 Sports and Development of Nationalism",
+//       "7.3 Globalisation and Sports",
+//       "7.4 Sports and Technology",
+//     ],
+//     "8. Tourism and History": [
+//       "8.1 Types of Tourism",
+//       "8.2 Tourism and History",
+//       "8.3 Development of Tourism in India",
+//       "8.4 Conservation of Historical Tourism",
+//     ],
+//     "9. Heritage Management": [
+//       "9.1 Concept of Heritage",
+//       "9.2 Preservation and Conservation of Heritage",
+//       "9.3 Heritage Management Programmes",
+//       "9.4 Professional Opportunities in Heritage Management",
+//     ],
+//   },
+// };
 
 const initialQuestions = [
   {
@@ -161,25 +163,14 @@ export default function MinimalQuestionPaperForm() {
 
     setIsLoadingTopics(true);
     try {
-      const response = await fetch(
-        `http://localhost:3000/api/teachers/chapters?subject=${encodeURIComponent(
-          subject
-        )}&classId=${encodeURIComponent(classId)}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            // Add authorization header if needed
-            // "Authorization": `Bearer ${token}`
-          },
-        }
-      );
+      const response = await api.get("teachers/chapters", {
+        params: {
+          subject: subject,
+          classId: classId,
+        },
+      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success && data.chapters && data.chapters.length > 0) {
         // Transform API response to match our format
@@ -580,7 +571,7 @@ export default function MinimalQuestionPaperForm() {
         console.log("payload", payload);
 
         const res = await fetch(
-          "http://localhost:3000/api/teachers/generate-question-paper",
+          "http://localhost:5000/api/teachers/generate-question-paper",
           {
             method: "POST",
             headers: {

@@ -1,4 +1,13 @@
-// controllers/adminController.js
+/**
+ * Admin Controller
+ *
+ * Handles administrative functions including user management, system statistics,
+ * school management, and bulk operations for the Teacher Management System.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
 import User from "../models/UserSchema.js";
 import School from "../models/School.js";
 import Class from "../models/Class.js";
@@ -11,7 +20,6 @@ import admin from "../config/firebase.js";
 import XLSX from "xlsx";
 import path from "path";
 import fs from "fs";
-import { log } from "console";
 
 // -----------------------------
 // Admin Dashboard Data
@@ -108,7 +116,7 @@ export const getAdminDashboard = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Admin dashboard error:", error);
+    console.error("Admin Error - Dashboard:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve admin dashboard data",
@@ -171,7 +179,7 @@ export const getSystemStats = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("System stats error:", error);
+    console.error("Admin Error - System stats:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve system statistics",
@@ -240,7 +248,7 @@ export const getAllTeachers = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get all teachers error:", error);
+    console.error("Admin Error - Get all teachers:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve teachers",
@@ -349,10 +357,8 @@ export const createTeacher = async (req, res) => {
         temporaryPassword: tempPassword,
       },
     });
-
-    console.log(`🔧 Admin ${req.user.email} created teacher ${user.email}`);
   } catch (error) {
-    console.error("Create teacher error:", error);
+    console.error("Admin Error - Create teacher:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to create teacher",
@@ -393,7 +399,7 @@ export const getTeacherById = async (req, res) => {
       data: { teacher: user },
     });
   } catch (error) {
-    console.error("Get teacher by ID error:", error);
+    console.error("Admin Error - Get teacher by ID:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve teacher",
@@ -451,8 +457,6 @@ export const updateTeacher = async (req, res) => {
     // Populate school info for response
     await user.populate("schoolId", "name");
 
-    console.log(`🔧 Admin ${req.user.email} updated teacher ${user.email}`);
-
     res.status(200).json({
       success: true,
       message: "Teacher updated successfully",
@@ -461,7 +465,7 @@ export const updateTeacher = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Update teacher error:", error);
+    console.error("Admin Error - Update teacher:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to update teacher",
@@ -521,10 +525,6 @@ export const updateTeacherRole = async (req, res) => {
 
     await user.save();
 
-    console.log(
-      `🔧 Admin ${req.user.email} changed teacher ${user.email} role from ${oldRole} to ${role}`
-    );
-
     res.status(200).json({
       success: true,
       message: "Teacher role updated successfully",
@@ -539,7 +539,7 @@ export const updateTeacherRole = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Update teacher role error:", error);
+    console.error("Admin Error - Update teacher role:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to update teacher role",
@@ -589,10 +589,6 @@ export const updateTeacherStatus = async (req, res) => {
 
     await user.save();
 
-    console.log(
-      `🔧 Admin ${req.user.email} changed teacher ${user.email} status from ${oldStatus} to ${status}`
-    );
-
     res.status(200).json({
       success: true,
       message: "Teacher status updated successfully",
@@ -607,7 +603,7 @@ export const updateTeacherStatus = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Update teacher status error:", error);
+    console.error("Admin Error - Update teacher status:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to update teacher status",
@@ -659,8 +655,6 @@ export const deleteTeacher = async (req, res) => {
 
     await User.deleteOne({ _id: userId });
 
-    console.log(`🗑️ Admin ${req.user.email} deleted teacher ${user.email}`);
-
     res.status(200).json({
       success: true,
       message: "Teacher deleted successfully",
@@ -672,7 +666,7 @@ export const deleteTeacher = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Delete teacher error:", error);
+    console.error("Admin Error - Delete teacher:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to delete teacher",
@@ -711,10 +705,6 @@ export const bulkUpdateTeachers = async (req, res) => {
       { $set: safeUpdates }
     );
 
-    console.log(
-      `🔧 Admin ${req.user.email} bulk updated ${result.modifiedCount} teachers`
-    );
-
     res.status(200).json({
       success: true,
       message: "Bulk update completed successfully",
@@ -724,7 +714,7 @@ export const bulkUpdateTeachers = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Bulk update teachers error:", error);
+    console.error("Admin Error - Bulk update teachers:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to bulk update teachers",
@@ -793,7 +783,7 @@ export const exportTeachers = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Export teachers error:", error);
+    console.error("Admin Error - Export teachers:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to export teachers",
@@ -860,10 +850,6 @@ export const demoteFromAdmin = async (req, res) => {
 
     await user.save();
 
-    console.log(
-      `🔧 Admin ${req.user.email} demoted user ${user.email} from ${oldRole} to ${newRole}`
-    );
-
     res.status(200).json({
       success: true,
       message: "User demoted successfully",
@@ -878,7 +864,7 @@ export const demoteFromAdmin = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Demote from admin error:", error);
+    console.error("Admin Error - Demote from admin:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to demote user from admin",
@@ -919,7 +905,7 @@ export const getStudentsByClassDivision = async (req, res) => {
       data: students,
     });
   } catch (error) {
-    console.error("Get students error:", error);
+    console.error("Admin Error - Get students:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve students",
@@ -986,7 +972,7 @@ export const uploadStudentExcel = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Excel upload error:", error);
+    console.error("Admin Error - Excel upload:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to upload students from Excel.",
@@ -1026,7 +1012,7 @@ export const bulkPromoteStudents = async (req, res) => {
       message: `${result.modifiedCount} students promoted from class ${fromClass} to ${toClass} in division ${div}`,
     });
   } catch (error) {
-    console.error("bulkPromoteStudents error:", error);
+    console.error("Admin Error - Bulk promote students:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to bulk promote students",
@@ -1070,7 +1056,7 @@ export const dedupeStudents = async (req, res) => {
       message: `Deduplication complete. Removed ${idsToDelete.length} duplicate records.`,
     });
   } catch (error) {
-    console.error("Deduplication error:", error);
+    console.error("Admin Error - Deduplication:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to deduplicate students.",
@@ -1111,7 +1097,7 @@ export async function createSchool(req, res) {
     await school.save();
     res.status(201).json(school);
   } catch (e) {
-    console.log(e);
+    console.error("Admin Error - Create school:", e.message);
     res.status(500).json({ error: e.message });
   }
 }
@@ -1122,6 +1108,7 @@ export async function getSchools(req, res) {
     const schools = await School.find();
     res.status(200).json(schools);
   } catch (e) {
+    console.error("Admin Error - Get schools:", e.message);
     res.status(500).json({ error: e.message });
   }
 }
@@ -1130,7 +1117,6 @@ export async function getSchools(req, res) {
 export async function addOrUpdateClass(req, res) {
   try {
     const { schoolId, grade, division } = req.body;
-    console.log(req.body);
 
     let existingClass = await Class.findBySchoolGradeDivision(
       schoolId,
@@ -1147,6 +1133,7 @@ export async function addOrUpdateClass(req, res) {
     await newClass.save();
     res.status(201).json(newClass);
   } catch (e) {
+    console.error("Admin Error - Add/Update class:", e.message);
     res.status(500).json({ error: e.message });
   }
 }
@@ -1157,6 +1144,7 @@ export async function getClasses(req, res) {
     const classes = await Class.find();
     res.status(200).json(classes);
   } catch (e) {
+    console.error("Admin Error - Get classes:", e.message);
     res.status(500).json({ error: e.message });
   }
 }
@@ -1168,6 +1156,7 @@ export async function deleteClass(req, res) {
     await Class.findByIdAndDelete(classId);
     res.json({ message: "Class deleted" });
   } catch (e) {
+    console.error("Admin Error - Delete class:", e.message);
     res.status(500).json({ error: e.message });
   }
 }
@@ -1176,7 +1165,6 @@ export async function deleteClass(req, res) {
 export async function addOrUpdateSubject(req, res) {
   try {
     const { schoolId, subjectId, name } = req.body;
-    console.log(req.body);
 
     let subject = await Subject.findOne({ schoolId, subjectId });
     if (subject) {
@@ -1192,7 +1180,7 @@ export async function addOrUpdateSubject(req, res) {
     await subject.save();
     res.status(201).json(subject);
   } catch (e) {
-    console.log(e);
+    console.error("Admin Error - Add/Update subject:", e.message);
     res.status(500).json({ error: e.message });
   }
 }
@@ -1203,6 +1191,7 @@ export async function getSubjects(req, res) {
     const subjects = await Subject.find();
     res.status(200).json(subjects);
   } catch (e) {
+    console.error("Admin Error - Get subjects:", e.message);
     res.status(500).json({ error: e.message });
   }
 }
@@ -1214,6 +1203,7 @@ export async function deleteSubject(req, res) {
     await Subject.findByIdAndDelete(subjectId);
     res.json({ message: "Subject deleted" });
   } catch (e) {
+    console.error("Admin Error - Delete subject:", e.message);
     res.status(500).json({ error: e.message });
   }
 }
@@ -1250,7 +1240,7 @@ export async function getAssignments(req, res) {
       data: transformedAssignments,
     });
   } catch (error) {
-    console.error("Get assignments error:", error);
+    console.error("Admin Error - Get assignments:", error.message);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -1345,7 +1335,7 @@ export async function assignTeacher(req, res) {
       data: assignment,
     });
   } catch (error) {
-    console.error("Assign teacher error:", error);
+    console.error("Admin Error - Assign teacher:", error.message);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -1374,7 +1364,7 @@ export async function removeAssignment(req, res) {
       data: deletedAssignment,
     });
   } catch (error) {
-    console.error("Remove assignment error:", error);
+    console.error("Admin Error - Remove assignment:", error.message);
     res.status(500).json({
       success: false,
       error: error.message,

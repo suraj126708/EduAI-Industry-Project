@@ -1,4 +1,13 @@
-// routes/authRoutes.js
+/**
+ * Authentication Routes
+ *
+ * Handles all authentication-related endpoints including user registration,
+ * profile management, token verification, and account operations.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
 import express from "express";
 import { body } from "express-validator";
 import {

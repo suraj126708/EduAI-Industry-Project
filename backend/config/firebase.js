@@ -1,10 +1,22 @@
-// config/firebase.js
+/**
+ * Firebase Configuration
+ *
+ * Handles Firebase Admin SDK initialization and configuration
+ * for the Teacher Management System.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
 import admin from "firebase-admin";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-// Firebase Admin SDK configuration
+/**
+ * Initialize Firebase Admin SDK
+ * @returns {void}
+ */
 const initializeFirebase = () => {
   try {
     // Check if Firebase has already been initialized
@@ -25,16 +37,13 @@ const initializeFirebase = () => {
         projectId: process.env.FIREBASE_PROJECT_ID,
       });
 
-      console.log("🔥 Firebase Admin SDK initialized successfully");
+      console.log("Firebase Admin SDK initialized successfully");
     } else {
-      console.log("🔥 Firebase Admin SDK already initialized");
+      console.log("Firebase Admin SDK already initialized");
     }
   } catch (error) {
-    console.error(
-      "❌ Firebase Admin SDK initialization failed:",
-      error.message
-    );
-    console.error("🔧 Please check your Firebase environment variables");
+    console.error("Firebase Admin SDK initialization failed:", error.message);
+    console.error("Please check your Firebase environment variables");
     process.exit(1);
   }
 };

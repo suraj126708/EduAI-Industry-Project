@@ -1,10 +1,25 @@
+/**
+ * Authentication Controller
+ *
+ * Handles user authentication, registration, profile management,
+ * and Firebase token operations for the Teacher Management System.
+ *
+ * @author Teacher Management System Team
+ * @version 1.0.0
+ */
+
 import admin from "../config/firebase.js";
 import User from "../models/UserSchema.js";
 import { validationResult } from "express-validator";
 
-// @desc    Register teacher after Firebase auth
-// @route   POST /api/auth/register
-// @access  Private (requires Firebase token)
+/**
+ * Register teacher after Firebase authentication
+ * @desc    Complete teacher registration with additional profile data
+ * @route   POST /api/auth/register
+ * @access  Private (requires Firebase token)
+ * @param   {Object} req - Express request object
+ * @param   {Object} res - Express response object
+ */
 export const registerTeacher = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -42,7 +57,7 @@ export const registerTeacher = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Register teacher error:", error);
+    console.error("Auth Error - Register teacher:", error.message);
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -87,7 +102,7 @@ export const getTeacherProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get teacher profile error:", error);
+    console.error("Auth Error - Get teacher profile:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve teacher profile",
@@ -140,7 +155,7 @@ export const updateTeacherProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Update teacher profile error:", error);
+    console.error("Auth Error - Update teacher profile:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to update profile",
@@ -178,7 +193,7 @@ export const deleteTeacherAccount = async (req, res) => {
       message: "Account deleted successfully",
     });
   } catch (error) {
-    console.error("Delete teacher account error:", error);
+    console.error("Auth Error - Delete teacher account:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to delete account",
@@ -224,7 +239,7 @@ export const verifyToken = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Verify token error:", error);
+    console.error("Auth Error - Verify token:", error.message);
     res.status(500).json({
       success: false,
       message: "Token verification failed",
@@ -271,7 +286,7 @@ export const createCustomToken = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Create custom token error:", error);
+    console.error("Auth Error - Create custom token:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to create custom token",
