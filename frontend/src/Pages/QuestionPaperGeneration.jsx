@@ -147,9 +147,7 @@ export default function MinimalQuestionPaperForm() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [generatedPaperData, setGeneratedPaperData] = useState(null);
-  const [llmNote, setLlmNote] = useState("");
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [tempNote, setTempNote] = useState("");
+  // Removed final LLM note modal; using per-row subtopics instead
   const [toast, setToast] = useState({
     visible: false,
     message: "",
@@ -542,110 +540,130 @@ export default function MinimalQuestionPaperForm() {
     questionTypeInputs,
   ]);
 
-  const handleGenerate = useCallback(
-    async (noteOverride = undefined) => {
-      setIsGenerating(true);
+  const handleGenerate = useCallback(async () => {
+    setIsGenerating(true);
 
-      try {
-        // Prepare payload from current form state to match new API format
-        const finalLlmNote =
-          typeof noteOverride === "string" ? noteOverride : llmNote;
-        if (typeof noteOverride === "string") {
-          setLlmNote(noteOverride);
-        }
-
-        // Generate PDF name based on class, subject, and timestamp
-        const timestamp = new Date()
-          .toISOString()
-          .slice(0, 19)
-          .replace(/[-:]/g, "")
-          .replace("T", "");
-        const pdfName = `questionPaper${selectedClass}${selectedSubject}${timestamp}`;
-
-        const payload = {
-          class: selectedClass,
-          subject: selectedSubject,
-          Pdf_name: pdfName,
-        };
-
-        console.log("payload", payload);
-
-        const res = await fetch(
-          "http://localhost:5000/api/teachers/generate-question-paper",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          }
-        );
-
-        const data = await res.json();
-        console.log(data);
-        if (
-          !res.ok ||
-          !data ||
-          data.status !== "success" ||
-          !data.question_paper
-        ) {
-          throw new Error(
-            (data && data.message) || "Failed to generate question paper"
-          );
-        }
-
-        // Use the returned question_paper from the API
-        setGeneratedPaperData(data.question_paper);
-        setShowSuccessModal(true);
-        setErrors({});
-
-        // Show success toast
-        setToast({
-          visible: true,
-          message: "Question paper generated successfully",
-          type: "success",
-        });
-        setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
-      } catch (error) {
-        console.error("Generate error:", error);
-
-        let errorMessage =
-          "Failed to generate question paper. Please try again.";
-
-        if (
-          error.name === "TypeError" &&
-          error.message.includes("Failed to fetch")
-        ) {
-          errorMessage =
-            "Unable to connect to the server. Please check if the backend server is running on localhost:8000";
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-
-        setErrors({
-          general: errorMessage,
-        });
-
-        // Show error toast
-        setToast({ visible: true, message: errorMessage, type: "error" });
-        setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
-      } finally {
-        setIsGenerating(false);
+    try {
+      // Prepare payload from current form state to match new API format
+      const finalLlmNote =
+        typeof noteOverride === "string" ? noteOverride : llmNote;
+      if (typeof noteOverride === "string") {
+        setLlmNote(noteOverride);
       }
-    },
-    [
-      selectedClass,
-      selectedSubject,
-      selectedExamType,
-      selectedMainTopics,
-      numberOfPapers,
-      selectedHour,
-      selectedMinute,
-      questions,
-      questionTypeInputs,
-      llmNote,
-    ]
-  );
+
+      // Generate PDF name based on class, subject, and timestamp
+      const timestamp = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[-:]/g, "")
+        .replace("T", "");
+      const pdfName = `questionPaper${selectedClass}${selectedSubject}${timestamp}`;
+
+      const payload = {
+        class: selectedClass,
+        subject: selectedSubject,
+        pdf_name: pdfName,
+        examType: selectedExamType || "",
+        topics: selectedMainTopics,
+        numberOfPapers: Number(numberOfPapers) || 1,
+        duration: { hours: selectedHour, minutes: selectedMinute },
+        question_type: questions.map((q) =>
+          q.type === "single_correct"
+            ? "Single Correct"
+            : q.type === "short_answer"
+            ? "Short Answer"
+            : q.type === "long_answer"
+            ? "Long Answer"
+            : q.type === "fill_in_the_blanks"
+            ? "Fill in the Blanks"
+            : q.type
+        ),
+        questions: questions.map((q) => ({
+          type: q.type,
+          topics: q.topics && q.topics.length ? q.topics : selectedMainTopics,
+          llm_note: q.subtopicsInput
+            ? q.subtopicsInput
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [],
+          difficulty:
+            (q.difficulty || "medium").charAt(0).toUpperCase() +
+            (q.difficulty || "medium").slice(1),
+          numQuestions: q.numQuestions,
+          marksPerQuestion: q.marksPerQuestion,
+        })),
+      };
+
+      console.log("payload", payload);
+
+      const res = await fetch(
+        "http://localhost:5000/api/teachers/generate-question-paper",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await res.json();
+      console.log(data);
+      if (!res.ok || !data || data.success !== true || !data.question_paper) {
+        throw new Error(
+          (data && data.message) || "Failed to generate question paper"
+        );
+      }
+
+      // Use the returned question_paper from the API
+      setGeneratedPaperData(data.question_paper);
+      setShowSuccessModal(true);
+      setErrors({});
+
+      // Show success toast
+      setToast({
+        visible: true,
+        message: "Question paper generated successfully",
+        type: "success",
+      });
+      setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
+    } catch (error) {
+      console.error("Generate error:", error);
+
+      let errorMessage = "Failed to generate question paper. Please try again.";
+
+      if (
+        error.name === "TypeError" &&
+        error.message.includes("Failed to fetch")
+      ) {
+        errorMessage =
+          "Unable to connect to the server. Please check if the backend server is running on localhost:5000";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setErrors({
+        general: errorMessage,
+      });
+
+      // Show error toast
+      setToast({ visible: true, message: errorMessage, type: "error" });
+      setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [
+    selectedClass,
+    selectedSubject,
+    selectedExamType,
+    selectedMainTopics,
+    numberOfPapers,
+    selectedHour,
+    selectedMinute,
+    questions,
+    questionTypeInputs,
+  ]);
 
   const handleGenerateClick = useCallback(() => {
     const validationErrors = validateForm();
@@ -653,9 +671,8 @@ export default function MinimalQuestionPaperForm() {
       setErrors(validationErrors);
       return;
     }
-    setTempNote(llmNote || "");
-    setShowNoteModal(true);
-  }, [validateForm, llmNote]);
+    handleGenerate();
+  }, [validateForm, handleGenerate]);
 
   const totalQuestions = useMemo(
     () => questions.reduce((sum, q) => sum + q.numQuestions, 0),
@@ -858,45 +875,7 @@ export default function MinimalQuestionPaperForm() {
           )}
         </div>
 
-        {/* Note Modal */}
-        <Modal isOpen={showNoteModal} onClose={() => setShowNoteModal(false)}>
-          <ModalHeader className="bg-gradient-to-r from-blue-600 to-purple-600">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">
-                Add note for LLM (optional)
-              </h3>
-              <ModalCloseButton onClose={() => setShowNoteModal(false)} />
-            </div>
-          </ModalHeader>
-          <ModalContent>
-            <div className="space-y-4">
-              <textarea
-                value={tempNote}
-                onChange={(e) => setTempNote(e.target.value)}
-                placeholder="Any specific instructions, style, constraints, or exclusions"
-                className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm border-gray-300 focus:border-transparent min-h-[120px]"
-              />
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowNoteModal(false)}
-                  className="px-4"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowNoteModal(false);
-                    handleGenerate(tempNote);
-                  }}
-                  className="px-4"
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
-          </ModalContent>
-        </Modal>
+        {/* Note Modal removed; per-row subtopics inputs are used instead */}
 
         {/* Success Modal */}
         <SuccessModal

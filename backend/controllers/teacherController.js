@@ -9,6 +9,7 @@
  */
 
 import User from "../models/UserSchema.js";
+import QuestionPaper from "../models/QuestionPaper.js";
 import { validationResult } from "express-validator";
 import path from "path";
 import fs from "fs";
@@ -591,49 +592,56 @@ export const getTeacherAssignments = async (req, res) => {
 // @access  Private (Teacher)
 export const generateQuestionPaper = async (req, res) => {
   try {
-    const { class: classValue, subject, Pdf_name } = req.body;
+    // Accept new payload shape as-is; also support legacy Pdf_name key
+    const body = req.body || {};
+    const classValue = body.class;
+    const subject = body.subject;
+    const pdfName = body.pdf_name || body.Pdf_name;
 
-    // Validate required fields
-    if (!classValue || !subject || !Pdf_name) {
+    if (!classValue || !subject || !pdfName) {
       return res.status(400).json({
         success: false,
-        message: "Class, subject, and PDF name are required fields.",
+        message: "Fields 'class', 'subject', and 'pdf_name' are required.",
       });
     }
 
-    // Prepare payload for external API
-    const payload = {
-      class: classValue,
-      subject: subject,
-      Pdf_name: Pdf_name,
-    };
-
-    // Send to external question generation API
+    // Forward the entire body to the AI service (port 8000)
     const response = await axios.post(
       "http://127.0.0.1:8000/generate_question_paper/",
-      payload,
+      { ...body, pdf_name: pdfName },
       {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: 5 * 60 * 1000, // 5 minutes timeout
+        headers: { "Content-Type": "application/json" },
+        timeout: 5 * 60 * 1000,
         validateStatus: (status) => status >= 200 && status < 500,
       }
     );
 
-    if (response.status === 200 && response.data.status === "success") {
-      res.status(200).json({
-        success: true,
-        message: "Question paper generated successfully",
-        data: response.data,
-      });
-    } else {
-      res.status(response.status || 500).json({
+    if (response.status !== 200) {
+      return res.status(response.status).json({
         success: false,
-        message: response.data?.message || "Failed to generate question paper",
+        message: response.data?.message || "AI service error",
         error: response.data,
       });
     }
+
+    // Expect AI returns the final paper JSON structure
+    const aiPaper = response.data;
+
+    // Persist in database as a single document
+    const saved = await QuestionPaper.create({
+      paper: aiPaper,
+      // Optional metadata if available in request
+      title: body.pdf_name || body.Pdf_name || undefined,
+      status: "draft",
+      llmPrompt: body,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Question paper generated successfully",
+      question_paper: saved.paper,
+      id: saved._id,
+    });
   } catch (error) {
     console.error("Teacher Error - Question paper generation:", error.message);
     res.status(500).json({

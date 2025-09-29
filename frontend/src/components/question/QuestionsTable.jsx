@@ -34,14 +34,15 @@ const QuestionsTable = ({
             <FileText className="w-4 h-4 text-blue-500" />
             Question Type
           </div>
-          <div className="col-span-4 flex items-center gap-2">
+          <div className="col-span-2 flex items-center gap-2">
             <Search className="w-4 h-4 text-green-500" />
             Topics
           </div>
           <div className="col-span-1 text-center">Difficulty</div>
           <div className="col-span-1 text-center">Questions</div>
           <div className="col-span-1 text-center">Marks</div>
-          <div className="col-span-1 text-center">Total</div>
+          <div className="col-span-1 text-center">Note</div>
+          <div className="col-span-2 text-center">Total</div>
         </div>
       </div>
 

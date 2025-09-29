@@ -45,7 +45,7 @@ const QuestionRow = ({
         </div>
 
         {/* Topics Selector */}
-        <div className="col-span-4">
+        <div className="col-span-2">
           <TopicsSelector
             questionIndex={questionIndex}
             question={question}
@@ -115,6 +115,19 @@ const QuestionRow = ({
           />
           <ErrorMessage
             error={errors[`question_${questionIndex}`]?.marksPerQuestion}
+          />
+        </div>
+
+        {/* Per-row subtopics (LLM note) input */}
+        <div className="col-span-2">
+          <input
+            type="text"
+            placeholder="Subtopics for AI (comma-separated)"
+            value={question.subtopicsInput || ""}
+            onChange={(e) =>
+              onUpdateQuestion(questionIndex, "subtopicsInput", e.target.value)
+            }
+            className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm border-gray-300 focus:border-transparent"
           />
         </div>
 

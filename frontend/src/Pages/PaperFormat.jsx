@@ -223,8 +223,10 @@ function ExamPaperGenerator() {
       if (!raw) return;
       const gen = JSON.parse(raw);
 
-      // Normalize incoming API response structure to internal shape with safe fallbacks
-      setPaperData((prev) => normalizePaper(gen, prev));
+      // If backend already returns the frontend-shaped paper, use it; otherwise, normalize
+      const candidate =
+        gen && gen.sections ? gen : normalizePaper(gen, paperData);
+      setPaperData(candidate);
     } catch (err) {
       // keep existing default paperData if parsing/mapping fails
       console.error(
