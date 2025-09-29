@@ -34,7 +34,6 @@ function ExamPaperGenerator() {
       className: safeString(incoming?.className, fallback.className),
       maxMarks: safeNumber(incoming?.maxMarks, fallback.maxMarks),
       timeAllowed: safeString(incoming?.timeAllowed, fallback.timeAllowed),
-      semester: safeString(incoming?.semester, fallback.semester),
       date: safeString(incoming?.date, fallback.date),
       instructions: safeArray(incomingInstructions)
         .map((i) => safeString(i))
@@ -74,7 +73,6 @@ function ExamPaperGenerator() {
     className: "Class 10",
     maxMarks: 30,
     timeAllowed: "1 hour",
-    semester: "Fourth Semester",
     date: new Date().toISOString().split("T")[0],
     instructions: [
       "All questions are compulsory",
@@ -223,9 +221,8 @@ function ExamPaperGenerator() {
       if (!raw) return;
       const gen = JSON.parse(raw);
 
-      // If backend already returns the frontend-shaped paper, use it; otherwise, normalize
-      const candidate =
-        gen && gen.sections ? gen : normalizePaper(gen, paperData);
+      // Always normalize to ensure required defaults like instructions are present
+      const candidate = normalizePaper(gen || {}, paperData);
       setPaperData(candidate);
     } catch (err) {
       // keep existing default paperData if parsing/mapping fails
@@ -505,15 +502,16 @@ function ExamPaperGenerator() {
           <body>
             <!-- Header -->
             <div class="header">
-              <div class="college-name">${paperData.collegeName}</div>
+              <div class="college-name">${
+                paperData.collegeName || "New High School"
+              }</div>
               <div class="test-name">${paperData.testName}</div>
               <div class="subject-class">${paperData.subject} - ${
         paperData.className
       }</div>
               <div class="exam-details">
-                <strong>Date:</strong> ${paperData.date} &nbsp;&nbsp;&nbsp;
-                <strong>Semester:</strong> ${
-                  paperData.semester
+                <strong>Date:</strong> ${
+                  new Date().toISOString().split("T")[0]
                 } &nbsp;&nbsp;&nbsp;
                 <strong>Max. Marks:</strong> ${calculateTotalMarks()} &nbsp;&nbsp;&nbsp;
                 <strong>Time:</strong> ${paperData.timeAllowed}
@@ -562,12 +560,7 @@ function ExamPaperGenerator() {
                             ? `
                           <div class="options">
                             ${opts
-                              .map(
-                                (option, idx) =>
-                                  `<div>${String.fromCharCode(
-                                    97 + idx
-                                  )}) ${option}</div>`
-                              )
+                              .map((option, idx) => `<div>${option}</div>`)
                               .join("")}
                           </div>
                         `
@@ -620,7 +613,7 @@ function ExamPaperGenerator() {
           {/* Header */}
           <div className="header text-center border-b-2 border-blue-300 pb-4 mb-6">
             <h1 className="college-name text-2xl font-bold text-blue-800 mb-2">
-              {paperData.collegeName}
+              {paperData.collegeName || "New High School"}
             </h1>
             <h2 className="test-name text-lg font-semibold text-gray-700 mb-2">
               {paperData.testName}
@@ -630,10 +623,7 @@ function ExamPaperGenerator() {
             </h3>
             <div className="exam-details flex justify-between items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg">
               <span>
-                <strong>Date:</strong> {paperData.date}
-              </span>
-              <span>
-                <strong>Semester:</strong> {paperData.semester}
+                <strong>Date:</strong> {new Date().toISOString().split("T")[0]}
               </span>
               <span>
                 <strong>Max. Marks:</strong> {calculateTotalMarks()}
@@ -733,7 +723,8 @@ function ExamPaperGenerator() {
           {/* Page 1 Footer */}
           <div className="footer flex justify-between items-center mt-6 pt-4 border-t border-gray-300 text-xs text-gray-500">
             <div>
-              © {new Date().getFullYear()} {paperData.collegeName}
+              © {new Date().getFullYear()}{" "}
+              {paperData.collegeName || "New High School"}
             </div>
             <div className="font-medium">Page 1 of 2</div>
           </div>
@@ -778,7 +769,7 @@ function ExamPaperGenerator() {
             </label>
             <input
               type="text"
-              value={paperData.collegeName}
+              value={paperData.collegeName || "New High School"}
               onChange={(e) => handleInputChange("collegeName", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -835,17 +826,6 @@ function ExamPaperGenerator() {
               type="text"
               value={paperData.date}
               onChange={(e) => handleInputChange("date", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Semester
-            </label>
-            <input
-              type="text"
-              value={paperData.semester}
-              onChange={(e) => handleInputChange("semester", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

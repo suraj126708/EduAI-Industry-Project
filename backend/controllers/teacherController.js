@@ -598,6 +598,8 @@ export const generateQuestionPaper = async (req, res) => {
     const subject = body.subject;
     const pdfName = body.pdf_name || body.Pdf_name;
 
+    console.log(body);
+
     if (!classValue || !subject || !pdfName) {
       return res.status(400).json({
         success: false,
@@ -617,6 +619,7 @@ export const generateQuestionPaper = async (req, res) => {
     );
 
     if (response.status !== 200) {
+      console.log(response.data);
       return res.status(response.status).json({
         success: false,
         message: response.data?.message || "AI service error",

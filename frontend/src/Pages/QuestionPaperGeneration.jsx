@@ -118,6 +118,7 @@ const initialQuestions = [
     difficulty: "medium",
     numQuestions: 10,
     marksPerQuestion: 1,
+    subtopicsInput: "",
   },
 ];
 
@@ -306,6 +307,7 @@ export default function MinimalQuestionPaperForm() {
         difficulty: "medium",
         numQuestions: 1,
         marksPerQuestion: 1,
+        subtopicsInput: "",
       },
     ]);
   }, []);
@@ -576,8 +578,11 @@ export default function MinimalQuestionPaperForm() {
         questions: questions.map((q) => ({
           type: q.type,
           topics: q.topics && q.topics.length ? q.topics : selectedMainTopics,
-          // Removed the use of llmNote and subtopicsInput here
-          llm_note: [],
+          // Populate llm_note from per-row comma-separated subtopicsInput
+          llm_note: (q.subtopicsInput || "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0),
           difficulty:
             (q.difficulty || "medium").charAt(0).toUpperCase() +
             (q.difficulty || "medium").slice(1),
@@ -615,8 +620,10 @@ export default function MinimalQuestionPaperForm() {
         );
       }
 
-      // Use the returned question_paper from the API
-      setGeneratedPaperData(data.question_paper);
+      // Use the inner question_paper payload expected by PaperFormat
+      const paperPayload =
+        data.question_paper?.question_paper || data.question_paper;
+      setGeneratedPaperData(paperPayload);
       // setShowSuccessModal(true);
       setErrors({});
 
