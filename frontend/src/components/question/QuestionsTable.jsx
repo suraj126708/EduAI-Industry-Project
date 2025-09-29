@@ -41,7 +41,7 @@ const QuestionsTable = ({
           <div className="col-span-1 text-center">Difficulty</div>
           <div className="col-span-1 text-center">Questions</div>
           <div className="col-span-1 text-center">Marks</div>
-          <div className="col-span-1 text-center">Note</div>
+          <div className="col-span-1 text-center">SubTopics</div>
           <div className="col-span-2 text-center">Total</div>
         </div>
       </div>

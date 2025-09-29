@@ -17,42 +17,35 @@ const TopicsSelector = ({
     <div className="relative" ref={dropdownRef}>
       <div
         onClick={() => onToggleDropdown(questionIndex)}
-        className={`w-full p-3 border-2 rounded-lg cursor-pointer flex items-center justify-between min-h-[48px] hover:bg-gray-50 transition-all duration-200 bg-gray-50 ${
+        className={`w-full px-3 h-12 border-2 rounded-lg cursor-pointer scrollbar-hide flex items-center justify-between hover:bg-gray-50 transition-all duration-200 bg-gray-50 ${
           error
             ? "border-red-300 hover:border-red-400"
             : "border-gray-200 hover:border-gray-400"
         }`}
       >
-        <div className="flex-1">
+        <div className="flex-1 scrollbar-hide min-w-0">
           {question.units && question.units.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {question.units &&
-                question.units.slice(0, 2).map((unit, unitIdx) => (
-                  <span
-                    key={`unit-${unitIdx}`}
-                    className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md font-medium"
+            <div className="flex items-center gap-1 whitespace-nowrap overflow-hidden pr-1">
+              {question.units.map((unit, unitIdx) => (
+                <span
+                  key={`unit-${unitIdx}`}
+                  className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md font-medium"
+                >
+                  {unit}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleUnit(questionIndex, unit);
+                    }}
+                    className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
                   >
-                    {unit}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleUnit(questionIndex, unit);
-                      }}
-                      className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-
-              {(question.units?.length || 0) > 2 && (
-                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
-                  +{(question.units?.length || 0) - 2} more
+                    <X className="w-3 h-3" />
+                  </button>
                 </span>
-              )}
+              ))}
             </div>
           ) : (
-            <span className="text-gray-400 text-sm">
+            <span className="text-gray-400 text-sm truncate">
               Click to select topics
             </span>
           )}

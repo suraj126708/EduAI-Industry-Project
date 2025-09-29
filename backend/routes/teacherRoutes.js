@@ -27,6 +27,7 @@ import {
   teacherUploadBook,
   getBooksByClassAndSubject,
   getChaptersBySubjectAndClass,
+  getMyUploadedBooks,
 } from "../controllers/teacherController.js";
 
 const router = express.Router();
@@ -335,6 +336,14 @@ router.get(
   authenticateFirebaseToken,
   authorize("teacher", "admin"),
   getChaptersBySubjectAndClass
+);
+
+// Get all books uploaded by the current teacher
+router.get(
+  "/my-books",
+  authenticateFirebaseToken,
+  authorize("teacher"),
+  getMyUploadedBooks
 );
 
 router.get(
