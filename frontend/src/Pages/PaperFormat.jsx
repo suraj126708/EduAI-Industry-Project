@@ -84,131 +84,131 @@ function ExamPaperGenerator() {
       "Attempt all sections in sequence",
       "Write legibly and maintain proper spacing",
     ],
-    sections: [
-      {
-        sectionName: "Section A",
-        sectionTitle: "Multiple Choice Questions",
-        description: "Choose the correct option for each question.",
-        questions: [
-          {
-            questionNo: "1",
-            question:
-              "Which event is considered a major turning point in the French Revolution?",
-            options: [
-              "a) The Reign of Terror",
-              "b) The Storming of the Bastille",
-              "c) The execution of Louis XVI",
-              "d) The rise of Napoleon",
-            ],
-            marks: 1,
-          },
-          {
-            questionNo: "2",
-            question: "Who was the key leader in the unification of Italy?",
-            options: [
-              "a) Otto von Bismarck",
-              "b) Giuseppe Garibaldi",
-              "c) Victor Emmanuel II",
-              "d) Cavour",
-            ],
-            marks: 1,
-          },
-          {
-            questionNo: "3",
-            question:
-              "What was the primary cause of Balkan nationalism and conflicts?",
-            options: [
-              "a) Religious differences",
-              "b) Ethnic diversity",
-              "c) Economic competition",
-              "d) Territorial disputes",
-            ],
-            marks: 1,
-          },
-          {
-            questionNo: "4",
-            question:
-              "Which of the following was NOT a consequence of the First World War?",
-            options: [
-              "a) Rise of communism",
-              "b) Collapse of empires",
-              "c) Treaty of Versailles",
-              "d) Unification of Germany",
-            ],
-            marks: 1,
-          },
-        ],
-      },
-      {
-        sectionName: "Section B",
-        sectionTitle: "Short Answer Questions",
-        description: "Answer the following questions in 3-4 lines.",
-        questions: [
-          {
-            questionNo: "1",
-            question:
-              "Explain the impact of the French Revolution on the spread of nationalism in Europe.",
-            marks: 2,
-          },
-          {
-            questionNo: "2",
-            question:
-              "Describe the role of Otto von Bismarck in the unification of Germany.",
-            marks: 2,
-          },
-          {
-            questionNo: "3",
-            question:
-              "What were the main factors that contributed to the rise of nationalism in India?",
-            marks: 2,
-          },
-          {
-            questionNo: "4",
-            question:
-              "How did the First World War impact the Khilafat Movement in India?",
-            marks: 2,
-          },
-          {
-            questionNo: "5",
-            question:
-              "Briefly explain the objectives and strategies of the Non-Cooperation Movement.",
-            marks: 2,
-          },
-        ],
-      },
-      {
-        sectionName: "Section C",
-        sectionTitle: "Long Answer Questions",
-        description:
-          "Answer any three of the following questions. Show all steps clearly.",
-        questions: [
-          {
-            questionNo: "1",
-            question:
-              "Analyze the impact of the French Revolution on the development of nationalism in Europe. Discuss its influence on various European countries.",
-            marks: 4,
-          },
-          {
-            questionNo: "2",
-            question:
-              "Explain the process of unification of Germany under Otto von Bismarck. Discuss the role of diplomacy, war, and popular support in this process.",
-            marks: 4,
-          },
-          {
-            questionNo: "3",
-            question:
-              "Describe the various phases of the Indian nationalist movement from the early 20th century to the attainment of independence. Highlight the key events, leaders, and ideologies involved.",
-            marks: 4,
-          },
-          {
-            questionNo: "4",
-            question:
-              "Discuss the causes and consequences of the Balkan nationalism and conflicts in the late 19th and early 20th centuries. Explain how these conflicts contributed to the outbreak of the First World War.",
-            marks: 4,
-          },
-        ],
-      },
-    ],
+    // sections: [
+    //   {
+    //     sectionName: "Section A",
+    //     sectionTitle: "Multiple Choice Questions",
+    //     description: "Choose the correct option for each question.",
+    //     questions: [
+    //       {
+    //         questionNo: "1",
+    //         question:
+    //           "Which event is considered a major turning point in the French Revolution?",
+    //         options: [
+    //           "a) The Reign of Terror",
+    //           "b) The Storming of the Bastille",
+    //           "c) The execution of Louis XVI",
+    //           "d) The rise of Napoleon",
+    //         ],
+    //         marks: 1,
+    //       },
+    //       {
+    //         questionNo: "2",
+    //         question: "Who was the key leader in the unification of Italy?",
+    //         options: [
+    //           "a) Otto von Bismarck",
+    //           "b) Giuseppe Garibaldi",
+    //           "c) Victor Emmanuel II",
+    //           "d) Cavour",
+    //         ],
+    //         marks: 1,
+    //       },
+    //       {
+    //         questionNo: "3",
+    //         question:
+    //           "What was the primary cause of Balkan nationalism and conflicts?",
+    //         options: [
+    //           "a) Religious differences",
+    //           "b) Ethnic diversity",
+    //           "c) Economic competition",
+    //           "d) Territorial disputes",
+    //         ],
+    //         marks: 1,
+    //       },
+    //       {
+    //         questionNo: "4",
+    //         question:
+    //           "Which of the following was NOT a consequence of the First World War?",
+    //         options: [
+    //           "a) Rise of communism",
+    //           "b) Collapse of empires",
+    //           "c) Treaty of Versailles",
+    //           "d) Unification of Germany",
+    //         ],
+    //         marks: 1,
+    //       },
+    //     ],
+    //   },
+    //   {
+    //     sectionName: "Section B",
+    //     sectionTitle: "Short Answer Questions",
+    //     description: "Answer the following questions in 3-4 lines.",
+    //     questions: [
+    //       {
+    //         questionNo: "1",
+    //         question:
+    //           "Explain the impact of the French Revolution on the spread of nationalism in Europe.",
+    //         marks: 2,
+    //       },
+    //       {
+    //         questionNo: "2",
+    //         question:
+    //           "Describe the role of Otto von Bismarck in the unification of Germany.",
+    //         marks: 2,
+    //       },
+    //       {
+    //         questionNo: "3",
+    //         question:
+    //           "What were the main factors that contributed to the rise of nationalism in India?",
+    //         marks: 2,
+    //       },
+    //       {
+    //         questionNo: "4",
+    //         question:
+    //           "How did the First World War impact the Khilafat Movement in India?",
+    //         marks: 2,
+    //       },
+    //       {
+    //         questionNo: "5",
+    //         question:
+    //           "Briefly explain the objectives and strategies of the Non-Cooperation Movement.",
+    //         marks: 2,
+    //       },
+    //     ],
+    //   },
+    //   {
+    //     sectionName: "Section C",
+    //     sectionTitle: "Long Answer Questions",
+    //     description:
+    //       "Answer any three of the following questions. Show all steps clearly.",
+    //     questions: [
+    //       {
+    //         questionNo: "1",
+    //         question:
+    //           "Analyze the impact of the French Revolution on the development of nationalism in Europe. Discuss its influence on various European countries.",
+    //         marks: 4,
+    //       },
+    //       {
+    //         questionNo: "2",
+    //         question:
+    //           "Explain the process of unification of Germany under Otto von Bismarck. Discuss the role of diplomacy, war, and popular support in this process.",
+    //         marks: 4,
+    //       },
+    //       {
+    //         questionNo: "3",
+    //         question:
+    //           "Describe the various phases of the Indian nationalist movement from the early 20th century to the attainment of independence. Highlight the key events, leaders, and ideologies involved.",
+    //         marks: 4,
+    //       },
+    //       {
+    //         questionNo: "4",
+    //         question:
+    //           "Discuss the causes and consequences of the Balkan nationalism and conflicts in the late 19th and early 20th centuries. Explain how these conflicts contributed to the outbreak of the First World War.",
+    //         marks: 4,
+    //       },
+    //     ],
+    //   },
+    // ],
   });
 
   const [editMode, setEditMode] = useState(false);

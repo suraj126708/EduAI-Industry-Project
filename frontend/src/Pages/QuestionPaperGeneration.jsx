@@ -414,7 +414,7 @@ export default function MinimalQuestionPaperForm() {
     }
 
     // Fallback to static topics for backward compatibility
-    const allTopics = availableTopics.history || {};
+    const allTopics = {}; // Removed reference to undefined 'availableTopics'
 
     // If no main topics are selected, return all topics
     if (selectedMainTopics.length === 0) {
@@ -545,11 +545,6 @@ export default function MinimalQuestionPaperForm() {
 
     try {
       // Prepare payload from current form state to match new API format
-      const finalLlmNote =
-        typeof noteOverride === "string" ? noteOverride : llmNote;
-      if (typeof noteOverride === "string") {
-        setLlmNote(noteOverride);
-      }
 
       // Generate PDF name based on class, subject, and timestamp
       const timestamp = new Date()
@@ -581,12 +576,8 @@ export default function MinimalQuestionPaperForm() {
         questions: questions.map((q) => ({
           type: q.type,
           topics: q.topics && q.topics.length ? q.topics : selectedMainTopics,
-          llm_note: q.subtopicsInput
-            ? q.subtopicsInput
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean)
-            : [],
+          // Removed the use of llmNote and subtopicsInput here
+          llm_note: [],
           difficulty:
             (q.difficulty || "medium").charAt(0).toUpperCase() +
             (q.difficulty || "medium").slice(1),
@@ -597,20 +588,28 @@ export default function MinimalQuestionPaperForm() {
 
       console.log("payload", payload);
 
-      const res = await fetch(
-        "http://localhost:5000/api/teachers/generate-question-paper",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+      // DEBUG: Log current user's ID token claims to verify roles/permissions
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const idTokenResult = await currentUser.getIdTokenResult();
+          console.log("ID token claims:", idTokenResult.claims);
+        } else {
+          console.log("No currentUser found in auth when generating paper");
         }
-      );
+      } catch (tokErr) {
+        console.error("Error fetching ID token result:", tokErr);
+      }
 
-      const data = await res.json();
-      console.log(data);
-      if (!res.ok || !data || data.success !== true || !data.question_paper) {
+      // Use the shared axios instance which injects Authorization header
+      const response = await api.post(
+        "teachers/generate-question-paper",
+        payload
+      );
+      const data = response.data;
+      console.log("generate response", data);
+
+      if (!data || data.success !== true || !data.question_paper) {
         throw new Error(
           (data && data.message) || "Failed to generate question paper"
         );
@@ -618,7 +617,7 @@ export default function MinimalQuestionPaperForm() {
 
       // Use the returned question_paper from the API
       setGeneratedPaperData(data.question_paper);
-      setShowSuccessModal(true);
+      // setShowSuccessModal(true);
       setErrors({});
 
       // Show success toast
@@ -631,9 +630,13 @@ export default function MinimalQuestionPaperForm() {
     } catch (error) {
       console.error("Generate error:", error);
 
+      // Prioritize backend response body when available (axios error)
+      const backendData = error?.response?.data;
       let errorMessage = "Failed to generate question paper. Please try again.";
 
-      if (
+      if (backendData && backendData.message) {
+        errorMessage = backendData.message;
+      } else if (
         error.name === "TypeError" &&
         error.message.includes("Failed to fetch")
       ) {
@@ -643,11 +646,17 @@ export default function MinimalQuestionPaperForm() {
         errorMessage = error.message;
       }
 
+      // Include backend JSON in logs for debugging (if present)
+      if (backendData) {
+        console.error("Backend response data:", backendData);
+      }
+
       setErrors({
         general: errorMessage,
+        backend: backendData || null,
       });
 
-      // Show error toast
+      // Show error toast (include backend error when present)
       setToast({ visible: true, message: errorMessage, type: "error" });
       setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
     } finally {
@@ -662,7 +671,6 @@ export default function MinimalQuestionPaperForm() {
     selectedHour,
     selectedMinute,
     questions,
-    questionTypeInputs,
   ]);
 
   const handleGenerateClick = useCallback(() => {
@@ -878,14 +886,14 @@ export default function MinimalQuestionPaperForm() {
         {/* Note Modal removed; per-row subtopics inputs are used instead */}
 
         {/* Success Modal */}
-        <SuccessModal
+        {/* <SuccessModal
           isOpen={showSuccessModal}
           onClose={handleCloseModal}
           onViewPaper={handleViewPaper}
           generatedPaperData={generatedPaperData}
           totalQuestions={totalQuestions}
           totalMarks={totalMarks}
-        />
+        /> */}
       </div>
     </div>
   );

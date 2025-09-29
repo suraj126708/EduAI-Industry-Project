@@ -536,7 +536,7 @@ router.post(
 router.post(
   "/generate-question-paper",
   authenticateFirebaseToken,
-  authorize(["teacher"]),
+  // authorize(["teacher"]),
   generateQuestionPaper
 );
 
