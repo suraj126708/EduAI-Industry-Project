@@ -298,8 +298,6 @@ const ExamPlatformUpload = () => {
   const [profileError, setProfileError] = useState(null);
 
   // States for finding books
-  const [fetchClass, setFetchClass] = useState("");
-  const [fetchSubject, setFetchSubject] = useState("");
   const [books, setBooks] = useState([]);
   const [fetchError, setFetchError] = useState(null);
   const [fetchLoading, setFetchLoading] = useState(false);
@@ -415,32 +413,8 @@ const ExamPlatformUpload = () => {
           error.message || "Failed to load teacher assignments"
         );
         // Use fallback data
-        setClasses([
-          { value: "01", label: "Class 01" },
-          { value: "02", label: "Class 02" },
-          { value: "03", label: "Class 03" },
-          { value: "04", label: "Class 04" },
-          { value: "05", label: "Class 05" },
-          { value: "06", label: "Class 06" },
-          { value: "07", label: "Class 07" },
-          { value: "08", label: "Class 08" },
-          { value: "09", label: "Class 09" },
-          { value: "10", label: "Class 10" },
-          { value: "11", label: "Class 11" },
-          { value: "12", label: "Class 12" },
-        ]);
-        setSubjects([
-          { value: "mathematics", label: "Mathematics" },
-          { value: "physics", label: "Physics" },
-          { value: "chemistry", label: "Chemistry" },
-          { value: "biology", label: "Biology" },
-          { value: "english", label: "English" },
-          { value: "history", label: "History" },
-          { value: "geography", label: "Geography" },
-          { value: "economics", label: "Economics" },
-          { value: "political_science", label: "Political Science" },
-          { value: "computer_science", label: "Computer Science" },
-        ]);
+        setClasses([]);
+        setSubjects([]);
       } finally {
         setAssignmentsLoading(false);
       }
@@ -639,26 +613,16 @@ const ExamPlatformUpload = () => {
   };
 
   const fetchBooksMetadata = async () => {
-    if (!fetchClass && !fetchSubject) {
-      setFetchError("Please select a Class or Subject.");
-      setBooks([]);
-      return;
-    }
     setFetchLoading(true);
     setFetchError(null);
     setBooks([]);
     try {
-      // Find the actual class and subject IDs from the assigned classes and subjects
-      const selectedClass = classes.find((c) => c.value === fetchClass);
-      const selectedSubject = subjects.find((s) => s.value === fetchSubject);
-
-      const response = await bookAPI.getBooks({
-        classId: selectedClass?._id,
-        subject: selectedSubject?.label || fetchSubject,
-        schoolId: schoolId,
-        _cacheBust: new Date().getTime(),
-      });
-      setBooks(response.data || []);
+      const response = await bookAPI.getMyBooks();
+      if (response.success) {
+        setBooks(response.data || []);
+      } else {
+        setFetchError("Failed to fetch books.");
+      }
     } catch (error) {
       setFetchError(error.response?.data?.message || "Failed to fetch books.");
       setBooks([]);
@@ -666,6 +630,14 @@ const ExamPlatformUpload = () => {
       setFetchLoading(false);
     }
   };
+
+  // Auto-fetch when switching to Find tab
+  useEffect(() => {
+    if (activeTab === "find") {
+      fetchBooksMetadata();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const hasPendingRows = documentRows.some(
     (r) => r.class && r.subject && r.file && r.status === "pending"
@@ -929,46 +901,6 @@ const ExamPlatformUpload = () => {
               )}
               {activeTab === "find" && (
                 <div>
-                  <div className="flex flex-wrap items-center gap-4 mb-6">
-                    <select
-                      className="border-gray-300 rounded-md shadow-sm w-full sm:w-48"
-                      value={fetchClass}
-                      onChange={(e) => setFetchClass(e.target.value)}
-                    >
-                      <option value="">Select Class</option>
-                      {classes.map((cls) => (
-                        <option key={cls.value} value={cls.value}>
-                          {cls.label}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="border-gray-300 rounded-md shadow-sm w-full sm:w-64"
-                      value={fetchSubject}
-                      onChange={(e) => setFetchSubject(e.target.value)}
-                    >
-                      <option value="">Select Subject</option>
-                      {subjects.map((subj) => (
-                        <option key={subj.value} value={subj.value}>
-                          {subj.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={fetchBooksMetadata}
-                      className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md shadow-sm disabled:bg-blue-300"
-                      disabled={fetchLoading}
-                    >
-                      {fetchLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
-                          Loading...
-                        </>
-                      ) : (
-                        "Fetch Books"
-                      )}
-                    </button>
-                  </div>
                   {fetchError && (
                     <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
                       <AlertCircle className="inline w-4 h-4 mr-2" />
@@ -1055,7 +987,7 @@ const ExamPlatformUpload = () => {
                           No Books Found
                         </h3>
                         <p className="mt-1 text-sm text-gray-500">
-                          Use the filters above to search for existing books.
+                          You haven't uploaded any books yet.
                         </p>
                       </div>
                     )

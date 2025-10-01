@@ -700,7 +700,7 @@ function ExamPaperGenerator() {
                                   {question.options.map(
                                     (option, optionIndex) => (
                                       <div key={optionIndex} className="ml-4">
-                                        {String.fromCharCode(97 + optionIndex)}){" "}
+                                        {/* {String.fromCharCode(97 + optionIndex)}){" "} */}
                                         {option}
                                       </div>
                                     )

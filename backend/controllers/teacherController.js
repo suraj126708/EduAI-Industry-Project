@@ -509,6 +509,28 @@ export const deleteTeacherBook = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to delete book",
+    });
+  }
+};
+// @desc    Get all books uploaded by the current teacher
+// @route   GET /api/teachers/my-books
+// @access  Private (Teacher)
+export const getMyUploadedBooks = async (req, res) => {
+  try {
+    // req.user is populated by authenticateFirebaseToken and points to User collection
+    const teacherUserId = req.user._id;
+
+    const books = await Book.find({ uploadedBy: teacherUserId })
+      .populate("classId", "grade division")
+      .populate("schoolId", "name")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, data: books });
+  } catch (error) {
+    console.error("Teacher Error - Get my books:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve books uploaded by teacher",
       error: error.message,
     });
   }

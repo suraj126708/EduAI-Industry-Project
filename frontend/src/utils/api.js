@@ -164,6 +164,17 @@ export const bookAPI = {
     }
   },
 
+  // Fetch books uploaded by the current teacher
+  getMyBooks: async () => {
+    try {
+      const response = await api.get("teachers/my-books");
+      return response.data; // expected { success, data: [...] }
+    } catch (error) {
+      console.error("Error fetching my books:", error);
+      throw error;
+    }
+  },
+
   // Fetch classes (admin or public)
   getClasses: async () => {
     try {
