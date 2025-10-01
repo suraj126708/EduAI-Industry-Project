@@ -459,6 +459,61 @@ export const getBooksByClassAndSubject = async (req, res) => {
   }
 };
 
+// Delete a book uploaded by the current teacher (or admin)
+export const deleteTeacherBook = async (req, res) => {
+  try {
+    const { bookId } = req.params;
+    if (!bookId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "bookId is required" });
+    }
+
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Book not found" });
+    }
+
+    // Ownership or admin check
+    const isOwner = book.uploadedBy?.toString() === req.user?._id?.toString();
+    const isAdmin = req.user?.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only delete books you uploaded",
+      });
+    }
+
+    // Try to remove file from disk if it exists
+    try {
+      if (book.fileUrl) {
+        await fs.promises.unlink(book.fileUrl);
+      }
+    } catch (unlinkErr) {
+      if (unlinkErr.code !== "ENOENT") {
+        console.warn("Failed to delete file:", unlinkErr.message);
+      }
+    }
+
+    await Book.findByIdAndDelete(bookId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Book deleted successfully",
+      data: { _id: bookId },
+    });
+  } catch (error) {
+    console.error("Teacher Error - Delete book:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete book",
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Get teacher assignments (classes and subjects)
 // @route   GET /api/teachers/assignments
 // @access  Private (Teacher)

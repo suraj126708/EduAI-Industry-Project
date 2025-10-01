@@ -250,16 +250,9 @@ export const bookAPI = {
   // Delete book
   deleteBook: async (bookId) => {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error("User not authenticated");
-      const idToken = await user.getIdToken();
-
-      const response = await axios.delete(`${local_api}books/${bookId}`, {
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
-      });
-      return response.data;
+      // use shared api with auth header
+      const response = await api.delete(`teachers/books/${bookId}`);
+      return response.data; // { success, message, data }
     } catch (error) {
       console.error("Delete book error:", error);
       throw error;

@@ -984,6 +984,7 @@ const ExamPlatformUpload = () => {
 
                           <th className="p-3">Status</th>
                           <th className="p-3">Chunks</th>
+                          <th className="p-3 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1007,6 +1008,41 @@ const ExamPlatformUpload = () => {
                               <StatusBadge status={book.processedStatus} />
                             </td>
                             <td className="p-3">{book.noOfChunks ?? "-"}</td>
+                            <td className="p-3 text-right">
+                              <button
+                                onClick={async () => {
+                                  if (
+                                    !confirm(
+                                      "Delete this book? This cannot be undone."
+                                    )
+                                  )
+                                    return;
+                                  try {
+                                    const resp = await bookAPI.deleteBook(
+                                      book._id
+                                    );
+                                    if (resp?.success) {
+                                      setBooks((prev) =>
+                                        prev.filter((b) => b._id !== book._id)
+                                      );
+                                    } else {
+                                      alert(
+                                        resp?.message || "Failed to delete book"
+                                      );
+                                    }
+                                  } catch (err) {
+                                    const msg =
+                                      err?.response?.data?.message ||
+                                      err.message ||
+                                      "Failed to delete";
+                                    alert(msg);
+                                  }
+                                }}
+                                className="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700"
+                              >
+                                Delete
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>

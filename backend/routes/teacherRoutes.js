@@ -27,6 +27,7 @@ import {
   teacherUploadBook,
   getBooksByClassAndSubject,
   getChaptersBySubjectAndClass,
+  deleteTeacherBook,
 } from "../controllers/teacherController.js";
 
 const router = express.Router();
@@ -293,6 +294,14 @@ router.get(
   authenticateFirebaseToken,
   authorize("teacher"),
   getBooksByClassAndSubject
+);
+
+// Delete a book uploaded by the current teacher (or admin)
+router.delete(
+  "/books/:bookId",
+  authenticateFirebaseToken,
+  authorize("teacher", "admin"),
+  deleteTeacherBook
 );
 
 /**
