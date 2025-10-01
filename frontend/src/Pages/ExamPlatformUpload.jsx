@@ -1001,5 +1001,4 @@ const ExamPlatformUpload = () => {
     </div>
   );
 };
-
 export default ExamPlatformUpload;
