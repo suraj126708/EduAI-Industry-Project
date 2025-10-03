@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useCallback, useEffect } from "react";
 import { saveAs } from "file-saver";
 import { useNavigate } from "react-router-dom";

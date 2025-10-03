@@ -27,7 +27,13 @@ import TeacherClassSubject from "../models/TeacherClassSubject.js";
  * @access  Private (Admin)
  * @param   {Object} req - Express request object
  * @param   {Object} res - Express response object
+ *
+ *
  */
+
+const local_url = "http://localhost:8000/";
+const deplyed_url = "https://suraj6708-eduai.hf.space/";
+
 export const getAllTeachers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -349,7 +355,7 @@ export const teacherUploadBook = async (req, res) => {
         const subjectData = {
           class: classId,
           subject: subject,
-          Pdf_name: `${title}_${classId}_${subject}.pdf`,
+          pdf_name: `${title}_${classId}_${subject}.pdf`,
         };
 
         // Add the subject data as JSON string
@@ -361,17 +367,13 @@ export const teacherUploadBook = async (req, res) => {
           contentType: "application/pdf",
         });
 
-        const response = await axios.post(
-          "http://127.0.0.1:8000/process_pdf/",
-          form,
-          {
-            headers: { ...form.getHeaders() },
-            timeout: 5 * 60 * 1000,
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-            validateStatus: (s) => s >= 200 && s < 500,
-          }
-        );
+        const response = await axios.post(deplyed_url + "process_pdf/", form, {
+          headers: { ...form.getHeaders() },
+          timeout: 5 * 60 * 1000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          validateStatus: (s) => s >= 200 && s < 500,
+        });
         return response;
       };
 
@@ -669,11 +671,11 @@ export const getTeacherAssignments = async (req, res) => {
 // @access  Private (Teacher)
 export const generateQuestionPaper = async (req, res) => {
   try {
-    // Accept new payload shape as-is; also support legacy Pdf_name key
+    // Accept new payload shape as-is; also support legacy pdf_name key
     const body = req.body || {};
     const classValue = body.class;
     const subject = body.subject;
-    const pdfName = body.pdf_name || body.Pdf_name;
+    const pdfName = body.pdf_name || body.pdf_name;
 
     console.log(body);
 
@@ -686,7 +688,7 @@ export const generateQuestionPaper = async (req, res) => {
 
     // Forward the entire body to the AI service (port 8000)
     const response = await axios.post(
-      "http://127.0.0.1:8000/generate_question_paper/",
+      deplyed_url + "generate_question_paper/",
       { ...body, pdf_name: pdfName },
       {
         headers: { "Content-Type": "application/json" },
@@ -711,7 +713,7 @@ export const generateQuestionPaper = async (req, res) => {
     const saved = await QuestionPaper.create({
       paper: aiPaper,
       // Optional metadata if available in request
-      title: body.pdf_name || body.Pdf_name || undefined,
+      title: body.pdf_name || body.pdf_name || undefined,
       status: "draft",
       llmPrompt: body,
     });
