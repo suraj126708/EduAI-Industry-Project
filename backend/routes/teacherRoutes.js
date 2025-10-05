@@ -29,6 +29,7 @@ import {
   getChaptersBySubjectAndClass,
   deleteTeacherBook,
   getMyUploadedBooks,
+  updateQuestionPaper,
 } from "../controllers/teacherController.js";
 
 const router = express.Router();
@@ -556,6 +557,14 @@ router.post(
   authenticateFirebaseToken,
   // authorize(["teacher"]),
   generateQuestionPaper
+);
+
+// Update an existing question paper
+router.put(
+  "/question-papers/:id",
+  authenticateFirebaseToken,
+  authorize("teacher", "admin"),
+  updateQuestionPaper
 );
 
 export default router;

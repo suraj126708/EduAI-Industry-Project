@@ -201,11 +201,15 @@ export default function MinimalQuestionPaperForm() {
   // Fetch chapters when subject or class changes
   useEffect(() => {
     if (selectedSubject && selectedClass) {
-      fetchChapters(selectedSubject, selectedClass);
+      const classObj = classOptions.find((c) => c.grade === selectedClass);
+
+      if (classObj) {
+        fetchChapters(selectedSubject, classObj._id);
+      }
     } else {
       setDynamicTopics([]);
     }
-  }, [selectedSubject, selectedClass, fetchChapters]);
+  }, [selectedSubject, selectedClass, fetchChapters, classOptions]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -267,7 +271,10 @@ export default function MinimalQuestionPaperForm() {
         if (response.data.success) {
           const { classes, subjects } = response.data.data;
 
-          const formattedClasses = classes.map((c) => c.grade.toString());
+          const formattedClasses = classes.map((c) => ({
+            _id: c._id,
+            grade: c.grade.toString(),
+          }));
           const formattedSubjects = subjects.map((s) => s.name);
 
           setClassOptions(formattedClasses);
@@ -623,7 +630,8 @@ export default function MinimalQuestionPaperForm() {
       // Use the inner question_paper payload expected by PaperFormat
       const paperPayload =
         data.question_paper?.question_paper || data.question_paper;
-      setGeneratedPaperData(paperPayload);
+      // Persist both the paper and the backend id for later edits
+      setGeneratedPaperData({ __id: data.id, ...paperPayload });
       // setShowSuccessModal(true);
       setErrors({});
 

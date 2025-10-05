@@ -271,4 +271,19 @@ export const bookAPI = {
   },
 };
 
+// Question paper API functions
+export const paperAPI = {
+  updatePaper: async (paperId, paper) => {
+    try {
+      const response = await api.put(`teachers/question-papers/${paperId}`, {
+        paper,
+      });
+      return response.data; // { success, question_paper, id }
+    } catch (error) {
+      console.error("Update paper error:", error);
+      throw error;
+    }
+  },
+};
+
 export default api;

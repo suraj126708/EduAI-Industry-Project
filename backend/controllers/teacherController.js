@@ -716,6 +716,7 @@ export const generateQuestionPaper = async (req, res) => {
       title: body.pdf_name || body.pdf_name || undefined,
       status: "draft",
       llmPrompt: body,
+      createdBy: req.user?._id,
     });
 
     return res.status(200).json({
@@ -729,6 +730,68 @@ export const generateQuestionPaper = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to generate question paper",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update an existing question paper's content
+// @route   PUT /api/teachers/question-papers/:id
+// @access  Private (Teacher or Admin, restricted to owner if creator is set)
+export const updateQuestionPaper = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Question paper id is required" });
+    }
+
+    const existing = await QuestionPaper.findById(id);
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Question paper not found" });
+    }
+
+    const isAdmin = req.user?.role === "admin";
+    const isOwner =
+      existing.createdBy?.toString() === req.user?._id?.toString();
+    if (!isAdmin && existing.createdBy && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only edit papers you created",
+      });
+    }
+
+    // Accept either { paper: {...} } or the paper structure directly (with sections)
+    const incoming = req.body || {};
+    const newPaper = incoming.sections ? incoming : incoming.paper;
+    if (!newPaper || typeof newPaper !== "object") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Valid paper content is required" });
+    }
+
+    existing.paper = newPaper;
+    // Allow optional fields to be updated if provided
+    if (typeof incoming.title === "string") existing.title = incoming.title;
+    if (typeof incoming.status === "string") existing.status = incoming.status;
+    existing.llmPrompt = existing.llmPrompt || null;
+
+    await existing.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Question paper updated successfully",
+      question_paper: existing.paper,
+      id: existing._id,
+    });
+  } catch (error) {
+    console.error("Teacher Error - Update question paper:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update question paper",
       error: error.message,
     });
   }

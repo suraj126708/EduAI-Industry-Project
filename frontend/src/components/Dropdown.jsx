@@ -1,15 +1,15 @@
 import React from "react";
 import { ChevronDown } from "lucide-react";
 
-const Dropdown = ({ 
-  value, 
-  onChange, 
-  options = [], 
-  placeholder = "Select option", 
+const Dropdown = ({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select option",
   error = null,
   className = "",
   disabled = false,
-  ...props 
+  ...props
 }) => {
   return (
     <div className={`flex flex-col items-center gap-2 ${className}`}>
@@ -25,8 +25,8 @@ const Dropdown = ({
         >
           <option value="">{placeholder}</option>
           {options.map((option) => (
-            <option key={option.value || option} value={option.value || option}>
-              {option.label || option}
+            <option key={option._id || option} value={option.value || option}>
+              {option.label || option.grade || option}
             </option>
           ))}
         </select>

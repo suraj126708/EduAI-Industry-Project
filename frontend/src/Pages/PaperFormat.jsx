@@ -1,11 +1,10 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useCallback, useEffect } from "react";
 import { saveAs } from "file-saver";
 import { useNavigate } from "react-router-dom";
 
 function ExamPaperGenerator() {
   const navigate = useNavigate();
-  // Normalize/clean incoming paper JSON safely
+
   const normalizePaper = useCallback((incoming, fallback) => {
     const safeString = (v, fb = "") => {
       if (typeof v === "string") {
@@ -18,7 +17,6 @@ function ExamPaperGenerator() {
       Number.isFinite(Number(v)) ? Number(v) : fb;
     const safeArray = (v) => (Array.isArray(v) ? v : []);
 
-    // Prefer incoming values; if missing/empty, keep fallback defaults
     const incomingInstructions =
       Array.isArray(incoming?.instructions) && incoming.instructions.length > 0
         ? incoming.instructions
@@ -60,13 +58,12 @@ function ExamPaperGenerator() {
       }),
     };
 
-    // If somehow instructions ended empty after filtering, keep fallback's instructions
     if (!normalized.instructions || normalized.instructions.length === 0) {
       normalized.instructions = fallback.instructions;
     }
-
     return normalized;
   }, []);
+
   const [paperData, setPaperData] = useState({
     collegeName: "Vit pune",
     testName: "Unit Test",
@@ -79,166 +76,56 @@ function ExamPaperGenerator() {
       "All questions are compulsory",
       "Read the questions carefully before attempting",
       "Show all working clearly for numerical problems",
-      "Use of calculator is allowed for Section C only",
-      "Attempt all sections in sequence",
-      "Write legibly and maintain proper spacing",
     ],
-    // sections: [
-    //   {
-    //     sectionName: "Section A",
-    //     sectionTitle: "Multiple Choice Questions",
-    //     description: "Choose the correct option for each question.",
-    //     questions: [
-    //       {
-    //         questionNo: "1",
-    //         question:
-    //           "Which event is considered a major turning point in the French Revolution?",
-    //         options: [
-    //           "a) The Reign of Terror",
-    //           "b) The Storming of the Bastille",
-    //           "c) The execution of Louis XVI",
-    //           "d) The rise of Napoleon",
-    //         ],
-    //         marks: 1,
-    //       },
-    //       {
-    //         questionNo: "2",
-    //         question: "Who was the key leader in the unification of Italy?",
-    //         options: [
-    //           "a) Otto von Bismarck",
-    //           "b) Giuseppe Garibaldi",
-    //           "c) Victor Emmanuel II",
-    //           "d) Cavour",
-    //         ],
-    //         marks: 1,
-    //       },
-    //       {
-    //         questionNo: "3",
-    //         question:
-    //           "What was the primary cause of Balkan nationalism and conflicts?",
-    //         options: [
-    //           "a) Religious differences",
-    //           "b) Ethnic diversity",
-    //           "c) Economic competition",
-    //           "d) Territorial disputes",
-    //         ],
-    //         marks: 1,
-    //       },
-    //       {
-    //         questionNo: "4",
-    //         question:
-    //           "Which of the following was NOT a consequence of the First World War?",
-    //         options: [
-    //           "a) Rise of communism",
-    //           "b) Collapse of empires",
-    //           "c) Treaty of Versailles",
-    //           "d) Unification of Germany",
-    //         ],
-    //         marks: 1,
-    //       },
-    //     ],
-    //   },
-    //   {
-    //     sectionName: "Section B",
-    //     sectionTitle: "Short Answer Questions",
-    //     description: "Answer the following questions in 3-4 lines.",
-    //     questions: [
-    //       {
-    //         questionNo: "1",
-    //         question:
-    //           "Explain the impact of the French Revolution on the spread of nationalism in Europe.",
-    //         marks: 2,
-    //       },
-    //       {
-    //         questionNo: "2",
-    //         question:
-    //           "Describe the role of Otto von Bismarck in the unification of Germany.",
-    //         marks: 2,
-    //       },
-    //       {
-    //         questionNo: "3",
-    //         question:
-    //           "What were the main factors that contributed to the rise of nationalism in India?",
-    //         marks: 2,
-    //       },
-    //       {
-    //         questionNo: "4",
-    //         question:
-    //           "How did the First World War impact the Khilafat Movement in India?",
-    //         marks: 2,
-    //       },
-    //       {
-    //         questionNo: "5",
-    //         question:
-    //           "Briefly explain the objectives and strategies of the Non-Cooperation Movement.",
-    //         marks: 2,
-    //       },
-    //     ],
-    //   },
-    //   {
-    //     sectionName: "Section C",
-    //     sectionTitle: "Long Answer Questions",
-    //     description:
-    //       "Answer any three of the following questions. Show all steps clearly.",
-    //     questions: [
-    //       {
-    //         questionNo: "1",
-    //         question:
-    //           "Analyze the impact of the French Revolution on the development of nationalism in Europe. Discuss its influence on various European countries.",
-    //         marks: 4,
-    //       },
-    //       {
-    //         questionNo: "2",
-    //         question:
-    //           "Explain the process of unification of Germany under Otto von Bismarck. Discuss the role of diplomacy, war, and popular support in this process.",
-    //         marks: 4,
-    //       },
-    //       {
-    //         questionNo: "3",
-    //         question:
-    //           "Describe the various phases of the Indian nationalist movement from the early 20th century to the attainment of independence. Highlight the key events, leaders, and ideologies involved.",
-    //         marks: 4,
-    //       },
-    //       {
-    //         questionNo: "4",
-    //         question:
-    //           "Discuss the causes and consequences of the Balkan nationalism and conflicts in the late 19th and early 20th centuries. Explain how these conflicts contributed to the outbreak of the First World War.",
-    //         marks: 4,
-    //       },
-    //     ],
-    //   },
-    // ],
+    sections: [], // Start with empty sections by default
   });
 
   const [editMode, setEditMode] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [paperId, setPaperId] = useState(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
-  // Load generated paper JSON (if any) saved in sessionStorage and map it to the page state
+  // Load generated paper from sessionStorage ONCE
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("generatedPaperData");
-      if (!raw) return;
+      if (!raw) {
+        return; // No data, so we'll use the default state
+      }
+
       const gen = JSON.parse(raw);
 
-      // Always normalize to ensure required defaults like instructions are present
-      const candidate = normalizePaper(gen || {}, paperData);
-      setPaperData(candidate);
+      // Define a fallback object based on the initial state structure
+      const fallbackState = {
+        collegeName: "Vit pune",
+        testName: "Unit Test",
+        subject: "History",
+        className: "Class 10",
+        maxMarks: 30,
+        timeAllowed: "1 hour",
+        date: new Date().toISOString().split("T")[0],
+        instructions: [
+          "All questions are compulsory",
+          "Read the questions carefully before attempting",
+        ],
+        sections: [],
+      };
+
+      const newPaper = normalizePaper(gen.question_paper || {}, fallbackState);
+
+      setPaperData(newPaper);
+
+      if (gen.id) {
+        setPaperId(gen.id);
+      }
     } catch (err) {
-      // keep existing default paperData if parsing/mapping fails
-      console.error(
-        "Failed to load generatedPaperData from sessionStorage:",
-        err
-      );
+      console.error("Failed to load generatedPaperData:", err);
     }
-  }, []);
+  }, [normalizePaper]); // FIX: Dependency array only includes the stable normalizePaper function
 
   const handleInputChange = useCallback((field, value) => {
-    setPaperData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setPaperData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   const updateSection = useCallback((sectionIndex, field, value) => {
@@ -292,26 +179,22 @@ function ExamPaperGenerator() {
   const handleSavePaper = useCallback(async () => {
     setIsSaving(true);
     try {
-      // Prepare the paper data for saving
-      const paperToSave = {
+      // If we have a backend id, update the paper via API; otherwise, fallback (disabled here)
+      if (!paperId) {
+        throw new Error(
+          "Missing paper id. Please regenerate the paper and try again."
+        );
+      }
+
+      const payloadPaper = {
         ...paperData,
         totalMarks: calculateTotalMarks(),
-        createdAt: new Date().toISOString(),
       };
 
-      // Call backend API to save the paper
-      const res = await fetch("http://localhost:8001/save_question_paper/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(paperToSave),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data || data.status !== "success") {
-        throw new Error(data?.message || "Failed to save question paper");
+      const { paperAPI } = await import("../utils/api");
+      const result = await paperAPI.updatePaper(paperId, payloadPaper);
+      if (!result?.success) {
+        throw new Error(result?.message || "Failed to update paper");
       }
 
       setSavedMessage("Question paper saved successfully!");
@@ -330,13 +213,7 @@ function ExamPaperGenerator() {
 
       let errorMessage = "Failed to save question paper";
 
-      if (
-        error.name === "TypeError" &&
-        error.message.includes("Failed to fetch")
-      ) {
-        errorMessage =
-          "Unable to connect to the server. Please check if the backend server is running on localhost:8000";
-      } else if (error.message) {
+      if (error.message) {
         errorMessage = error.message;
       }
 
