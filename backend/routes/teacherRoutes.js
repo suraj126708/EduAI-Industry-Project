@@ -30,6 +30,7 @@ import {
   deleteTeacherBook,
   getMyUploadedBooks,
   updateQuestionPaper,
+  getMyQuestionPapers,
 } from "../controllers/teacherController.js";
 
 const router = express.Router();
@@ -356,12 +357,7 @@ router.get(
   getMyUploadedBooks
 );
 
-router.get(
-  "/:id",
-  authenticateFirebaseToken,
-  teacherIdValidation,
-  getTeacherById
-);
+// NOTE: Place generic "/:id" route AFTER all specific routes to avoid shadowing
 
 /**
  * @swagger
@@ -502,7 +498,6 @@ router.put(
 router.post(
   "/upload-book",
   authenticateFirebaseToken,
-  teacherIdValidation,
   pdfUpload.single("pdf"),
   teacherUploadBook
 );
@@ -565,6 +560,23 @@ router.put(
   authenticateFirebaseToken,
   authorize("teacher", "admin"),
   updateQuestionPaper
+);
+
+// Get question papers created by the current teacher
+router.get(
+  "/my-question-papers",
+  authenticateFirebaseToken,
+  authorize("teacher", "admin"),
+  getMyQuestionPapers
+);
+
+// Place generic id route at the very end to avoid catching specific paths like
+// "/assignments", "/my-books", "/my-question-papers", etc.
+router.get(
+  "/:id",
+  authenticateFirebaseToken,
+  teacherIdValidation,
+  getTeacherById
 );
 
 export default router;

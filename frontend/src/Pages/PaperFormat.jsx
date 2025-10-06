@@ -1,10 +1,12 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useCallback, useEffect } from "react";
 import { saveAs } from "file-saver";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function ExamPaperGenerator() {
   const navigate = useNavigate();
-
+  const location = useLocation();
+  // Normalize/clean incoming paper JSON safely
   const normalizePaper = useCallback((incoming, fallback) => {
     const safeString = (v, fb = "") => {
       if (typeof v === "string") {
@@ -17,40 +19,92 @@ function ExamPaperGenerator() {
       Number.isFinite(Number(v)) ? Number(v) : fb;
     const safeArray = (v) => (Array.isArray(v) ? v : []);
 
+    // Prefer incoming values; if missing/empty, keep fallback defaults
     const incomingInstructions =
       Array.isArray(incoming?.instructions) && incoming.instructions.length > 0
         ? incoming.instructions
         : fallback.instructions;
-    const incomingSections =
+
+    // Try to derive sections if not provided directly
+    let incomingSections =
       Array.isArray(incoming?.sections) && incoming.sections.length > 0
         ? incoming.sections
-        : fallback.sections;
+        : undefined;
+
+    // Support alternative paper nesting: question_paper/paper
+    if (!incomingSections) {
+      const nested = incoming?.question_paper || incoming?.paper;
+      if (nested && Array.isArray(nested.sections) && nested.sections.length) {
+        incomingSections = nested.sections;
+      }
+    }
+
+    // Support flat questions array
+    if (!incomingSections) {
+      const flatQuestions =
+        (Array.isArray(incoming?.questions) && incoming.questions) ||
+        (incoming?.question_paper &&
+          Array.isArray(incoming.question_paper.questions) &&
+          incoming.question_paper.questions) ||
+        (incoming?.paper &&
+          Array.isArray(incoming.paper.questions) &&
+          incoming.paper.questions);
+      if (flatQuestions && flatQuestions.length > 0) {
+        incomingSections = [
+          {
+            sectionName: "Section 1",
+            description: "",
+            questions: flatQuestions,
+          },
+        ];
+      }
+    }
+
+    // Fallback to existing sections in state if still absent
+    if (!incomingSections) incomingSections = fallback.sections;
 
     const normalized = {
       collegeName: safeString(incoming?.collegeName, fallback.collegeName),
-      testName: safeString(incoming?.testName, fallback.testName),
-      subject: safeString(incoming?.subject, fallback.subject),
-      className: safeString(incoming?.className, fallback.className),
+      testName: safeString(
+        incoming?.testName || incoming?.title,
+        fallback.testName
+      ),
+      subject: safeString(
+        incoming?.subject || incoming?.subjectName,
+        fallback.subject
+      ),
+      className: safeString(
+        incoming?.className || incoming?.class || incoming?.classGrade,
+        fallback.className
+      ),
       maxMarks: safeNumber(incoming?.maxMarks, fallback.maxMarks),
-      timeAllowed: safeString(incoming?.timeAllowed, fallback.timeAllowed),
+      timeAllowed: safeString(
+        incoming?.timeAllowed || incoming?.duration,
+        fallback.timeAllowed
+      ),
       date: safeString(incoming?.date, fallback.date),
       instructions: safeArray(incomingInstructions)
         .map((i) => safeString(i))
         .filter((i) => i && i.length > 0),
       sections: safeArray(incomingSections).map((section, sIdx) => {
         const questions = safeArray(section?.questions).map((q, qIdx) => {
-          const options = safeArray(q?.options)
+          const options = safeArray(q?.options || q?.choices)
             .map((opt) => safeString(opt))
             .filter((opt) => opt && opt.length > 0);
           return {
             questionNo: safeString(q?.questionNo, (qIdx + 1).toString()),
-            question: safeString(q?.question),
+            question: safeString(
+              q?.question || q?.question_text || q?.text || q?.ques
+            ),
             marks: safeNumber(q?.marks, 1),
             ...(options.length > 0 ? { options } : {}),
           };
         });
         return {
-          sectionName: safeString(section?.sectionName, `Section ${sIdx + 1}`),
+          sectionName: safeString(
+            section?.sectionName || section?.title || section?.name,
+            `Section ${sIdx + 1}`
+          ),
           sectionTitle: safeString(section?.sectionTitle),
           description: safeString(section?.description),
           questions,
@@ -58,12 +112,13 @@ function ExamPaperGenerator() {
       }),
     };
 
+    // If somehow instructions ended empty after filtering, keep fallback's instructions
     if (!normalized.instructions || normalized.instructions.length === 0) {
       normalized.instructions = fallback.instructions;
     }
+
     return normalized;
   }, []);
-
   const [paperData, setPaperData] = useState({
     collegeName: "Vit pune",
     testName: "Unit Test",
@@ -76,56 +131,170 @@ function ExamPaperGenerator() {
       "All questions are compulsory",
       "Read the questions carefully before attempting",
       "Show all working clearly for numerical problems",
+      "Use of calculator is allowed for Section C only",
+      "Attempt all sections in sequence",
+      "Write legibly and maintain proper spacing",
     ],
-    sections: [], // Start with empty sections by default
+    // sections: [
+    //   {
+    //     sectionName: "Section A",
+    //     sectionTitle: "Multiple Choice Questions",
+    //     description: "Choose the correct option for each question.",
+    //     questions: [
+    //       {
+    //         questionNo: "1",
+    //         question:
+    //           "Which event is considered a major turning point in the French Revolution?",
+    //         options: [
+    //           "a) The Reign of Terror",
+    //           "b) The Storming of the Bastille",
+    //           "c) The execution of Louis XVI",
+    //           "d) The rise of Napoleon",
+    //         ],
+    //         marks: 1,
+    //       },
+    //       {
+    //         questionNo: "2",
+    //         question: "Who was the key leader in the unification of Italy?",
+    //         options: [
+    //           "a) Otto von Bismarck",
+    //           "b) Giuseppe Garibaldi",
+    //           "c) Victor Emmanuel II",
+    //           "d) Cavour",
+    //         ],
+    //         marks: 1,
+    //       },
+    //       {
+    //         questionNo: "3",
+    //         question:
+    //           "What was the primary cause of Balkan nationalism and conflicts?",
+    //         options: [
+    //           "a) Religious differences",
+    //           "b) Ethnic diversity",
+    //           "c) Economic competition",
+    //           "d) Territorial disputes",
+    //         ],
+    //         marks: 1,
+    //       },
+    //       {
+    //         questionNo: "4",
+    //         question:
+    //           "Which of the following was NOT a consequence of the First World War?",
+    //         options: [
+    //           "a) Rise of communism",
+    //           "b) Collapse of empires",
+    //           "c) Treaty of Versailles",
+    //           "d) Unification of Germany",
+    //         ],
+    //         marks: 1,
+    //       },
+    //     ],
+    //   },
+    //   {
+    //     sectionName: "Section B",
+    //     sectionTitle: "Short Answer Questions",
+    //     description: "Answer the following questions in 3-4 lines.",
+    //     questions: [
+    //       {
+    //         questionNo: "1",
+    //         question:
+    //           "Explain the impact of the French Revolution on the spread of nationalism in Europe.",
+    //         marks: 2,
+    //       },
+    //       {
+    //         questionNo: "2",
+    //         question:
+    //           "Describe the role of Otto von Bismarck in the unification of Germany.",
+    //         marks: 2,
+    //       },
+    //       {
+    //         questionNo: "3",
+    //         question:
+    //           "What were the main factors that contributed to the rise of nationalism in India?",
+    //         marks: 2,
+    //       },
+    //       {
+    //         questionNo: "4",
+    //         question:
+    //           "How did the First World War impact the Khilafat Movement in India?",
+    //         marks: 2,
+    //       },
+    //       {
+    //         questionNo: "5",
+    //         question:
+    //           "Briefly explain the objectives and strategies of the Non-Cooperation Movement.",
+    //         marks: 2,
+    //       },
+    //     ],
+    //   },
+    //   {
+    //     sectionName: "Section C",
+    //     sectionTitle: "Long Answer Questions",
+    //     description:
+    //       "Answer any three of the following questions. Show all steps clearly.",
+    //     questions: [
+    //       {
+    //         questionNo: "1",
+    //         question:
+    //           "Analyze the impact of the French Revolution on the development of nationalism in Europe. Discuss its influence on various European countries.",
+    //         marks: 4,
+    //       },
+    //       {
+    //         questionNo: "2",
+    //         question:
+    //           "Explain the process of unification of Germany under Otto von Bismarck. Discuss the role of diplomacy, war, and popular support in this process.",
+    //         marks: 4,
+    //       },
+    //       {
+    //         questionNo: "3",
+    //         question:
+    //           "Describe the various phases of the Indian nationalist movement from the early 20th century to the attainment of independence. Highlight the key events, leaders, and ideologies involved.",
+    //         marks: 4,
+    //       },
+    //       {
+    //         questionNo: "4",
+    //         question:
+    //           "Discuss the causes and consequences of the Balkan nationalism and conflicts in the late 19th and early 20th centuries. Explain how these conflicts contributed to the outbreak of the First World War.",
+    //         marks: 4,
+    //       },
+    //     ],
+    //   },
+    // ],
   });
 
   const [editMode, setEditMode] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [paperId, setPaperId] = useState(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
-  // Load generated paper from sessionStorage ONCE
+  // Load paper from route state first; fallback to sessionStorage
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem("generatedPaperData");
-      if (!raw) {
-        return; // No data, so we'll use the default state
+      const statePaper = location.state?.paper;
+      console.log("statePaper", statePaper);
+      if (statePaper) {
+        const candidate = normalizePaper(statePaper, paperData);
+        console.log("statePaper", statePaper);
+        setPaperData(candidate);
+        return;
       }
 
-      const gen = JSON.parse(raw);
-
-      // Define a fallback object based on the initial state structure
-      const fallbackState = {
-        collegeName: "Vit pune",
-        testName: "Unit Test",
-        subject: "History",
-        className: "Class 10",
-        maxMarks: 30,
-        timeAllowed: "1 hour",
-        date: new Date().toISOString().split("T")[0],
-        instructions: [
-          "All questions are compulsory",
-          "Read the questions carefully before attempting",
-        ],
-        sections: [],
-      };
-
-      const newPaper = normalizePaper(gen.question_paper || {}, fallbackState);
-
-      setPaperData(newPaper);
-
-      if (gen.id) {
-        setPaperId(gen.id);
+      const raw = sessionStorage.getItem("generatedPaperData");
+      if (raw) {
+        const gen = JSON.parse(raw);
+        const candidate = normalizePaper(gen || {}, paperData);
+        setPaperData(candidate);
       }
     } catch (err) {
-      console.error("Failed to load generatedPaperData:", err);
+      console.error("Failed to load paper:", err);
     }
-  }, [normalizePaper]); // FIX: Dependency array only includes the stable normalizePaper function
+  }, [location.state]);
 
   const handleInputChange = useCallback((field, value) => {
-    setPaperData((prev) => ({ ...prev, [field]: value }));
+    setPaperData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   }, []);
 
   const updateSection = useCallback((sectionIndex, field, value) => {
@@ -179,22 +348,26 @@ function ExamPaperGenerator() {
   const handleSavePaper = useCallback(async () => {
     setIsSaving(true);
     try {
-      // If we have a backend id, update the paper via API; otherwise, fallback (disabled here)
-      if (!paperId) {
-        throw new Error(
-          "Missing paper id. Please regenerate the paper and try again."
-        );
-      }
-
-      const payloadPaper = {
+      // Prepare the paper data for saving
+      const paperToSave = {
         ...paperData,
         totalMarks: calculateTotalMarks(),
+        createdAt: new Date().toISOString(),
       };
 
-      const { paperAPI } = await import("../utils/api");
-      const result = await paperAPI.updatePaper(paperId, payloadPaper);
-      if (!result?.success) {
-        throw new Error(result?.message || "Failed to update paper");
+      // Call backend API to save the paper
+      const res = await fetch("http://localhost:8001/save_question_paper/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(paperToSave),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data || data.status !== "success") {
+        throw new Error(data?.message || "Failed to save question paper");
       }
 
       setSavedMessage("Question paper saved successfully!");
@@ -213,7 +386,13 @@ function ExamPaperGenerator() {
 
       let errorMessage = "Failed to save question paper";
 
-      if (error.message) {
+      if (
+        error.name === "TypeError" &&
+        error.message.includes("Failed to fetch")
+      ) {
+        errorMessage =
+          "Unable to connect to the server. Please check if the backend server is running on localhost:8000";
+      } else if (error.message) {
         errorMessage = error.message;
       }
 
@@ -867,7 +1046,7 @@ function ExamPaperGenerator() {
   return (
     <div>
       {/* Control Panel */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+      <div className="fixed top-20 right-4 z-50 flex flex-col gap-2">
         <button
           onClick={() => setEditMode(!editMode)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg font-medium transition-colors"

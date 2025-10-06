@@ -155,6 +155,74 @@ export default function MinimalQuestionPaperForm() {
     type: "success",
   });
   const dropdownRefs = useRef({});
+  const [showNoBooksModal, setShowNoBooksModal] = useState(false);
+
+  // Cache keys
+  const CACHE_KEY = "qpg_form_state_v1";
+  const QUESTIONS_CACHE_KEY = "qpg_questions_v1";
+
+  // Load cached state once
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (cached.selectedClass) setSelectedClass(cached.selectedClass);
+        if (cached.selectedSubject) setSelectedSubject(cached.selectedSubject);
+        if (cached.selectedExamType)
+          setSelectedExamType(cached.selectedExamType);
+        if (Array.isArray(cached.selectedMainTopics))
+          setSelectedMainTopics(cached.selectedMainTopics);
+        if (typeof cached.numberOfPapers === "number")
+          setNumberOfPapers(cached.numberOfPapers);
+        if (typeof cached.selectedHour === "number")
+          setSelectedHour(cached.selectedHour);
+        if (typeof cached.selectedMinute === "number")
+          setSelectedMinute(cached.selectedMinute);
+      }
+
+      const rawQuestions = localStorage.getItem(QUESTIONS_CACHE_KEY);
+      if (rawQuestions) {
+        const cachedQuestions = JSON.parse(rawQuestions);
+        if (Array.isArray(cachedQuestions) && cachedQuestions.length > 0) {
+          setQuestions(cachedQuestions);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load cached form state", e);
+    }
+  }, []);
+
+  // Persist form state
+  useEffect(() => {
+    try {
+      const toSave = {
+        selectedClass,
+        selectedSubject,
+        selectedExamType,
+        selectedMainTopics,
+        numberOfPapers,
+        selectedHour,
+        selectedMinute,
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(toSave));
+    } catch (_) {}
+  }, [
+    selectedClass,
+    selectedSubject,
+    selectedExamType,
+    selectedMainTopics,
+    numberOfPapers,
+    selectedHour,
+    selectedMinute,
+  ]);
+
+  // Persist questions state
+  useEffect(() => {
+    try {
+      localStorage.setItem(QUESTIONS_CACHE_KEY, JSON.stringify(questions));
+    } catch (_) {}
+  }, [questions]);
 
   // Function to fetch chapters from API
   const fetchChapters = useCallback(async (subject, classId) => {
@@ -170,6 +238,7 @@ export default function MinimalQuestionPaperForm() {
       });
 
       const data = response.data;
+      console.log("Fetched chapters:", data);
 
       if (data.success && data.chapters && data.chapters.length > 0) {
         // Transform API response to match our format
@@ -204,7 +273,7 @@ export default function MinimalQuestionPaperForm() {
       const classObj = classOptions.find((c) => c.grade === selectedClass);
 
       if (classObj) {
-        fetchChapters(selectedSubject, classObj._id);
+        fetchChapters(selectedSubject, selectedClass);
       }
     } else {
       setDynamicTopics([]);
@@ -279,6 +348,10 @@ export default function MinimalQuestionPaperForm() {
 
           setClassOptions(formattedClasses);
           setSubjectOptions(formattedSubjects);
+
+          if (formattedClasses.length === 0 || formattedSubjects.length === 0) {
+            setShowNoBooksModal(true);
+          }
         } else {
           throw new Error(
             response.data.message || "Could not retrieve your assignments."
@@ -767,6 +840,34 @@ export default function MinimalQuestionPaperForm() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 pb-32">
       <div className="max-w-6xl mx-auto">
+        {/* No Books Modal */}
+        <Modal
+          isOpen={showNoBooksModal}
+          onClose={() => setShowNoBooksModal(false)}
+        >
+          <ModalHeader className="bg-gradient-to-r from-blue-600 to-indigo-600">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">No Books Found</h3>
+              <ModalCloseButton onClose={() => setShowNoBooksModal(false)} />
+            </div>
+          </ModalHeader>
+          <ModalContent>
+            <p className="text-gray-700 mb-4">
+              We couldn't find any books uploaded by you. Upload at least one
+              book to enable class and subject selection for question paper
+              generation.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                onClick={() => setShowNoBooksModal(false)}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => navigate("/upload")}>Go to Uploads</Button>
+            </div>
+          </ModalContent>
+        </Modal>
         {/* Toast Notification */}
         {toast.visible && (
           <div

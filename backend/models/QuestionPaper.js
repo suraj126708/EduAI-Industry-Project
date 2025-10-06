@@ -15,9 +15,10 @@ const questionPaperSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "School",
     },
+    // Creator is a User document (role: teacher)
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Teacher",
+      ref: "User",
     },
     bookId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -27,9 +28,19 @@ const questionPaperSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Subject",
     },
+    // Store subject name redundantly for simpler queries/rendering
+    subject: {
+      type: String,
+      trim: true,
+    },
     classId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Class",
+    },
+    // Store class grade/label redundantly (e.g., "10" or "Class 10")
+    classGrade: {
+      type: String,
+      trim: true,
     },
     title: {
       type: String,
@@ -43,6 +54,12 @@ const questionPaperSchema = new mongoose.Schema(
       type: String,
       enum: ["draft", "finalized", "published"],
       default: "draft",
+    },
+    // Optional convenience metadata
+    teacherEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
     },
     createdAt: {
       type: Date,

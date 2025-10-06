@@ -25,7 +25,16 @@ const Dropdown = ({
         >
           <option value="">{placeholder}</option>
           {options.map((option) => (
-            <option key={option._id || option} value={option.value || option}>
+            <option
+              key={option._id || option}
+              value={
+                option.value !== undefined
+                  ? option.value
+                  : option.grade !== undefined
+                  ? String(option.grade)
+                  : option
+              }
+            >
               {option.label || option.grade || option}
             </option>
           ))}

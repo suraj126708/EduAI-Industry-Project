@@ -17,6 +17,7 @@ import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
 import AnswerSheetUpload from "./Pages/AnswerSheetUpload";
 import PaperFormat from "./Pages/PaperFormat";
 import ReportGeneration from "./Pages/QuestionPaperReport";
+import MyPapers from "./Pages/MyPapers";
 
 // Admin imports
 import AdminLayout from "./Pages/Admin/AdminLayout";
@@ -64,6 +65,10 @@ function App() {
             <Route
               path="/reports"
               element={<ProtectedRoute>{<ReportGeneration />}</ProtectedRoute>}
+            />
+            <Route
+              path="/my-papers"
+              element={<ProtectedRoute>{<MyPapers />}</ProtectedRoute>}
             />
 
             <Route

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { ChevronDown } from "lucide-react";
 import CustomDropdown from "../CustomDropdown";
 import ErrorMessage from "../ErrorMessage";
@@ -13,6 +13,23 @@ const TopicsDropdown = ({
   isLoadingTopics = false,
   error = null,
 }) => {
+  const containerRef = useRef(null);
+
+  // Close when clicking outside of the dropdown
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (event) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target)
+      ) {
+        // Toggle to close
+        onToggle();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, onToggle]);
   const displayValue =
     selectedMainTopics.length === 0
       ? null
@@ -22,6 +39,7 @@ const TopicsDropdown = ({
 
   return (
     <CustomDropdown
+      ref={containerRef}
       value={displayValue}
       onClick={onToggle}
       placeholder="Select topics"

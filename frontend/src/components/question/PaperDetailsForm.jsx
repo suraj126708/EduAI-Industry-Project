@@ -70,29 +70,6 @@ const PaperDetailsForm = ({
           </div>
 
           <div className="flex flex-col items-center gap-2">
-            <div className="text-xs text-gray-500 font-medium">Duration</div>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowDurationPicker(true)}
-                className={`px-4 py-3 border-b-2 focus:outline-none bg-gray-50 text-gray-900 min-w-[160px] rounded transition-all duration-200 hover:bg-gray-100 ${
-                  errors.duration ? "border-red-300" : "border-gray-200"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium text-gray-800`}>
-                    {selectedHour === 1 && selectedMinute === 0
-                      ? "Set Duration"
-                      : `${selectedHour}h ${selectedMinute}m`}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </div>
-              </button>
-            </div>
-            <ErrorMessage error={errors.duration} />
-          </div>
-
-          <div className="flex flex-col items-center gap-2">
             <div className="text-xs text-gray-500 font-medium">Topics</div>
             <TopicsDropdown
               selectedMainTopics={selectedMainTopics}
@@ -106,6 +83,28 @@ const PaperDetailsForm = ({
               isLoadingTopics={isLoadingTopics}
               error={errors.topic}
             />
+          </div>
+
+          {/* Duration moved to the front and always showing value */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="text-xs text-gray-500 font-medium">Duration</div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowDurationPicker(true)}
+                className={`px-4 py-3 border-b-2 focus:outline-none bg-gray-50 text-gray-900 min-w-[160px] rounded transition-all duration-200 hover:bg-gray-100 ${
+                  errors.duration ? "border-red-300" : "border-gray-200"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium text-gray-800`}>
+                    {`${selectedHour}h ${selectedMinute}m`}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </div>
+              </button>
+            </div>
+            <ErrorMessage error={errors.duration} />
           </div>
 
           <div className="flex flex-col items-center gap-2">

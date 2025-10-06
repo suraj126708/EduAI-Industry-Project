@@ -10,14 +10,14 @@
 
 import User from "../models/UserSchema.js";
 import QuestionPaper from "../models/QuestionPaper.js";
+import Class from "../models/Class.js";
+import Subject from "../models/Subject.js";
 import { validationResult } from "express-validator";
 import path from "path";
 import fs from "fs";
 import axios from "axios";
 import FormData from "form-data";
 import Book from "../models/BookSchema.js";
-import Class from "../models/Class.js";
-import Subject from "../models/Subject.js";
 import TeacherClassSubject from "../models/TeacherClassSubject.js";
 
 /**
@@ -673,8 +673,8 @@ export const generateQuestionPaper = async (req, res) => {
   try {
     // Accept new payload shape as-is; also support legacy pdf_name key
     const body = req.body || {};
-    const classValue = body.class;
-    const subject = body.subject;
+    const classValue = body.class; // could be grade as number/string
+    const subject = body.subject; // could be subject name or id string
     const pdfName = body.pdf_name || body.pdf_name;
 
     console.log(body);
@@ -709,14 +709,65 @@ export const generateQuestionPaper = async (req, res) => {
     // Expect AI returns the final paper JSON structure
     const aiPaper = response.data;
 
-    // Persist in database as a single document
+    // Resolve teacher user, classId (by grade), subjectId (by name or subjectId), and schoolId
+    const teacherUser = await User.findById(req.user?._id);
+
+    let resolvedClassId = undefined;
+    let resolvedClassGrade = undefined;
+    let resolvedSchoolId = teacherUser?.schoolId || undefined;
+    if (classValue !== undefined && classValue !== null && classValue !== "") {
+      const gradeNum = Number(classValue);
+      const classDoc = Number.isFinite(gradeNum)
+        ? await Class.findOne({ grade: gradeNum })
+        : null;
+      if (classDoc) {
+        resolvedClassId = classDoc._id;
+        resolvedClassGrade = String(classDoc.grade);
+        if (!resolvedSchoolId) resolvedSchoolId = classDoc.schoolId;
+      } else {
+        // fallback: store provided value as classGrade string if class doc missing
+        resolvedClassGrade = String(classValue);
+      }
+    }
+
+    let resolvedSubjectId = undefined;
+    let resolvedSubjectName = undefined;
+    if (typeof subject === "string" && subject.trim().length > 0) {
+      const subjName = subject.replace(/_/g, " ").trim();
+      // Try to find by name within teacher's school, otherwise any
+      let subjDoc = null;
+      if (resolvedSchoolId) {
+        subjDoc = await Subject.findOne({
+          schoolId: resolvedSchoolId,
+          name: new RegExp(`^${subjName}$`, "i"),
+        });
+      }
+      if (!subjDoc) {
+        subjDoc = await Subject.findOne({
+          name: new RegExp(`^${subjName}$`, "i"),
+        });
+      }
+      if (subjDoc) {
+        resolvedSubjectId = subjDoc._id;
+        resolvedSubjectName = subjDoc.name;
+      } else {
+        resolvedSubjectName = subjName;
+      }
+    }
+
+    // Persist in database as a single document with resolved metadata
     const saved = await QuestionPaper.create({
       paper: aiPaper,
-      // Optional metadata if available in request
       title: body.pdf_name || body.pdf_name || undefined,
       status: "draft",
       llmPrompt: body,
-      createdBy: req.user?._id,
+      createdBy: teacherUser?._id,
+      schoolId: resolvedSchoolId,
+      classId: resolvedClassId,
+      classGrade: resolvedClassGrade,
+      subjectId: resolvedSubjectId,
+      subject: resolvedSubjectName,
+      teacherEmail: teacherUser?.email,
     });
 
     return res.status(200).json({
@@ -792,6 +843,31 @@ export const updateQuestionPaper = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to update question paper",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get question papers created by the authenticated teacher
+// @route   GET /api/teachers/my-question-papers
+// @access  Private (Teacher)
+export const getMyQuestionPapers = async (req, res) => {
+  try {
+    const teacherId = req.user?._id;
+    if (!teacherId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const papers = await QuestionPaper.find({ createdBy: teacherId })
+      .select("title status createdAt paper classGrade subject")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, data: papers });
+  } catch (error) {
+    console.error("Teacher Error - Get my question papers:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve question papers",
       error: error.message,
     });
   }

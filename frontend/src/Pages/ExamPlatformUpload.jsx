@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { bookAPI, fetchTeacherProfile } from "../utils/api.js";
+import Loader from "../components/Loader.jsx";
 
 // --- Constants ---
 
@@ -39,176 +40,7 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-// Enhanced Upload Loader Component
-const UploadLoader = ({
-  isVisible,
-  progress,
-  currentFile,
-  totalFiles,
-  currentStep,
-}) => {
-  const steps = [
-    { id: "upload", label: "Uploading PDF", icon: CloudUpload },
-    { id: "process", label: "Processing Content", icon: Zap },
-    { id: "analyze", label: "Analyzing Text", icon: FileCheck },
-    { id: "complete", label: "Finalizing", icon: Sparkles },
-  ];
-
-  const getStepMessage = (step) => {
-    const messages = {
-      upload: "Uploading your PDF file to our secure servers...",
-      process: "Sending PDF to our AI processing engine...",
-      analyze: "Extracting and analyzing text content...",
-      complete: "Finalizing and saving processed data...",
-    };
-    return messages[step] || "Processing your document...";
-  };
-
-  if (!isVisible) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-    >
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
-      >
-        {/* Header */}
-        <div className="text-center mb-8">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-4"
-          >
-            <CloudUpload className="text-white text-2xl" />
-          </motion.div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            Processing Your Book
-          </h3>
-          <p className="text-sm text-gray-600">
-            {currentFile} ({currentFile ? 1 : 0} of {totalFiles})
-          </p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-6">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Progress</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-            <motion.div
-              className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            />
-          </div>
-        </div>
-
-        {/* Steps */}
-        <div className="space-y-4 mb-6">
-          {steps.map((step, index) => {
-            const isActive = step.id === currentStep;
-            const isCompleted =
-              steps.findIndex((s) => s.id === currentStep) > index;
-            const Icon = step.icon;
-
-            return (
-              <motion.div
-                key={step.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ${
-                  isActive
-                    ? "bg-blue-50 border-2 border-blue-200"
-                    : isCompleted
-                    ? "bg-green-50 border-2 border-green-200"
-                    : "bg-gray-50 border-2 border-gray-200"
-                }`}
-              >
-                <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 ${
-                    isActive
-                      ? "bg-blue-500 text-white"
-                      : isCompleted
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-300 text-gray-600"
-                  }`}
-                >
-                  {isCompleted ? (
-                    <CheckCircle className="w-5 h-5" />
-                  ) : isActive ? (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        duration: 1,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                    >
-                      <Loader2 className="w-5 h-5" />
-                    </motion.div>
-                  ) : (
-                    <Icon className="w-5 h-5" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p
-                    className={`font-medium transition-colors duration-300 ${
-                      isActive
-                        ? "text-blue-700"
-                        : isCompleted
-                        ? "text-green-700"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    {step.label}
-                  </p>
-                  {isActive && (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="text-xs text-gray-500 mt-1"
-                    >
-                      {getStepMessage(step.id)}
-                    </motion.p>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Animated Dots */}
-        <div className="flex justify-center space-x-1">
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
-              className="w-2 h-2 bg-blue-500 rounded-full"
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.5, 1, 0.5],
-              }}
-              transition={{
-                duration: 1.5,
-                repeat: Infinity,
-                delay: i * 0.2,
-              }}
-            />
-          ))}
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
+// Removed local UploadLoader in favor of shared Loader component
 const ProgressBar = ({ progress }) => (
   <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
     <motion.div
@@ -356,10 +188,11 @@ const ExamPlatformUpload = () => {
           assignedSubjects,
         });
 
-        // Transform classes data
+        // Transform classes data (preserve raw numeric grade for API)
         const cls = assignedClasses.map((c) => ({
-          value: c.grade.toString().padStart(2, "0"), // Convert to string with leading zero
+          value: c.grade.toString().padStart(2, "0"), // UI value with leading zero
           label: `${c.grade}`,
+          grade: c.grade, // keep raw grade for backend
           _id: c._id,
           schoolName: c.schoolName,
         }));
@@ -368,51 +201,19 @@ const ExamPlatformUpload = () => {
         const subj = assignedSubjects.map((s) => ({
           value: s.subjectId || s.name.toLowerCase().replace(/\s+/g, "_"),
           label: s.name,
+          name: s.name,
+          subjectId: s.subjectId,
           _id: s._id,
           schoolName: s.schoolName,
         }));
 
-        setClasses(
-          cls.length
-            ? cls
-            : [
-                { value: "01", label: "Class 01" },
-                { value: "02", label: "Class 02" },
-                { value: "03", label: "Class 03" },
-                { value: "04", label: "Class 04" },
-                { value: "05", label: "Class 05" },
-                { value: "06", label: "Class 06" },
-                { value: "07", label: "Class 07" },
-                { value: "08", label: "Class 08" },
-                { value: "09", label: "Class 09" },
-                { value: "10", label: "Class 10" },
-                { value: "11", label: "Class 11" },
-                { value: "12", label: "Class 12" },
-              ]
-        );
-
-        setSubjects(
-          subj.length
-            ? subj
-            : [
-                { value: "mathematics", label: "Mathematics" },
-                { value: "physics", label: "Physics" },
-                { value: "chemistry", label: "Chemistry" },
-                { value: "biology", label: "Biology" },
-                { value: "english", label: "English" },
-                { value: "history", label: "History" },
-                { value: "geography", label: "Geography" },
-                { value: "economics", label: "Economics" },
-                { value: "political_science", label: "Political Science" },
-                { value: "computer_science", label: "Computer Science" },
-              ]
-        );
+        setClasses(cls);
+        setSubjects(subj);
       } catch (error) {
         console.error("Failed to load teacher assignments:", error);
         setAssignmentsError(
           error.message || "Failed to load teacher assignments"
         );
-        // Use fallback data
         setClasses([]);
         setSubjects([]);
       } finally {
@@ -505,7 +306,10 @@ const ExamPlatformUpload = () => {
 
       formData.append("pdf", row.file);
       formData.append("classId", selectedClass?.grade || row.class);
-      formData.append("subject", selectedSubject?.value || row.subject);
+      formData.append(
+        "subject",
+        selectedSubject?.name || selectedSubject?.label || row.subject
+      );
       formData.append("schoolId", schoolId);
       formData.append(
         "title",
@@ -658,16 +462,59 @@ const ExamPlatformUpload = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
-      {/* Enhanced Upload Loader */}
-      <UploadLoader
-        isVisible={showLoader}
-        progress={loaderProgress}
-        currentFile={currentFileName}
-        totalFiles={
-          documentRows.filter((r) => r.file && r.status === "pending").length
-        }
-        currentStep={currentStep}
-      />
+      {/* Enhanced Upload Loader (shared) - render only when visible to avoid inline animation */}
+      {showLoader && (
+        <Loader
+          isVisible={showLoader}
+          title="Processing Your Book"
+          message={
+            currentStep === "upload"
+              ? "Uploading your PDF file to our secure servers..."
+              : currentStep === "process"
+              ? "Sending PDF to our AI processing engine..."
+              : currentStep === "analyze"
+              ? "Extracting and analyzing text content..."
+              : "Finalizing and saving processed data..."
+          }
+          progress={loaderProgress}
+          currentFile={currentFileName}
+          totalFiles={
+            documentRows.filter((r) => r.file && r.status === "pending").length
+          }
+          steps={[
+            {
+              id: "upload",
+              label: "Uploading PDF",
+              status: currentStep === "upload" ? "active" : "completed",
+            },
+            {
+              id: "process",
+              label: "Processing Content",
+              status:
+                currentStep === "process"
+                  ? "active"
+                  : currentStep === "upload"
+                  ? "pending"
+                  : "completed",
+            },
+            {
+              id: "analyze",
+              label: "Analyzing Text",
+              status:
+                currentStep === "analyze"
+                  ? "active"
+                  : ["upload", "process"].includes(currentStep)
+                  ? "pending"
+                  : "completed",
+            },
+            {
+              id: "complete",
+              label: "Finalizing",
+              status: currentStep === "complete" ? "active" : "pending",
+            },
+          ]}
+        />
+      )}
 
       <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
         <header className="p-6 border-b border-gray-200">

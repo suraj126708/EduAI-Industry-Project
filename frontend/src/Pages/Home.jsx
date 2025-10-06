@@ -15,6 +15,12 @@ const homeCards = [
     icon: <FaFileUpload className="text-emerald-500 w-8 h-8 mb-2" />,
     route: "/upload",
   },
+
+  {
+    title: "Question papers",
+    icon: <IoNewspaperOutline className="text-blue-500 w-8 h-8 mb-2" />,
+    route: "/my-papers",
+  },
   {
     title: "Answer Sheet Upload",
     icon: <FaBook className="text-yellow-500 w-8 h-8 mb-2" />,

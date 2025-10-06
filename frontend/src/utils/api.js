@@ -197,7 +197,6 @@ export const bookAPI = {
     }
   },
 
-  // Get teacher assignments (classes and subjects)
   getTeacherAssignments: async (schoolId, email) => {
     try {
       const params = new URLSearchParams();
@@ -273,6 +272,16 @@ export const bookAPI = {
 
 // Question paper API functions
 export const paperAPI = {
+  // Fetch papers created by current teacher
+  getMyPapers: async () => {
+    try {
+      const response = await api.get("teachers/my-question-papers");
+      return response.data; // { success, data: [{ _id, paper, title, createdAt, ... }] }
+    } catch (error) {
+      console.error("Get my papers error:", error);
+      throw error;
+    }
+  },
   updatePaper: async (paperId, paper) => {
     try {
       const response = await api.put(`teachers/question-papers/${paperId}`, {
