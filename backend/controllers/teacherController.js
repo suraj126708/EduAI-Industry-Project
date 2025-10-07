@@ -713,7 +713,7 @@ export const generateQuestionPaper = async (req, res) => {
     }
 
     // Expect AI returns the final paper JSON structure
-    let aiPapersArray = response.data;
+    let aiPapersArray = response.data.question_paper;
     if (
       aiPapersArray &&
       typeof aiPapersArray === "object" &&

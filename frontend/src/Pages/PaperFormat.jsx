@@ -282,22 +282,7 @@ function ExamPaperGenerator() {
     return normalized;
   }, []);
 
-  const [paperData, setPaperData] = useState({
-    collegeName: "Vit pune",
-    testName: "Unit Test",
-    subject: "History",
-    className: "Class 10",
-    maxMarks: 30,
-    timeAllowed: "1 hour",
-    date: new Date().toISOString().split("T")[0],
-    instructions: [
-      "All questions are compulsory",
-      "Read the questions carefully before attempting",
-    ],
-    sections: [],
-  });
-
-  //const [paperData, setPaperData] = useState({});
+  const [paperData, setPaperData] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -307,29 +292,24 @@ function ExamPaperGenerator() {
   const [selectedPaperIndex, setSelectedPaperIndex] = useState(0);
 
   useEffect(() => {
-    const papersArray = location.state?.generated_papers;
-    const singlePaper = location.state?.paper;
+    // Standardize data loading: always look for an array of papers
+    const papersFromState = location.state?.papers; // Standard key from navigate()
+    const papersFromStorage = JSON.parse(
+      sessionStorage.getItem("generatedPapersArray")
+    );
 
-    if (Array.isArray(papersArray) && papersArray.length > 0) {
+    const papersArray = papersFromState || papersFromStorage || [];
+
+    if (papersArray.length > 0) {
       setGeneratedPapers(papersArray);
-      const firstPaper = papersArray[0];
-      if (firstPaper) {
-        setPaperData(normalizePaper(firstPaper, {}));
-        setPaperId(firstPaper._id);
-        setSelectedPaperIndex(0);
+      // Set the initially displayed paper to the one at the selected index (usually the first one)
+      const initialPaper = papersArray[selectedPaperIndex];
+      if (initialPaper) {
+        setPaperData(normalizePaper(initialPaper, {}));
+        setPaperId(initialPaper._id);
       }
-    } else if (singlePaper && singlePaper._id) {
-      setGeneratedPapers([]); // Clear any previous multi-paper state
-      setPaperData(normalizePaper(singlePaper, {}));
-      setPaperId(singlePaper._id);
-    } else {
-      const raw = sessionStorage.getItem("generatedPaperData");
-      if (raw) {
-        setPaperData(normalizePaper(JSON.parse(raw) || {}, {}));
-      }
-      setPaperId(null);
     }
-  }, [location.state, normalizePaper]);
+  }, [location.state, normalizePaper, selectedPaperIndex]);
 
   const handlePaperSelection = (index) => {
     const selectedPaper = generatedPapers[index];
@@ -511,27 +491,24 @@ function ExamPaperGenerator() {
         )}
       </div>
 
-      {/* Multi-paper Selector */}
+      {/* ✅ 3. REPLACE the "Multi-paper Selector" dropdown with this Tab UI */}
       {generatedPapers.length > 1 && !editMode && (
-        <div className="max-w-5xl mx-auto my-4 p-4 bg-white rounded-lg shadow">
-          <label
-            htmlFor="paper-selector"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Select a Generated Paper Version to View/Edit:
-          </label>
-          <select
-            id="paper-selector"
-            value={selectedPaperIndex}
-            onChange={(e) => handlePaperSelection(parseInt(e.target.value))}
-            className="mt-1 block w-full pl-3 pr-10 py-2 ... rounded-md"
-          >
+        <div className="max-w-5xl mx-auto my-4 p-2 bg-white rounded-lg shadow">
+          <div className="flex border-b border-gray-200">
             {generatedPapers.map((paper, index) => (
-              <option key={paper._id || index} value={index}>
-                Version {index + 1} - {paper.title || "Untitled"}
-              </option>
+              <button
+                key={paper._id || index}
+                onClick={() => handlePaperSelection(index)}
+                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                  selectedPaperIndex === index
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Paper {index + 1}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
       )}
 

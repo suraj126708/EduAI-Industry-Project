@@ -622,13 +622,24 @@ export default function MinimalQuestionPaperForm() {
     questionTypeInputs,
   ]);
 
+  const totalQuestions = useMemo(
+    () => questions.reduce((sum, q) => sum + q.numQuestions, 0),
+    [questions]
+  );
+
+  const totalMarks = useMemo(
+    () =>
+      questions.reduce(
+        (sum, q) => sum + q.numQuestions * q.marksPerQuestion,
+        0
+      ),
+    [questions]
+  );
+
   const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
 
     try {
-      // Prepare payload from current form state to match new API format
-
-      // Generate PDF name based on class, subject, and timestamp
       const timestamp = new Date()
         .toISOString()
         .slice(0, 19)
@@ -636,6 +647,7 @@ export default function MinimalQuestionPaperForm() {
         .replace("T", "");
       const pdfName = `questionPaper${selectedClass}${selectedSubject}${timestamp}`;
 
+      // ✅ CHANGE 1: The payload is now more detailed to improve AI results.
       const payload = {
         class: selectedClass,
         subject: selectedSubject,
@@ -644,6 +656,14 @@ export default function MinimalQuestionPaperForm() {
         topics: selectedMainTopics,
         numberOfPapers: Number(numberOfPapers) || 1,
         duration: { hours: selectedHour, minutes: selectedMinute },
+        generation_instructions: `
+        Generate a complete question paper.
+        The total marks should be ${totalMarks}.
+        The time allowed is ${selectedHour} hour(s) and ${selectedMinute} minute(s).
+        Include 3-4 general instructions for the students.
+        The test name is "${selectedExamType}".
+        Do not repeat previous answers. Request ID: ${Date.now()}
+      `,
         question_type: questions.map((q) =>
           q.type === "single_correct"
             ? "Single Correct"
@@ -658,7 +678,6 @@ export default function MinimalQuestionPaperForm() {
         questions: questions.map((q) => ({
           type: q.type,
           topics: q.topics && q.topics.length ? q.topics : selectedMainTopics,
-          // Populate llm_note from per-row comma-separated subtopicsInput
           llm_note: (q.subtopicsInput || "")
             .split(",")
             .map((s) => s.trim())
@@ -673,52 +692,46 @@ export default function MinimalQuestionPaperForm() {
 
       console.log("payload", payload);
 
-      // DEBUG: Log current user's ID token claims to verify roles/permissions
-      try {
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-          const idTokenResult = await currentUser.getIdTokenResult();
-          console.log("ID token claims:", idTokenResult.claims);
-        } else {
-          console.log("No currentUser found in auth when generating paper");
-        }
-      } catch (tokErr) {
-        console.error("Error fetching ID token result:", tokErr);
-      }
-
-      // Use the shared axios instance which injects Authorization header
       const response = await api.post(
         "teachers/generate-question-paper",
         payload
       );
+
       const data = response.data;
       console.log("generate response", data);
 
+      // ✅ CHANGE 2: This entire block handles the successful response correctly.
       if (!data.success) {
-        throw new Error(
-          (data && data.message) || "Failed to generate question paper"
-        );
+        throw new Error(data.message || "Failed to generate question paper");
       }
 
-      // Use the inner question_paper payload expected by PaperFormat
-      const paperPayload =
-        data.question_paper?.question_paper || data.question_paper;
-      // Persist both the paper and the backend id for later edits
-      setGeneratedPaperData({ __id: data.id, ...paperPayload });
-      // setShowSuccessModal(true);
+      const papersArray = data.generated_papers;
+
+      if (!papersArray || papersArray.length === 0) {
+        throw new Error("The AI returned an empty or invalid paper.");
+      }
+
+      // Store the full array for session persistence (e.g., on page refresh)
+      sessionStorage.setItem(
+        "generatedPapersArray",
+        JSON.stringify(papersArray)
+      );
+
+      // Navigate to the viewer, passing the full array of papers in the state
+      navigate("/paper", { state: { papers: papersArray } });
+
       setErrors({});
 
       // Show success toast
       setToast({
         visible: true,
-        message: "Question paper generated successfully",
+        message: data.message || "Question paper generated successfully",
         type: "success",
       });
       setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
     } catch (error) {
       console.error("Generate error:", error);
 
-      // Prioritize backend response body when available (axios error)
       const backendData = error?.response?.data;
       let errorMessage = "Failed to generate question paper. Please try again.";
 
@@ -734,7 +747,6 @@ export default function MinimalQuestionPaperForm() {
         errorMessage = error.message;
       }
 
-      // Include backend JSON in logs for debugging (if present)
       if (backendData) {
         console.error("Backend response data:", backendData);
       }
@@ -744,7 +756,6 @@ export default function MinimalQuestionPaperForm() {
         backend: backendData || null,
       });
 
-      // Show error toast (include backend error when present)
       setToast({ visible: true, message: errorMessage, type: "error" });
       setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
     } finally {
@@ -759,6 +770,8 @@ export default function MinimalQuestionPaperForm() {
     selectedHour,
     selectedMinute,
     questions,
+    totalMarks, // Add totalMarks to the dependency array
+    navigate, // Add navigate to the dependency array
   ]);
 
   const handleGenerateClick = useCallback(() => {
@@ -769,20 +782,6 @@ export default function MinimalQuestionPaperForm() {
     }
     handleGenerate();
   }, [validateForm, handleGenerate]);
-
-  const totalQuestions = useMemo(
-    () => questions.reduce((sum, q) => sum + q.numQuestions, 0),
-    [questions]
-  );
-
-  const totalMarks = useMemo(
-    () =>
-      questions.reduce(
-        (sum, q) => sum + q.numQuestions * q.marksPerQuestion,
-        0
-      ),
-    [questions]
-  );
 
   const getSelectedQuestionType = useCallback(
     (questionIndex) => {
