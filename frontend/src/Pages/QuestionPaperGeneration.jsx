@@ -694,7 +694,7 @@ export default function MinimalQuestionPaperForm() {
       const data = response.data;
       console.log("generate response", data);
 
-      if (!data || data.success !== true || !data.question_paper) {
+      if (!data.success) {
         throw new Error(
           (data && data.message) || "Failed to generate question paper"
         );

@@ -697,6 +697,12 @@ export const generateQuestionPaper = async (req, res) => {
       }
     );
 
+    // ✅ ADD THIS LOG to see the raw response from the AI
+    console.log(
+      "RAW RESPONSE FROM AI SERVICE:",
+      JSON.stringify(response.data, null, 2)
+    );
+
     if (response.status !== 200) {
       console.log(response.data);
       return res.status(response.status).json({
@@ -707,7 +713,21 @@ export const generateQuestionPaper = async (req, res) => {
     }
 
     // Expect AI returns the final paper JSON structure
-    const aiPaper = response.data;
+    let aiPapersArray = response.data;
+    if (
+      aiPapersArray &&
+      typeof aiPapersArray === "object" &&
+      !Array.isArray(aiPapersArray)
+    ) {
+      // If so, wrap it in an array to standardize the structure
+      aiPapersArray = [aiPapersArray];
+    }
+    if (!Array.isArray(aiPapersArray) || aiPapersArray.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: "AI service did not return a valid array of papers.",
+      });
+    }
 
     // Resolve teacher user, classId (by grade), subjectId (by name or subjectId), and schoolId
     const teacherUser = await User.findById(req.user?._id);
@@ -756,25 +776,30 @@ export const generateQuestionPaper = async (req, res) => {
     }
 
     // Persist in database as a single document with resolved metadata
-    const saved = await QuestionPaper.create({
-      paper: aiPaper,
-      title: body.pdf_name || body.pdf_name || undefined,
-      status: "draft",
-      llmPrompt: body,
-      createdBy: teacherUser?._id,
-      schoolId: resolvedSchoolId,
-      classId: resolvedClassId,
-      classGrade: resolvedClassGrade,
-      subjectId: resolvedSubjectId,
-      subject: resolvedSubjectName,
-      teacherEmail: teacherUser?.email,
-    });
+    const savedPapers = await Promise.all(
+      aiPapersArray.map(async (aiPaper) => {
+        // Create a new document for each paper in the array
+        const newPaper = await QuestionPaper.create({
+          paper: aiPaper,
+          title: body.pdf_name || body.pdf_name || undefined,
+          status: "draft",
+          llmPrompt: body,
+          createdBy: teacherUser?._id,
+          schoolId: resolvedSchoolId,
+          classId: resolvedClassId,
+          classGrade: resolvedClassGrade,
+          subjectId: resolvedSubjectId,
+          subject: resolvedSubjectName,
+          teacherEmail: teacherUser?.email,
+        });
+        return newPaper;
+      })
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Question paper generated successfully",
-      question_paper: saved.paper,
-      id: saved._id,
+      message: `${savedPapers.length} question paper(s) generated successfully`,
+      generated_papers: savedPapers,
     });
   } catch (error) {
     console.error("Teacher Error - Question paper generation:", error.message);
@@ -870,9 +895,9 @@ export const getMyQuestionPapers = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const papers = await QuestionPaper.find({ createdBy: teacherId })
-      .select("title status createdAt paper classGrade subject")
-      .sort({ createdAt: -1 });
+    const papers = await QuestionPaper.find({ createdBy: teacherId }).sort({
+      createdAt: -1,
+    });
 
     return res.status(200).json({ success: true, data: papers });
   } catch (error) {
