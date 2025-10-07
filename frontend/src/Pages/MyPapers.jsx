@@ -43,7 +43,8 @@ const MyPapers = () => {
       const paperData = paperDoc.paper || paperDoc.question_paper || paperDoc;
       sessionStorage.setItem("generatedPaperData", JSON.stringify(paperData));
       console.log("paperData", paperData);
-      navigate("/paper", { state: { paper: paperData } });
+      console.log("paperDoc", paperDoc);
+      navigate("/paper", { state: { paper: paperDoc } });
     } catch (e) {
       alert("Unable to open paper");
     }

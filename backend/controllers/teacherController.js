@@ -791,7 +791,11 @@ export const generateQuestionPaper = async (req, res) => {
 // @access  Private (Teacher or Admin, restricted to owner if creator is set)
 export const updateQuestionPaper = async (req, res) => {
   try {
+    console.log("---Received request to update question paper---");
     const { id } = req.params;
+
+    console.log(`Question paper ID: ${id}`);
+    console.log(`Request body: ${JSON.stringify(req.body)}`);
     if (!id) {
       return res
         .status(400)
@@ -800,10 +804,12 @@ export const updateQuestionPaper = async (req, res) => {
 
     const existing = await QuestionPaper.findById(id);
     if (!existing) {
+      console.log("Question paper not found");
       return res
         .status(404)
         .json({ success: false, message: "Question paper not found" });
     }
+    console.log("Question paper found");
 
     const isAdmin = req.user?.role === "admin";
     const isOwner =
@@ -819,6 +825,7 @@ export const updateQuestionPaper = async (req, res) => {
     const incoming = req.body || {};
     const newPaper = incoming.sections ? incoming : incoming.paper;
     if (!newPaper || typeof newPaper !== "object") {
+      console.log("Invalid paper content");
       return res
         .status(400)
         .json({ success: false, message: "Valid paper content is required" });
@@ -830,7 +837,12 @@ export const updateQuestionPaper = async (req, res) => {
     if (typeof incoming.status === "string") existing.status = incoming.status;
     existing.llmPrompt = existing.llmPrompt || null;
 
+    console.log("Updating question paper...");
+
+    existing.markModified("paper");
     await existing.save();
+
+    console.log("Question paper updated successfully");
 
     return res.status(200).json({
       success: true,
