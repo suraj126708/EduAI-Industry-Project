@@ -206,7 +206,9 @@ export default function MinimalQuestionPaperForm() {
         selectedMinute,
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(toSave));
-    } catch (_) {}
+    } catch (e) {
+      console.warn("Failed to save form state", e);
+    }
   }, [
     selectedClass,
     selectedSubject,
@@ -221,7 +223,9 @@ export default function MinimalQuestionPaperForm() {
   useEffect(() => {
     try {
       localStorage.setItem(QUESTIONS_CACHE_KEY, JSON.stringify(questions));
-    } catch (_) {}
+    } catch (e) {
+      console.warn("Failed to save questions state", e);
+    }
   }, [questions]);
 
   // Function to fetch chapters from API

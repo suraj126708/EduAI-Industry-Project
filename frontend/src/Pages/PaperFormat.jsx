@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useCallback, useEffect } from "react";
 import { saveAs } from "file-saver";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -459,11 +460,252 @@ function ExamPaperGenerator() {
   };
 
   const downloadPDF = () => {
-    // PDF download logic...
+    const printWindow = window.open("", "_blank");
+    const paperContent = document.querySelector(".paper-content").innerHTML;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${paperData.testName} - ${paperData.subject}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.4; }
+            .header { text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
+            .college-name { font-size: 24px; font-weight: bold; color: #1e40af; margin-bottom: 8px; }
+            .test-name { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+            .subject-class { font-size: 16px; margin-bottom: 8px; }
+            .exam-details { background: #eff6ff; padding: 10px; border-radius: 8px; }
+            .instructions { border: 1px solid #3b82f6; border-radius: 8px; padding: 15px; background: #eff6ff; margin-bottom: 20px; }
+            .instructions h3 { color: #1e40af; margin-bottom: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th, td { border: 1px solid #374151; padding: 8px; text-align: left; }
+            th { background-color: #bfdbfe; font-weight: bold; }
+            .section-header { background-color: #dbeafe; font-weight: bold; color: #1e40af; }
+            .question-cell { vertical-align: top; }
+            .marks-cell { text-align: center; vertical-align: top; width: 60px; }
+            .question-no { text-align: center; vertical-align: top; width: 50px; }
+            .options { margin-top: 8px; font-size: 14px; }
+            .footer { text-align: center; font-size: 12px; color: #6b7280; margin-top: 30px; border-top: 1px solid #d1d5db; padding-top: 15px; }
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          ${paperContent}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
   };
 
   const downloadDOCX = () => {
-    // DOCX download logic...
+    try {
+      // Create HTML content that Word can open
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="utf-8">
+            <meta name="ProgId" content="Word.Document">
+            <meta name="Generator" content="Microsoft Word 15">
+            <meta name="Originator" content="Microsoft Word 15">
+            <style>
+              body { 
+                font-family: 'Times New Roman', serif; 
+                margin: 1in; 
+                line-height: 1.15; 
+                color: #000;
+                font-size: 12pt;
+              }
+              .header { 
+                text-align: center; 
+                border-bottom: 2px solid #000; 
+                padding-bottom: 10px; 
+                margin-bottom: 20px; 
+              }
+              .college-name { 
+                font-size: 18pt; 
+                font-weight: bold; 
+                margin-bottom: 8px; 
+              }
+              .test-name { 
+                font-size: 14pt; 
+                font-weight: bold; 
+                margin-bottom: 8px; 
+              }
+              .subject-class { 
+                font-size: 12pt; 
+                margin-bottom: 8px; 
+              }
+              .exam-details { 
+                background: #f0f0f0; 
+                padding: 10px; 
+                margin-bottom: 20px; 
+                font-size: 10pt;
+              }
+              .instructions { 
+                border: 1px solid #000; 
+                padding: 15px; 
+                background: #f9f9f9; 
+                margin-bottom: 20px; 
+              }
+              .instructions h3 { 
+                font-weight: bold; 
+                margin-bottom: 10px; 
+                font-size: 12pt;
+              }
+              table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-bottom: 20px; 
+              }
+              th, td { 
+                border: 1px solid #000; 
+                padding: 8px; 
+                text-align: left; 
+                vertical-align: top;
+              }
+              th { 
+                background-color: #e0e0e0; 
+                font-weight: bold; 
+              }
+              .section-header { 
+                background-color: #d0d0d0; 
+                font-weight: bold; 
+              }
+              .question-cell { 
+                vertical-align: top; 
+              }
+              .marks-cell { 
+                text-align: center; 
+                vertical-align: top; 
+                width: 60px; 
+              }
+              .question-no { 
+                text-align: center; 
+                vertical-align: top; 
+                width: 50px; 
+              }
+              .options { 
+                margin-top: 8px; 
+                font-size: 11pt; 
+              }
+              .page-break {
+                page-break-before: always;
+              }
+            </style>
+          </head>
+          <body>
+            <!-- Header -->
+            <div class="header">
+              <div class="college-name">${
+                paperData.collegeName || "New High School"
+              }</div>
+              <div class="test-name">${paperData.testName}</div>
+              <div class="subject-class">${paperData.subject} - ${
+        paperData.className
+      }</div>
+              <div class="exam-details">
+                <strong>Date:</strong> ${
+                  new Date().toISOString().split("T")[0]
+                } &nbsp;&nbsp;&nbsp;
+                <strong>Max. Marks:</strong> ${calculateTotalMarks()} &nbsp;&nbsp;&nbsp;
+                <strong>Time:</strong> ${paperData.timeAllowed}
+              </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="instructions">
+              <h3>General Instructions:</h3>
+              <ol>
+                ${(paperData.instructions || [])
+                  .filter(
+                    (instruction) => instruction && instruction.length > 0
+                  )
+                  .map((instruction) => `<li>${instruction}</li>`)
+                  .join("")}
+              </ol>
+            </div>
+
+            <!-- Questions Table -->
+            <table>
+              <thead>
+                <tr>
+                  <th class="question-no">Q. No.</th>
+                  <th>Questions</th>
+                  <th class="marks-cell">Marks</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(paperData.sections || [])
+                  .map((section) => {
+                    const header = `
+                  <tr>
+                    <td colspan="3" class="section-header">
+                      <strong>${section.sectionName}</strong><br>
+                      <em>${section.description}</em>
+                    </td>
+                  </tr>`;
+                    const rows = (section.questions || [])
+                      .map((question) => {
+                        const opts = Array.isArray(question.options)
+                          ? question.options.filter((o) => o && o.length > 0)
+                          : [];
+                        const optsHtml =
+                          opts.length > 0
+                            ? `
+                          <div class="options">
+                            ${opts
+                              .map((option) => `<div>${option}</div>`)
+                              .join("")}
+                          </div>
+                        `
+                            : "";
+                        return `
+                    <tr>
+                      <td class="question-no">${question.questionNo}</td>
+                      <td class="question-cell">
+                        ${question.question}
+                        ${optsHtml}
+                      </td>
+                      <td class="marks-cell">${question.marks}</td>
+                    </tr>`;
+                      })
+                      .join("");
+                    return header + rows;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+
+            <div style="margin-top: 30px; text-align: center; font-size: 10pt; color: #666;">
+              Total Marks: ${calculateTotalMarks()}
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Create blob and download
+      const blob = new Blob([htmlContent], {
+        type: "application/msword",
+      });
+
+      const fileName = `${paperData.subject}_${paperData.testName.replace(
+        /\s+/g,
+        "_"
+      )}.doc`;
+      saveAs(blob, fileName);
+    } catch (error) {
+      console.error("Error generating DOCX:", error);
+      alert("Error generating DOC file. Please try again.");
+    }
   };
 
   return (
