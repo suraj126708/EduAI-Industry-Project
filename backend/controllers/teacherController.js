@@ -779,8 +779,28 @@ export const generateQuestionPaper = async (req, res) => {
     const savedPapers = await Promise.all(
       aiPapersArray.map(async (aiPaper) => {
         // Create a new document for each paper in the array
+        const finalPaper = {
+          ...aiPaper, // 1. Start with all the data from the AI
+
+          // 2. Now, conditionally overwrite the keys we care about.
+          // If aiPaper.timeAllowed is a valid string, use it. If it's null or undefined, use the default.
+          timeAllowed: aiPaper.timeAllowed || "2 hours",
+
+          // For arrays, we need a better check because an empty array [] is "truthy".
+          // This checks if the array exists AND has items in it.
+          instructions:
+            aiPaper.instructions && aiPaper.instructions.length > 0
+              ? aiPaper.instructions
+              : [
+                  "All questions are compulsory.",
+                  "Read each question carefully.",
+                ],
+
+          date: aiPaper.date || new Date().toISOString().split("T")[0],
+        };
+
         const newPaper = await QuestionPaper.create({
-          paper: aiPaper,
+          paper: finalPaper,
           title: body.pdf_name || body.pdf_name || undefined,
           status: "draft",
           llmPrompt: body,
