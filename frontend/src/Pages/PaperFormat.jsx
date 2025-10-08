@@ -3,6 +3,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { saveAs } from "file-saver";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import api from "../utils/api";
 
 // A stand-alone component for viewing the paper
 const PaperView = ({ paperData, calculateTotalMarks }) => (
@@ -126,65 +127,152 @@ const EditView = ({
           {savedMessage && (
             <div className="text-green-600 font-medium">{savedMessage}</div>
           )}
-          <button
-            onClick={() => console.log("Current paperData:", paperData)}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-          >
-            Debug State
-          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      {/* Paper Header Inputs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 p-4 border rounded-lg">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            College Name
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            School/College Name
           </label>
           <input
             type="text"
             value={paperData.collegeName || ""}
             onChange={(e) => handleInputChange("collegeName", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Test Name
           </label>
           <input
             type="text"
             value={paperData.testName || ""}
             onChange={(e) => handleInputChange("testName", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
-        {/* ... other form fields for subject, className, etc. ... */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Time Allowed (e.g., 2 hours)
+          </label>
+          <input
+            type="text"
+            value={paperData.timeAllowed || ""}
+            onChange={(e) => handleInputChange("timeAllowed", e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
       </div>
 
-      {/* Instructions */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Instructions
+      {/* Instructions Input */}
+      <div className="mb-6 p-4 border rounded-lg">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          General Instructions
         </label>
         <textarea
           value={(paperData.instructions || []).join("\n")}
           onChange={(e) =>
             handleInputChange("instructions", e.target.value.split("\n"))
           }
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 h-24"
+          placeholder="Enter each instruction on a new line"
         />
       </div>
 
-      {/* Sections and Questions */}
+      {/* Sections and Questions Inputs */}
       {(paperData.sections || []).map((section, sectionIndex) => (
         <div
           key={sectionIndex}
-          className="border border-gray-300 rounded-lg p-4 mb-4"
+          className="border border-gray-300 rounded-lg p-4 mb-6"
         >
-          {/* ... inputs for sectionName, description, etc. ... */}
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">
+            Section {sectionIndex + 1}
+          </h3>
+          <div className="grid grid-cols-1 gap-4">
+            <input
+              type="text"
+              value={section.sectionName || ""}
+              onChange={(e) =>
+                updateSection(sectionIndex, "sectionName", e.target.value)
+              }
+              placeholder="Section Name (e.g., Section A: Multiple Choice)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+            <textarea
+              value={section.description || ""}
+              onChange={(e) =>
+                updateSection(sectionIndex, "description", e.target.value)
+              }
+              placeholder="Section Description (e.g., Answer all questions)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 h-16"
+            />
+          </div>
+
           {(section.questions || []).map((question, questionIndex) => (
-            <div key={questionIndex} className="bg-gray-50 p-3 rounded-md mb-3">
-              {/* ... inputs for questionNo, marks, question text, etc. ... */}
+            <div
+              key={questionIndex}
+              className="bg-gray-50 p-4 rounded-md mt-4 border"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Question {question.questionNo}
+                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm">Marks:</label>
+                  <input
+                    type="number"
+                    value={question.marks}
+                    onChange={(e) =>
+                      updateQuestion(
+                        sectionIndex,
+                        questionIndex,
+                        "marks",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-16 px-2 py-1 border border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <textarea
+                value={question.question}
+                onChange={(e) =>
+                  updateQuestion(
+                    sectionIndex,
+                    questionIndex,
+                    "question",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm h-20"
+                placeholder="Enter question text"
+              />
+
+              {Array.isArray(question.options) &&
+                question.options.length > 0 && (
+                  <div className="mt-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Options (one per line)
+                    </label>
+                    <textarea
+                      value={question.options.join("\n")}
+                      onChange={(e) =>
+                        updateQuestion(
+                          sectionIndex,
+                          questionIndex,
+                          "options",
+                          e.target.value.split("\n")
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm h-24"
+                      placeholder="Enter each option on a new line"
+                    />
+                  </div>
+                )}
             </div>
           ))}
         </div>
@@ -398,13 +486,14 @@ function ExamPaperGenerator() {
           paper: paperToSave,
           title: paperToSave.testName,
         };
-        response = await fetch(
-          `http://localhost:5000/api/teachers/question-papers/${paperId}`,
-          {
-            method: "PUT",
-            headers: headers,
-            body: JSON.stringify(payload),
-          }
+
+        console.log(
+          "Sending PUT request with payload:",
+          JSON.stringify(payload, null, 2)
+        );
+        response = await api.put(
+          `teachers/question-papers/${paperId}`,
+          payload
         );
       } else {
         console.log("ATTEMPTING TO CREATE (POST)");
@@ -414,30 +503,53 @@ function ExamPaperGenerator() {
           pdf_name: paperToSave.testName,
           ...paperToSave,
         };
-        response = await fetch(
-          "http://localhost:5000/api/teachers/generate-question-paper",
-          {
-            method: "POST",
-            headers: headers,
-            body: JSON.stringify(payloadForCreation),
-          }
+        response = await api.post(
+          "teachers/generate-question-paper",
+          payloadForCreation
         );
       }
 
-      const data = await response.json();
+      const data = await response.data;
 
-      if (!response.ok || !data.success) {
+      if (!data || !data.success) {
         throw new Error(data?.message || "Failed to save question paper");
       }
 
+      // ✅ --- START OF NEW LOGIC ---
+
+      const updatedDocument = data.question_paper;
+
+      // 2. Update the main paperData state by normalizing the new document
+      //    This ensures the view updates correctly
+      setPaperData(normalizePaper(updatedDocument, {}));
+
+      // 3. Find the index of the paper you just updated
+      const updatedIndex = generatedPapers.findIndex((p) => p._id === paperId);
+
+      // 4. Create a new array with the updated document in the correct spot
+      if (updatedIndex !== -1) {
+        const newGeneratedPapers = [...generatedPapers];
+        newGeneratedPapers[updatedIndex] = updatedDocument;
+        setGeneratedPapers(newGeneratedPapers);
+
+        // ✅ ADD THIS LINE to persist the changes for the next refresh
+        sessionStorage.setItem(
+          "generatedPapersArray",
+          JSON.stringify(newGeneratedPapers)
+        );
+      }
+
+      // 4. Show a success message
       setSavedMessage("Question paper saved successfully!");
       setShowSaveModal(false);
-      sessionStorage.removeItem("generatedPaperData");
 
+      // 5. Switch back to preview mode
+      setEditMode(false);
+
+      // 6. Hide the success message after a few seconds
       setTimeout(() => {
         setSavedMessage("");
-        navigate("/my-papers"); // Navigate back to the list to see the result
-      }, 2000);
+      }, 3000);
     } catch (error) {
       console.error("Save error:", error);
       let errorMessage = "Failed to save paper.";
@@ -714,19 +826,28 @@ function ExamPaperGenerator() {
       <div className="fixed top-20 right-4 z-50 flex flex-col gap-2">
         <button
           onClick={() => setEditMode(!editMode)}
-          className="bg-blue-600 hover:bg-blue-700 ..."
+          className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg"
         >
           {editMode ? "Preview Paper" : "Edit Paper"}
         </button>
         {!editMode && (
           <>
-            <button onClick={downloadPDF} className="bg-red-600 ...">
+            <button
+              onClick={downloadPDF}
+              className="bg-red-600 text-white py-2 px-4 rounded-lg"
+            >
               Download PDF
             </button>
-            <button onClick={downloadDOCX} className="bg-green-600 ...">
+            <button
+              onClick={downloadDOCX}
+              className="bg-green-600 text-white py-2 px-4 rounded-lg"
+            >
               Download DOC
             </button>
-            <button onClick={handleConfirmSave} className="bg-purple-600 ...">
+            <button
+              onClick={handleConfirmSave}
+              className="bg-purple-600 text-white py-2 px-4 rounded-lg"
+            >
               Save Paper
             </button>
           </>

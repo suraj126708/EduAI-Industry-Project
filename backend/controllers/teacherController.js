@@ -814,66 +814,88 @@ export const generateQuestionPaper = async (req, res) => {
 // @desc    Update an existing question paper's content
 // @route   PUT /api/teachers/question-papers/:id
 // @access  Private (Teacher or Admin, restricted to owner if creator is set)
+// in teacherController.js
+
 export const updateQuestionPaper = async (req, res) => {
   try {
-    console.log("---Received request to update question paper---");
     const { id } = req.params;
+    const incoming = req.body || {};
 
-    console.log(`Question paper ID: ${id}`);
-    console.log(`Request body: ${JSON.stringify(req.body)}`);
+    // --- 1. Validate the incoming request ---
     if (!id) {
       return res
         .status(400)
-        .json({ success: false, message: "Question paper id is required" });
+        .json({ success: false, message: "Question paper ID is required" });
     }
 
-    const existing = await QuestionPaper.findById(id);
-    if (!existing) {
-      console.log("Question paper not found");
+    // Directly and reliably get the paper content from the 'paper' property
+    const newPaperContent = incoming.paper;
+    if (
+      !newPaperContent ||
+      typeof newPaperContent !== "object" ||
+      !Array.isArray(newPaperContent.sections)
+    ) {
+      console.log(
+        "Validation failed: The 'paper' object in the request body is missing or invalid."
+      );
+      return res
+        .status(400)
+        .json({ success: false, message: "Valid paper content is required" });
+    }
+
+    // --- 2. Verify the document exists and the user has permission ---
+    const existingPaper = await QuestionPaper.findById(id);
+    if (!existingPaper) {
       return res
         .status(404)
         .json({ success: false, message: "Question paper not found" });
     }
-    console.log("Question paper found");
-
-    const isAdmin = req.user?.role === "admin";
     const isOwner =
-      existing.createdBy?.toString() === req.user?._id?.toString();
-    if (!isAdmin && existing.createdBy && !isOwner) {
+      existingPaper.createdBy?.toString() === req.user?._id?.toString();
+    if (req.user?.role !== "admin" && !isOwner) {
       return res.status(403).json({
         success: false,
         message: "You can only edit papers you created",
       });
     }
 
-    // Accept either { paper: {...} } or the paper structure directly (with sections)
-    const incoming = req.body || {};
-    const newPaper = incoming.sections ? incoming : incoming.paper;
-    if (!newPaper || typeof newPaper !== "object") {
-      console.log("Invalid paper content");
-      return res
-        .status(400)
-        .json({ success: false, message: "Valid paper content is required" });
+    // --- 3. Build a complete payload with all changes ---
+    const updatePayload = {
+      paper: newPaperContent,
+    };
+    if (typeof incoming.title === "string") {
+      updatePayload.title = incoming.title;
+    }
+    if (typeof incoming.status === "string") {
+      updatePayload.status = incoming.status;
     }
 
-    existing.paper = newPaper;
-    // Allow optional fields to be updated if provided
-    if (typeof incoming.title === "string") existing.title = incoming.title;
-    if (typeof incoming.status === "string") existing.status = incoming.status;
-    existing.llmPrompt = existing.llmPrompt || null;
+    console.log(
+      "Updating question paper with payload:",
+      JSON.stringify(updatePayload, null, 2)
+    );
 
-    console.log("Updating question paper...");
+    // --- 4. Use findByIdAndUpdate for a direct, atomic update ---
+    const updatedPaper = await QuestionPaper.findByIdAndUpdate(
+      id,
+      { $set: updatePayload },
+      { new: true } // This option returns the updated document
+    );
 
-    existing.markModified("paper");
-    await existing.save();
+    if (!updatedPaper) {
+      throw new Error(
+        "Failed to find and update the document after validation."
+      );
+    }
 
     console.log("Question paper updated successfully");
 
+    // --- 5. Return the NEW, updated document ---
     return res.status(200).json({
       success: true,
       message: "Question paper updated successfully",
-      question_paper: existing.paper,
-      id: existing._id,
+      question_paper: updatedPaper.paper, // Send back the 'paper' field from the updated document
+      id: updatedPaper._id,
     });
   } catch (error) {
     console.error("Teacher Error - Update question paper:", error.message);
