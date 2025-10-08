@@ -44,7 +44,7 @@ const MyPapers = () => {
       sessionStorage.setItem("generatedPaperData", JSON.stringify(paperData));
       console.log("paperData", paperData);
       console.log("paperDoc", paperDoc);
-      navigate("/paper", { state: { paper: paperDoc } });
+      navigate(`/paper/${paperDoc._id}`);
     } catch (e) {
       alert("Unable to open paper");
     }

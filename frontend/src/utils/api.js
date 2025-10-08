@@ -282,6 +282,17 @@ export const paperAPI = {
       throw error;
     }
   },
+
+  getPaperById: async (paperId) => {
+    try {
+      const response = await api.get(`teachers/question-papers/${paperId}`);
+      return response.data; // Returns { success, data: { paper object } }
+    } catch (error) {
+      console.error(`Get paper by ID (${paperId}) error:`, error);
+      throw error;
+    }
+  },
+
   updatePaper: async (paperId, paper) => {
     try {
       const response = await api.put(`teachers/question-papers/${paperId}`, {

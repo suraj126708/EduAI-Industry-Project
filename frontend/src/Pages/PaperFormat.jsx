@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useCallback, useEffect } from "react";
 import { saveAs } from "file-saver";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
 
@@ -317,6 +317,7 @@ function ExamPaperGenerator() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { id: paperIdFromUrl } = useParams();
 
   const normalizePaper = useCallback((incoming, fallback) => {
     // ✅ CORRECTED: This logic drills down to find the real paper data
@@ -376,29 +377,50 @@ function ExamPaperGenerator() {
   const [savedMessage, setSavedMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [paperId, setPaperId] = useState(null);
+  const [paperId, setPaperId] = useState(paperIdFromUrl || null);
   const [generatedPapers, setGeneratedPapers] = useState([]);
   const [selectedPaperIndex, setSelectedPaperIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true); // <-- 2. Add loading state for better UX
+  const [error, setError] = useState(null); // <-- Add error state
 
   useEffect(() => {
-    // Standardize data loading: always look for an array of papers
-    const papersFromState = location.state?.papers; // Standard key from navigate()
-    const papersFromStorage = JSON.parse(
-      sessionStorage.getItem("generatedPapersArray")
-    );
-
-    const papersArray = papersFromState || papersFromStorage || [];
-
-    if (papersArray.length > 0) {
-      setGeneratedPapers(papersArray);
-      // Set the initially displayed paper to the one at the selected index (usually the first one)
-      const initialPaper = papersArray[selectedPaperIndex];
-      if (initialPaper) {
-        setPaperData(normalizePaper(initialPaper, {}));
-        setPaperId(initialPaper._id);
-      }
+    // If there's no ID, we can't fetch anything.
+    if (!paperIdFromUrl) {
+      setIsLoading(false);
+      setError("No paper ID provided.");
+      return;
     }
-  }, [location.state, normalizePaper, selectedPaperIndex]);
+
+    const fetchPaper = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await api.get(
+          `/teachers/question-papers/${paperIdFromUrl}`
+        );
+
+        if (response.data && response.data.success) {
+          const fetchedPaper = response.data.data; // The backend returns the full document in 'data'
+
+          // Use the 'paper' sub-document for the form, which is what normalizePaper expects
+          setPaperData(normalizePaper(fetchedPaper.paper, {}));
+
+          // ✅ CRUCIAL: Set the paperId state for the save function to use
+          setPaperId(fetchedPaper._id);
+        } else {
+          throw new Error(response.data.message || "Failed to fetch paper.");
+        }
+      } catch (err) {
+        console.error("Error fetching paper:", err);
+        setError(err.message || "An unknown error occurred.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPaper();
+  }, [paperIdFromUrl, normalizePaper]);
 
   const handlePaperSelection = (index) => {
     const selectedPaper = generatedPapers[index];
@@ -501,6 +523,7 @@ function ExamPaperGenerator() {
           class: paperToSave.className,
           subject: paperToSave.subject,
           pdf_name: paperToSave.testName,
+          numberofPapers: 1,
           ...paperToSave,
         };
         response = await api.post(
@@ -819,7 +842,13 @@ function ExamPaperGenerator() {
       alert("Error generating DOC file. Please try again.");
     }
   };
+  if (isLoading) {
+    return <div className="text-center p-10">Loading paper...</div>;
+  }
 
+  if (error) {
+    return <div className="text-center p-10 text-red-600">Error: {error}</div>;
+  }
   return (
     <div>
       {/* Control Panel */}

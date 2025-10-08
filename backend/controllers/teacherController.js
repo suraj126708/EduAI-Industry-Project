@@ -676,7 +676,7 @@ export const generateQuestionPaper = async (req, res) => {
     const classValue = body.class; // could be grade as number/string
     const subject = body.subject; // could be subject name or id string
     const pdfName = body.pdf_name || body.pdf_name;
-
+    const numberofPapers = body.numberofPapers || 1;
     console.log(body);
 
     if (!classValue || !subject || !pdfName) {
@@ -689,7 +689,7 @@ export const generateQuestionPaper = async (req, res) => {
     // Forward the entire body to the AI service (port 8000)
     const response = await axios.post(
       deplyed_url + "generate_question_paper/",
-      { ...body, pdf_name: pdfName },
+      { ...body, pdf_name: pdfName, numberofPapers: numberofPapers },
       {
         headers: { "Content-Type": "application/json" },
         timeout: 5 * 60 * 1000,
@@ -927,6 +927,42 @@ export const getMyQuestionPapers = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve question papers",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get a single question paper by ID
+// @route   GET /api/teachers/question-papers/:id
+// @access  Private (Owner or Admin)
+export const getQuestionPaperById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const paper = await QuestionPaper.findById(id);
+
+    if (!paper) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Question paper not found" });
+    }
+
+    // --- Authorization Check ---
+    const isOwner = paper.createdBy?.toString() === req.user?._id?.toString();
+    const isAdmin = req.user?.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to view this paper",
+      });
+    }
+
+    return res.status(200).json({ success: true, data: paper });
+  } catch (error) {
+    console.error("Teacher Error - Get question paper by ID:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve question paper",
       error: error.message,
     });
   }

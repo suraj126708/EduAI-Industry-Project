@@ -93,7 +93,7 @@ function App() {
 
             {/* Redirect root to /home */}
             <Route path="/" element={<Navigate to="/home" replace />} />
-            <Route path="paper" element={<PaperFormat />} />
+            <Route path="paper/:id" element={<PaperFormat />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </div>

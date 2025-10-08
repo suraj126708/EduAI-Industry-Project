@@ -23,6 +23,7 @@ import {
   getMyUploadedBooks,
   updateQuestionPaper,
   getMyQuestionPapers,
+  getQuestionPaperById,
 } from "../controllers/teacherController.js";
 import {
   authenticateFirebaseToken,
@@ -106,6 +107,13 @@ router.delete(
   authenticateFirebaseToken,
   authorize("teacher", "admin"),
   deleteTeacherBook
+);
+
+router.get(
+  "/question-papers/:id",
+  authenticateFirebaseToken,
+  authorize("teacher", "admin"),
+  getQuestionPaperById
 );
 
 router.put(
