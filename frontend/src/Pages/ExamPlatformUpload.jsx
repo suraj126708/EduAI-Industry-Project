@@ -353,48 +353,48 @@ const ExamPlatformUpload = () => {
         const returnedBook = apiResult?.book;
         const processedStatus = returnedBook?.processedStatus || "pending";
         const chunks = returnedBook?.noOfChunks ?? null;
-        updateRow(
-          row.id,
-          "status",
-          processedStatus === "processed" ? "processed" : "pending"
-        );
-        updateRow(row.id, "progress", 100);
-        setLoaderProgress(((index + 1) / validRows.length) * 100);
 
-        return {
-          success: true,
-          filename: row.file.name,
-          chunks,
-          status: processedStatus,
-        };
-      } catch (err) {
-        // --- FIX: Gracefully handle the 409 Conflict error as a special case ---
-        if (err.response?.status === 409) {
-          // Show the user-friendly alert
-          alert(
-            err.response.data.message ||
-              `A book already exists for this class and subject: "${row.file.name}"`
+        if (processedStatus === "processed") {
+          updateRow(
+            row.id,
+            "status",
+            processedStatus === "processed" ? "processed" : "pending"
           );
-          // Reset the row's UI to allow the user to make a correction
-          updateRow(row.id, "status", "duplicate");
-          updateRow(row.id, "error", "This book already exists.");
-          updateRow(row.id, "progress", 0);
-          // Return a specific result for the summary
+          updateRow(row.id, "progress", 100);
+          setLoaderProgress(((index + 1) / validRows.length) * 100);
+
+          return {
+            success: true,
+            filename: row.file.name,
+            chunks,
+            status: processedStatus,
+          };
+        } else {
+          // Treat "failed" status (including 0 chunks) as a UI error
+          const errorMessage = `Processing failed. The book content could not be extracted.`;
+          updateRow(row.id, "status", "error");
+          updateRow(row.id, "error", errorMessage);
           return {
             success: false,
+            error: errorMessage,
             filename: row.file.name,
-            error: "Duplicate entry. User was notified.",
           };
         }
-
-        // --- FIX: Handle all OTHER errors normally ---
+      } catch (err) {
         console.error("Upload error:", err);
+
+        // Prioritize the specific message from the backend API response
+        const errorMessage =
+          err.response?.data?.message ||
+          err.message ||
+          "An unknown error occurred.";
+
         updateRow(row.id, "status", "error");
-        updateRow(row.id, "error", err.message || "Upload failed");
+        updateRow(row.id, "error", errorMessage); // <-- Use the new variable here
         return {
           success: false,
           filename: row.file.name,
-          error: err.message,
+          error: errorMessage, // <-- And also here
         };
       }
     });

@@ -73,7 +73,8 @@ const MyPapers = () => {
           <table className="w-full text-sm text-left text-gray-600">
             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
-                <th className="p-3">Title</th>
+                <th className="p-3">Subject</th>
+                <th className="p-3">Class</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Created</th>
                 <th className="p-3 text-right">Actions</th>
@@ -83,8 +84,9 @@ const MyPapers = () => {
               {papers.map((p) => (
                 <tr key={p._id} className="bg-white border-b hover:bg-gray-50">
                   <td className="p-3 font-medium text-gray-900">
-                    {p.title || p.paper?.testName || "Untitled"}
+                    {p.subject || "N/A"}
                   </td>
+                  <td className="p-3">{p.classGrade || "N/A"}</td>
                   <td className="p-3">{p.status || "draft"}</td>
                   <td className="p-3">
                     {p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}

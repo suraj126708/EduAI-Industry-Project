@@ -267,6 +267,7 @@ export const getChaptersBySubjectAndClass = async (req, res) => {
 };
 
 export const teacherUploadBook = async (req, res) => {
+  let tempFilePath;
   try {
     const { classId, subject, author, year, schoolId, teacherId, title } =
       req.body;
@@ -274,7 +275,7 @@ export const teacherUploadBook = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "PDF file is required." });
     }
-
+    tempFilePath = req.file.path;
     const requiredFields = {
       classId,
       subject,
@@ -332,94 +333,91 @@ export const teacherUploadBook = async (req, res) => {
       });
     }
 
-    const book = new Book({
-      schoolId: schoolId,
-      classId: classDoc._id,
-      uploadedBy: teacher._id,
-      title: title,
-      subject: subject,
-      author,
-      year,
-      fileUrl: req.file.path,
-      processedStatus: "pending",
-    });
-
-    await book.save();
-
+    let processingResult;
     try {
       const sendToProcessor = async (fieldName) => {
-        const fileStream = fs.createReadStream(req.file.path);
+        const fileStream = fs.createReadStream(tempFilePath);
         const form = new FormData();
-
-        // Prepare subject data
         const subjectData = {
           class: classId,
           subject: subject,
           pdf_name: `${title}_${classId}_${subject}.pdf`,
         };
-
-        // Add the subject data as JSON string
         form.append("subject_data", JSON.stringify(subjectData));
-
-        // Add the file
         form.append(fieldName, fileStream, {
-          filename: path.basename(req.file.path),
+          filename: path.basename(tempFilePath),
           contentType: "application/pdf",
         });
 
-        const response = await axios.post(deplyed_url + "process_pdf/", form, {
+        return axios.post(deplyed_url + "process_pdf/", form, {
           headers: { ...form.getHeaders() },
           timeout: 5 * 60 * 1000,
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
           validateStatus: (s) => s >= 200 && s < 500,
         });
-        return response;
       };
 
       let response = await sendToProcessor("file");
       if (response.status === 422) {
         response = await sendToProcessor("pdf");
       }
-
-      const { status, chunks, chapters } = response.data || {};
-      if (status === "success" && Number.isFinite(chunks)) {
-        book.processedStatus = "processed";
-        book.noOfChunks = chunks;
-        // Store chapters if available
-        if (chapters && Array.isArray(chapters)) {
-          book.chapters = chapters;
-        }
-      } else {
-        book.processedStatus = "failed";
-      }
-      await book.save();
+      processingResult = response.data || {};
     } catch (procErr) {
-      console.error("PDF processing error:", procErr?.message || procErr);
-      book.processedStatus = "failed";
-      await book.save();
+      console.error("PDF processing service error:", procErr.message);
+      throw new Error("Could not connect to the book processing service.");
     }
 
-    res.status(201).json({
-      message: "Book uploaded successfully.",
-      book,
-    });
-  } catch (error) {
-    if (req.file && req.file.path) {
-      try {
-        await fs.promises.access(req.file.path);
-        await fs.promises.unlink(req.file.path);
-      } catch (cleanupErr) {
-        if (cleanupErr.code !== "ENOENT") {
-          console.error("Error during file cleanup:", cleanupErr.message);
-        }
-      }
+    // --- 3. Conditionally Save Based on Processing Result ---
+    const { status, chunks, chapters } = processingResult;
+
+    if (status === "success" && Number.isFinite(chunks) && chunks > 0) {
+      // SUCCESS: Processing worked, now we create the database record.
+      const book = new Book({
+        schoolId,
+        classId: classDoc._id,
+        uploadedBy: teacher._id,
+        title,
+        subject,
+        author,
+        year,
+        fileUrl: tempFilePath,
+        processedStatus: "processed",
+        noOfChunks: chunks,
+        chapters: chapters && Array.isArray(chapters) ? chapters : [],
+      });
+      await book.save();
+
+      // Send the final success response. The temporary file is now permanent.
+      return res.status(201).json({
+        message: "Book uploaded and processed successfully.",
+        book,
+      });
+    } else {
+      // FAILURE: Processing failed.
+      throw new Error(
+        "Failed to extract content from the PDF. It may be empty or corrupted."
+      );
     }
-    console.error("Teacher Error - Book upload:", error.message);
-    res.status(500).json({
-      message: "Failed to upload book.",
-      error: error.message,
-    });
+  } catch (error) {
+    // --- 4. Centralized Error Handling & Cleanup ---
+    if (tempFilePath) {
+      await fs.promises.unlink(tempFilePath).catch((err) => {
+        if (err.code !== "ENOENT") {
+          console.error("Error cleaning up failed upload file:", err.message);
+        }
+      });
+    }
+
+    //console.error("Teacher Error - Book upload:", error.message);
+
+    if (!res.headersSent) {
+      // Use the appropriate status code for the error type
+      const statusCode = error.message.includes("not found") ? 404 : 400;
+      return res.status(statusCode).json({
+        message: error.message || "Failed to upload book.",
+      });
+    }
   }
 };
 
