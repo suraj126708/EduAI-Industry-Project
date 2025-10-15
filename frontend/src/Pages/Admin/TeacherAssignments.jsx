@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import Unauthorized from "../../components/Unauthorized";
 import {
   FaPlus,
   FaEdit,
@@ -9,7 +10,7 @@ import {
 } from "react-icons/fa";
 
 const TeacherAssignments = () => {
-  const { adminService } = useAuth();
+  const { adminService, isPrincipal } = useAuth();
   const [assignments, setAssignments] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -100,17 +101,33 @@ const TeacherAssignments = () => {
       // Filter classes and subjects by teacher's school
       if (teacher && teacher.schoolId) {
         const teacherSchoolId = teacher.schoolId._id || teacher.schoolId;
-        const filteredClassesBySchool = classes.filter(
-          (c) =>
-            c.schoolId._id === teacherSchoolId || c.schoolId === teacherSchoolId
-        );
-        const filteredSubjectsBySchool = subjects.filter(
-          (s) =>
-            s.schoolId._id === teacherSchoolId || s.schoolId === teacherSchoolId
-        );
+        const filteredClassesBySchool = Array.isArray(classes)
+          ? classes.filter(
+              (c) => (c.schoolId?._id || c.schoolId) === teacherSchoolId
+            )
+          : [];
+        const filteredSubjectsBySchool = Array.isArray(subjects)
+          ? subjects.filter(
+              (s) => (s.schoolId?._id || s.schoolId) === teacherSchoolId
+            )
+          : [];
 
         setFilteredClasses(filteredClassesBySchool);
         setFilteredSubjects(filteredSubjectsBySchool);
+        console.log(
+          "[Assignments] Selected teacher:",
+          teacher?._id,
+          "school:",
+          teacherSchoolId
+        );
+        console.log(
+          "[Assignments] Filtered classes count:",
+          filteredClassesBySchool.length
+        );
+        console.log(
+          "[Assignments] Filtered subjects count:",
+          filteredSubjectsBySchool.length
+        );
       } else {
         setFilteredClasses([]);
         setFilteredSubjects([]);
@@ -138,6 +155,53 @@ const TeacherAssignments = () => {
     setSuccess("");
 
     try {
+      // Client-side validation: ensure all belong to same school
+      const teacherSchoolId =
+        selectedTeacher?.schoolId?._id || selectedTeacher?.schoolId || null;
+      const selectedClass = (
+        Array.isArray(filteredClasses) ? filteredClasses : classes
+      ).find((c) => c._id === formData.classId);
+      const selectedSubject = (
+        Array.isArray(filteredSubjects) ? filteredSubjects : subjects
+      ).find((s) => s._id === formData.subjectId);
+      const classSchoolId =
+        selectedClass?.schoolId?._id || selectedClass?.schoolId || null;
+      const subjectSchoolId =
+        selectedSubject?.schoolId?._id || selectedSubject?.schoolId || null;
+
+      console.log("[Assignments] teacherSchoolId:", teacherSchoolId);
+      console.log(
+        "[Assignments] classId:",
+        formData.classId,
+        "classSchoolId:",
+        classSchoolId
+      );
+      console.log(
+        "[Assignments] subjectId:",
+        formData.subjectId,
+        "subjectSchoolId:",
+        subjectSchoolId
+      );
+
+      if (!teacherSchoolId || !classSchoolId || !subjectSchoolId) {
+        setError(
+          "Teacher, class, and subject must be associated with a school"
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (
+        teacherSchoolId !== classSchoolId ||
+        teacherSchoolId !== subjectSchoolId
+      ) {
+        setError(
+          "Selected teacher, class, and subject must belong to the same school"
+        );
+        setLoading(false);
+        return;
+      }
+
       const result = await adminService.assignTeacher(formData);
       if (result.success) {
         setSuccess("Teacher assigned successfully!");
@@ -153,10 +217,13 @@ const TeacherAssignments = () => {
         // Refresh assignments list
         fetchAssignments();
       } else {
-        setError(result.error);
+        setError(result.error || "Failed to assign teacher");
       }
     } catch (err) {
-      setError("Failed to assign teacher");
+      const backendMsg =
+        err.response?.data?.error || err.response?.data?.message || err.message;
+      console.error("[Assignments] Backend error:", err.response?.data || err);
+      setError(backendMsg || "Failed to assign teacher");
     } finally {
       setLoading(false);
     }
@@ -182,6 +249,18 @@ const TeacherAssignments = () => {
 
   // These functions are no longer needed since the backend returns transformed data
   // with readable names already included
+
+  // Route guard: principals only
+  if (!isPrincipal?.()) {
+    return <Unauthorized />;
+  }
+
+  const canSubmit = !!(
+    selectedTeacher &&
+    formData.classId &&
+    formData.subjectId &&
+    !loading
+  );
 
   return (
     <div className="max-w-6xl mx-auto p-6 bg-white rounded-lg shadow-lg">
@@ -290,7 +369,7 @@ const TeacherAssignments = () => {
             <div className="flex gap-4">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={!canSubmit}
                 className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
               >
                 {loading ? "Assigning..." : "Assign Teacher"}

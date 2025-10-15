@@ -506,7 +506,7 @@ class AuthService {
         const response = await axios.get("/admin/schools");
         return {
           success: true,
-          data: response.data,
+          data: response.data?.data,
         };
       } catch (error) {
         console.error("Get schools error:", error);
@@ -522,7 +522,7 @@ class AuthService {
         const response = await axios.get("/admin/classes");
         return {
           success: true,
-          data: response.data,
+          data: response.data?.data,
         };
       } catch (error) {
         console.error("Get classes error:", error);
@@ -540,7 +540,7 @@ class AuthService {
         const response = await axios.get("/admin/subjects");
         return {
           success: true,
-          data: response.data,
+          data: response.data?.data,
         };
       } catch (error) {
         console.error("Get subjects error:", error);

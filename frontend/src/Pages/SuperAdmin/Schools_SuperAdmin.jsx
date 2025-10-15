@@ -119,10 +119,11 @@ const Schools = () => {
               <legend className="text-lg font-medium px-2">
                 School Information
               </legend>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+              <div className="grid grid-cols-1  md:grid-cols-2 gap-4 mt-2">
                 <div>
                   <label>School Name *</label>
                   <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     type="text"
                     name="name"
                     value={formData.name}
@@ -133,6 +134,7 @@ const Schools = () => {
                 <div>
                   <label>Established Year</label>
                   <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     type="number"
                     name="establishedYear"
                     value={formData.establishedYear}
@@ -142,6 +144,7 @@ const Schools = () => {
                 <div className="md:col-span-2">
                   <label>Address</label>
                   <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
@@ -160,6 +163,7 @@ const Schools = () => {
                 <div>
                   <label>Principal's Full Name *</label>
                   <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     type="text"
                     name="principalName"
                     value={formData.principalName}
@@ -170,6 +174,7 @@ const Schools = () => {
                 <div>
                   <label>Principal's Email *</label>
                   <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     type="email"
                     name="principalEmail"
                     value={formData.principalEmail}
@@ -180,6 +185,7 @@ const Schools = () => {
                 <div className="md:col-span-2">
                   <label>Initial Password *</label>
                   <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     type="password"
                     name="principalPassword"
                     value={formData.principalPassword}
