@@ -23,7 +23,7 @@ const Classes = () => {
   const fetchSchools = async () => {
     try {
       const result = await adminService.getSchools();
-      const schoolsArray = result.data?.data;
+      const schoolsArray = result.data;
       if (result.success && Array.isArray(schoolsArray)) {
         setSchools(schoolsArray);
       } else {
@@ -40,7 +40,7 @@ const Classes = () => {
   const fetchClasses = async () => {
     try {
       const result = await adminService.getClasses();
-      const classesArray = result.data?.data;
+      const classesArray = result.data;
       if (result.success && Array.isArray(classesArray)) {
         setClasses(classesArray);
       } else {
@@ -117,6 +117,11 @@ const Classes = () => {
 
   // Helper function only used by super admins to find school names
   const getSchoolName = (schoolId) => {
+    // Accept both an id string or an embedded school object
+    if (!schoolId) return "Unknown School";
+    if (typeof schoolId === "object") {
+      return schoolId.name || "Unknown School";
+    }
     const school = schools.find((s) => s._id === schoolId);
     return school ? school.name : "Unknown School";
   };
