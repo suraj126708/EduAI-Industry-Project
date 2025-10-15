@@ -33,6 +33,7 @@ import TeacherClassSubject from "../models/TeacherClassSubject.js";
 
 const local_url = "http://localhost:8000/";
 const deplyed_url = "https://suraj6708-eduai.hf.space/";
+//const deplyed_url = "http://127.0.0.1:8000/";
 
 export const getAllTeachers = async (req, res) => {
   try {

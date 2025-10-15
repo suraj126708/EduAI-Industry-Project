@@ -26,62 +26,89 @@ import fs from "fs";
 // -----------------------------
 export const getAdminDashboard = async (req, res) => {
   try {
-    // User counts by roles and statuses
-    const totalTeachers = await User.countDocuments({ role: "teacher" });
+    // Determine the user's role and school ID from the authenticated request
+    const userRole = req.user.role;
+    const userSchoolId = req.user.schoolId;
+
+    // Create a dynamic filter:
+    // - If the user is a 'principal', it filters all queries by their schoolId.
+    // - If the user is a 'superadmin', the filter is an empty object, matching all documents.
+    const queryFilter =
+      userRole === "principal" ? { schoolId: userSchoolId } : {}; // --- User counts by roles and statuses (with filter applied) ---
+
+    const totalTeachers = await User.countDocuments({
+      role: "teacher",
+      ...queryFilter,
+    });
     const activeTeachers = await User.countDocuments({
       role: "teacher",
       status: "active",
+      ...queryFilter,
     });
     const inactiveTeachers = await User.countDocuments({
       role: "teacher",
       status: "inactive",
+      ...queryFilter,
     });
     const suspendedTeachers = await User.countDocuments({
       role: "teacher",
       status: "suspended",
+      ...queryFilter,
     });
 
-    const teacherCount = totalTeachers;
-    const moderatorCount = await User.countDocuments({ role: "moderator" });
-    const adminCount = await User.countDocuments({ role: "admin" });
+    // For a superadmin, count all verified schools. For a principal, the count is always 1.
+    const totalSchools =
+      userRole === "superadmin" ? await School.countDocuments() : 1;
 
-    const totalSchools = await School.countDocuments();
-    const totalClasses = await Class.countDocuments();
-    const totalSubjects = await Subject.countDocuments();
+    // --- School-specific entity counts (with filter applied) ---
+    const totalClasses = await Class.countDocuments(queryFilter);
+    const totalSubjects = await Subject.countDocuments(queryFilter); // --- Recent Activity (with filter applied) ---
+    // Assuming you have a Student model with schoolId
+    // const totalStudents = await Student.countDocuments(queryFilter);
 
-    // Recent Teachers - fetch basic user info
-    const recentTeachers = await User.find({ role: "teacher" })
+    const recentTeachers = await User.find({ role: "teacher", ...queryFilter })
       .sort({ createdAt: -1 })
       .limit(5)
       .select("email name role status createdAt");
 
-    const recentlyActiveTeachers = await User.find({ role: "teacher" })
+    const recentlyActiveTeachers = await User.find({
+      role: "teacher",
+      ...queryFilter,
+    })
       .sort({ lastLoginAt: -1 })
       .limit(5)
-      .select("email name role lastLoginAt");
+      .select("email name role lastLoginAt"); // --- Monthly teacher growth (with filter applied) ---
 
-    // Monthly teacher growth
     const currentDate = new Date();
-    const lastMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() - 1,
-      1
-    );
     const thisMonth = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),
       1
     );
+    const lastMonth = new Date(thisMonth);
+    lastMonth.setMonth(thisMonth.getMonth() - 1);
 
     const teachersThisMonth = await User.countDocuments({
       role: "teacher",
       createdAt: { $gte: thisMonth },
+      ...queryFilter,
     });
 
     const teachersLastMonth = await User.countDocuments({
       role: "teacher",
       createdAt: { $gte: lastMonth, $lt: thisMonth },
+      ...queryFilter,
     });
+
+    const growthRate =
+      teachersLastMonth > 0
+        ? (
+            ((teachersThisMonth - teachersLastMonth) / teachersLastMonth) *
+            100
+          ).toFixed(2)
+        : teachersThisMonth > 0
+        ? "100.00"
+        : "0.00"; // Handle case where last month was 0
 
     res.status(200).json({
       success: true,
@@ -92,22 +119,12 @@ export const getAdminDashboard = async (req, res) => {
           activeTeachers,
           inactiveTeachers,
           suspendedTeachers,
-          teacherCount,
-          moderatorCount,
-          adminCount,
           totalSchools,
           totalClasses,
           totalSubjects,
           teachersThisMonth,
           teachersLastMonth,
-          growthRate:
-            teachersLastMonth > 0
-              ? (
-                  ((teachersThisMonth - teachersLastMonth) /
-                    teachersLastMonth) *
-                  100
-                ).toFixed(2)
-              : 0,
+          growthRate,
         },
         recentActivity: {
           newTeachers: recentTeachers,
@@ -133,7 +150,17 @@ export const getAdminDashboard = async (req, res) => {
 // -----------------------------
 export const getSystemStats = async (req, res) => {
   try {
+    const userRole = req.user.role;
+    const userSchoolId = req.user.schoolId;
+
+    // Create a dynamic filter for aggregation pipelines.
+    // For principals, it adds a $match stage.
+    // For superadmins, it's an empty array and has no effect.
+    const matchFilter =
+      userRole === "principal" ? [{ $match: { schoolId: userSchoolId } }] : []; // --- Teacher Overview Stats ---
+
     const stats = await User.aggregate([
+      ...matchFilter, // Apply school filter first
       {
         $match: { role: "teacher" },
       },
@@ -146,18 +173,20 @@ export const getSystemStats = async (req, res) => {
           },
         },
       },
-    ]);
+    ]); // --- User Role Distribution ---
 
     const roleStats = await User.aggregate([
+      ...matchFilter, // Apply school filter first
       {
         $group: {
           _id: "$role",
           count: { $sum: 1 },
         },
       },
-    ]);
+    ]); // --- User Status Distribution ---
 
     const statusStats = await User.aggregate([
+      ...matchFilter, // Apply school filter first
       {
         $group: {
           _id: "$status",
@@ -211,8 +240,14 @@ export const getAllTeachers = async (req, res) => {
 
     // Build filter query for users with role teacher
     const filter = { role: "teacher" };
+
+    if (req.user.role === "principal") {
+      filter.schoolId = req.user.schoolId;
+    } else if (req.user.role === "superadmin" && req.query.schoolId) {
+      filter.schoolId = req.query.schoolId;
+    }
+
     if (req.query.status) filter.status = req.query.status;
-    if (req.query.schoolId) filter.schoolId = req.query.schoolId;
     if (req.query.search) {
       filter.$or = [
         { email: { $regex: req.query.search, $options: "i" } },
@@ -265,9 +300,22 @@ export const getAllTeachers = async (req, res) => {
 // -----------------------------
 export const createTeacher = async (req, res) => {
   try {
-    const { name, email, phone, schoolId, specialization, experienceYears } =
-      req.body;
+    const { name, email, phone, specialization, experienceYears } = req.body;
 
+    let schoolId;
+    if (req.user.role === "principal") {
+      schoolId = req.user.schoolId;
+    }
+    // If a superadmin is creating a teacher, they MUST provide the school ID.
+    else if (req.user.role === "superadmin") {
+      schoolId = req.body.schoolId; // Superadmin gets it from the body
+      if (!schoolId) {
+        return res.status(400).json({
+          success: false,
+          message: "Superadmin must provide a schoolId to create a teacher.",
+        });
+      }
+    }
     // Check if user with this email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -283,7 +331,7 @@ export const createTeacher = async (req, res) => {
       email,
       role: "teacher",
       phone,
-      schoolId,
+      schoolId: schoolId,
       status: "active",
     });
 
@@ -380,7 +428,9 @@ export const getTeacherById = async (req, res) => {
         errors: errors.array(),
       });
     }
-
+    if (req.user.role === "principal") {
+      query.schoolId = req.user.schoolId;
+    }
     const user = await User.findOne({
       _id: req.params.id,
       role: "teacher",
@@ -452,6 +502,13 @@ export const updateTeacher = async (req, res) => {
     if (schoolId !== undefined) user.schoolId = schoolId;
     if (phone !== undefined) user.phone = phone;
 
+    // --- SUPERADMIN-ONLY UPDATES ---
+    // Only a superadmin can change a teacher's role or move them to another school.
+    if (req.user.role === "superadmin") {
+      if (role !== undefined) user.role = role;
+      if (schoolId !== undefined) user.schoolId = schoolId;
+    }
+
     await user.save();
 
     // Populate school info for response
@@ -488,6 +545,13 @@ export const updateTeacherRole = async (req, res) => {
         success: false,
         message: "Validation errors",
         errors: errors.array(),
+      });
+    }
+
+    if (req.user.role !== "superadmin") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to change user roles.",
       });
     }
 
@@ -575,7 +639,13 @@ export const updateTeacherStatus = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ _id: userId, role: "teacher" });
+    // Build a query to find the teacher, scoped by the user's role
+    const findQuery = { _id: userId, role: "teacher" };
+    if (req.user.role === "principal") {
+      findQuery.schoolId = req.user.schoolId;
+    }
+
+    const user = await User.findOne(findQuery);
 
     if (!user) {
       return res.status(404).json({
@@ -638,7 +708,13 @@ export const deleteTeacher = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ _id: userId, role: "teacher" });
+    // Build a query to find the teacher, scoped by the user's role
+    const findQuery = { _id: userId, role: "teacher" };
+    if (req.user.role === "principal") {
+      findQuery.schoolId = req.user.schoolId;
+    }
+
+    const user = await User.findOne(findQuery);
 
     if (!user) {
       return res.status(404).json({
@@ -693,17 +769,24 @@ export const bulkUpdateTeachers = async (req, res) => {
     }
 
     const { userIds, updates } = req.body;
-
+    const query = { _id: { $in: userIds }, role: "teacher" };
     // Remove sensitive fields
     const safeUpdates = { ...updates };
     delete safeUpdates._id;
     delete safeUpdates.firebaseUid;
     delete safeUpdates.email;
 
-    const result = await User.updateMany(
-      { _id: { $in: userIds }, role: "teacher" },
-      { $set: safeUpdates }
-    );
+    // --- ROLE-BASED LOGIC ---
+    if (req.user.role === "principal") {
+      // 1. Force the query to only match teachers in the principal's school.
+      query.schoolId = req.user.schoolId;
+
+      // 2. Prevent principals from escalating privileges or changing school.
+      delete safeUpdates.role;
+      delete safeUpdates.schoolId;
+    }
+
+    const result = await User.updateMany(query, { $set: safeUpdates });
 
     res.status(200).json({
       success: true,
@@ -740,18 +823,33 @@ export const exportTeachers = async (req, res) => {
       });
     }
 
-    const { format = "json", role, status, schoolId } = req.query;
+    const { format = "json", status } = req.query;
 
     // Filter teachers only
     const filter = { role: "teacher" };
+    if (req.user.role === "principal") {
+      filter.schoolId = req.user.schoolId;
+    }
+    // A superadmin can optionally filter by a schoolId passed in the query.
+    else if (req.user.role === "superadmin" && req.query.schoolId) {
+      filter.schoolId = req.query.schoolId;
+    }
+
+    // Add other optional filters
     if (status) filter.status = status;
-    if (schoolId) filter.schoolId = schoolId;
 
     const teachers = await User.find(filter)
       .populate("schoolId", "name")
       .sort({ createdAt: -1 });
 
     if (format === "csv") {
+      // Use a filename that reflects the data scope
+      const schoolName =
+        teachers[0]?.schoolId?.name?.replace(/\s+/g, "_") || "All_Schools";
+      const fileName = `teachers-export_${schoolName}_${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
+
       const csvHeaders =
         "Email,Name,Role,Status,School,Created At,Last Login\n";
       const csvData = teachers
@@ -766,10 +864,7 @@ export const exportTeachers = async (req, res) => {
         .join("\n");
 
       res.setHeader("Content-Type", "text/csv");
-      res.setHeader(
-        "Content-Disposition",
-        "attachment; filename=teachers-export.csv"
-      );
+      res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
       res.send(csvHeaders + csvData);
     } else {
       res.status(200).json({
@@ -809,6 +904,16 @@ export const demoteFromAdmin = async (req, res) => {
       });
     }
 
+    // --- PRIMARY SECURITY CHECK ---
+    // This action MUST be restricted to superadmins.
+    if (req.user.role !== "superadmin") {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Forbidden: You do not have permission to perform this action.",
+      });
+    }
+
     const userId = req.params.id;
     const { role: newRole = "moderator", reason } = req.body;
 
@@ -819,7 +924,10 @@ export const demoteFromAdmin = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ _id: userId, role: "admin" });
+    const user = await User.findOne({
+      _id: userId,
+      role: { $in: ["superadmin", "admin"] },
+    });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -827,12 +935,15 @@ export const demoteFromAdmin = async (req, res) => {
       });
     }
 
-    const adminCount = await User.countDocuments({ role: "admin" });
-    if (adminCount <= 1) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot demote the last remaining admin",
-      });
+    // Prevent demoting the last superadmin to avoid system lockout.
+    if (user.role === "superadmin") {
+      const superadminCount = await User.countDocuments({ role: "superadmin" });
+      if (superadminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot demote the last remaining superadmin.",
+        });
+      }
     }
 
     const oldRole = user.role;
@@ -890,7 +1001,14 @@ export const getStudentsByClassDivision = async (req, res) => {
       });
     }
 
-    const students = await StudentProfile.find({ class: cls, div: div });
+    // 🛡️ SECURITY: Use the principal's schoolId from the authenticated user token.
+    const schoolId = req.user.schoolId;
+
+    const students = await StudentProfile.find({
+      schoolId: schoolId, // Filter by the principal's school
+      class: cls,
+      div: div,
+    });
 
     if (!students.length) {
       return res.status(200).json({
@@ -922,6 +1040,9 @@ export const uploadStudentExcel = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Excel file required" });
     }
+    // 🔑 Get the principal's schoolId to associate with all uploaded students.
+    const schoolId = req.user.schoolId;
+
     const workbook = XLSX.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
@@ -993,19 +1114,20 @@ export const bulkPromoteStudents = async (req, res) => {
       });
     }
 
-    // Find student profiles matching the class and division
-    const studentProfiles = await StudentProfile.find({
-      class: fromClass,
-      div: div,
-    });
+    // 🛡️ SECURITY: Get the schoolId from the authenticated principal.
+    const schoolId = req.user.schoolId; // Perform the update operation, strictly filtering by the principal's school.
 
-    const userIdsToPromote = studentProfiles.map((sp) => sp.userId);
-
-    // Update the class field in student profiles to 'toClass'
     const result = await StudentProfile.updateMany(
-      { userId: { $in: userIdsToPromote } },
+      { schoolId: schoolId, class: fromClass, div: div }, // Securely scope the update
       { $set: { class: toClass } }
     );
+
+    if (result.matchedCount === 0) {
+      return res.json({
+        success: true,
+        message: `No students found in class ${fromClass}, division ${div} to promote.`,
+      });
+    }
 
     res.json({
       success: true,
@@ -1070,6 +1192,13 @@ export const dedupeStudents = async (req, res) => {
 // Create a school (Admin only)
 export async function createSchool(req, res) {
   try {
+    if (req.user.role !== "superadmin") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Not authorized to create schools.",
+      });
+    }
+
     const {
       name,
       type,
@@ -1078,13 +1207,31 @@ export async function createSchool(req, res) {
       addressDetails,
       contact,
       emailDomain,
+      principalName,
+      principalEmail,
+      principalPassword,
     } = req.body;
+
+    if (!name || !principalName || !principalEmail || !principalPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "School name and principal details are required.",
+      });
+    }
 
     const existingSchool = await School.findByName(name);
     if (existingSchool)
       return res.status(400).json({ error: "School name already exists" });
 
-    const school = new School({
+    const existingPrincipal = await User.findOne({ email: principalEmail });
+    if (existingPrincipal) {
+      return res.status(409).json({
+        success: false,
+        message: "A user with this email already exists.",
+      });
+    }
+
+    /*const school = new School({
       name,
       type,
       establishedYear,
@@ -1092,9 +1239,32 @@ export async function createSchool(req, res) {
       addressDetails,
       contact,
       emailDomain,
+    });*/
+    // 1. Create the School instance first (but don't save yet)
+    const school = new School({
+      name,
+      contact,
+      status: "verified" /* Superadmin creates verified schools */,
     });
 
+    // 2. Create the Principal User instance
+    const principal = new User({
+      name: principalName,
+      email: principalEmail,
+      password: principalPassword, // Remember to hash this in a pre-save hook!
+      role: "principal",
+      status: "active", // The principal is active since the school is verified
+      schoolId: school._id, // Link to the new school
+    });
+    // Add Firebase user creation logic here as well
+
+    // 3. Link the school back to the principal
+    school.principalId = principal._id;
+
+    // 4. Save both documents in a transaction for data consistency
     await school.save();
+    await principal.save();
+
     res.status(201).json(school);
   } catch (e) {
     console.error("Admin Error - Create school:", e.message);
@@ -1105,8 +1275,25 @@ export async function createSchool(req, res) {
 // Get all schools
 export async function getSchools(req, res) {
   try {
-    const schools = await School.find();
-    res.status(200).json(schools);
+    const { role, schoolId } = req.user;
+    let schools;
+
+    if (role === "superadmin") {
+      // Superadmin can see all schools and filter by status (e.g., ?status=pending)
+      const filter = req.query.status ? { status: req.query.status } : {};
+      schools = await School.find(filter).populate("principalId", "name email");
+    } else if (role === "principal") {
+      // Principal can only see their own school.
+      const mySchool = await School.findById(schoolId).populate(
+        "principalId",
+        "name email"
+      );
+      schools = mySchool ? [mySchool] : []; // Return as an array for consistency
+    } else {
+      // Other roles see nothing.
+      schools = [];
+    }
+    res.status(200).json({ success: true, data: schools });
   } catch (e) {
     console.error("Admin Error - Get schools:", e.message);
     res.status(500).json({ error: e.message });
@@ -1116,7 +1303,33 @@ export async function getSchools(req, res) {
 // Add or update a class in school (grade + division unique in school)
 export async function addOrUpdateClass(req, res) {
   try {
-    const { schoolId, grade, division } = req.body;
+    const { grade, division } = req.body;
+
+    let schoolId;
+
+    // 🛡️ SECURITY: Determine schoolId based on the user's role, not the request body.
+    if (req.user.role === "principal") {
+      schoolId = req.user.schoolId;
+    } else if (req.user.role === "superadmin") {
+      schoolId = req.body.schoolId; // Superadmin must provide it
+      if (!schoolId) {
+        return res.status(400).json({
+          success: false,
+          message: "Superadmin must provide a schoolId.",
+        });
+      }
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You cannot manage classes.",
+      });
+    }
+
+    if (!grade || !division) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Grade and division are required." });
+    }
 
     let existingClass = await Class.findBySchoolGradeDivision(
       schoolId,
@@ -1141,8 +1354,26 @@ export async function addOrUpdateClass(req, res) {
 // Get all classes
 export async function getClasses(req, res) {
   try {
-    const classes = await Class.find();
-    res.status(200).json(classes);
+    const { role, schoolId } = req.user;
+    const filter = {};
+
+    // 🛡️ SECURITY: Apply filter based on user role.
+    if (role === "principal") {
+      filter.schoolId = schoolId;
+    } else if (role === "superadmin" && req.query.schoolId) {
+      // Superadmin can optionally filter
+      filter.schoolId = req.query.schoolId;
+    } else if (
+      role !== "superadmin" &&
+      role !== "principal" &&
+      role !== "teacher"
+    ) {
+      // Explicitly block other roles if necessary, though route auth should handle this.
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const classes = await Class.find(filter).populate("schoolId", "name");
+    res.status(200).json({ success: true, data: classes });
   } catch (e) {
     console.error("Admin Error - Get classes:", e.message);
     res.status(500).json({ error: e.message });
@@ -1153,8 +1384,34 @@ export async function getClasses(req, res) {
 export async function deleteClass(req, res) {
   try {
     const { classId } = req.params;
-    await Class.findByIdAndDelete(classId);
-    res.json({ message: "Class deleted" });
+    const { role, schoolId } = req.user;
+
+    const query = { _id: classId };
+
+    // 🛡️ SECURITY: If the user is a principal, add their schoolId to the query.
+    // This prevents them from deleting classes in other schools.
+    if (role === "principal") {
+      query.schoolId = schoolId;
+    } else if (role !== "superadmin") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You cannot delete classes.",
+      });
+    }
+
+    // findOneAndDelete is atomic and secure. It will only delete if both _id and schoolId (if applicable) match.
+    const deletedClass = await Class.findOneAndDelete(query);
+
+    if (!deletedClass) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found or you do not have permission to delete it.",
+      });
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "Class deleted successfully" });
   } catch (e) {
     console.error("Admin Error - Delete class:", e.message);
     res.status(500).json({ error: e.message });
@@ -1164,7 +1421,32 @@ export async function deleteClass(req, res) {
 // Add or update a subject in school with unique subjectId
 export async function addOrUpdateSubject(req, res) {
   try {
-    const { schoolId, subjectId, name } = req.body;
+    const { subjectId, name } = req.body;
+    let schoolId;
+
+    // 🛡️ SECURITY: Determine schoolId from the user's role, not the request body.
+    if (req.user.role === "principal") {
+      schoolId = req.user.schoolId;
+    } else if (req.user.role === "superadmin") {
+      schoolId = req.body.schoolId; // Superadmin must provide it
+      if (!schoolId) {
+        return res.status(400).json({
+          success: false,
+          message: "Superadmin must provide a schoolId.",
+        });
+      }
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You cannot manage subjects.",
+      });
+    }
+
+    if (!subjectId || !name) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Subject ID and name are required." });
+    }
 
     let subject = await Subject.findOne({ schoolId, subjectId });
     if (subject) {
@@ -1188,8 +1470,21 @@ export async function addOrUpdateSubject(req, res) {
 // Get all subjects
 export async function getSubjects(req, res) {
   try {
-    const subjects = await Subject.find();
-    res.status(200).json(subjects);
+    const { role, schoolId } = req.user;
+    const filter = {}; // 🛡️ SECURITY: Apply a filter based on the user's role.
+
+    if (role === "principal" || role === "teacher") {
+      filter.schoolId = schoolId;
+    } else if (role === "superadmin" && req.query.schoolId) {
+      // A superadmin can optionally filter the list by a specific school.
+      filter.schoolId = req.query.schoolId;
+    } else if (role !== "superadmin") {
+      // For any other roles, return an empty array.
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const subjects = await Subject.find(filter).populate("schoolId", "name");
+    res.status(200).json({ success: true, data: subjects });
   } catch (e) {
     console.error("Admin Error - Get subjects:", e.message);
     res.status(500).json({ error: e.message });
@@ -1199,9 +1494,32 @@ export async function getSubjects(req, res) {
 // Delete a subject by ID
 export async function deleteSubject(req, res) {
   try {
-    const { subjectId } = req.params;
-    await Subject.findByIdAndDelete(subjectId);
-    res.json({ message: "Subject deleted" });
+    const { subjectId } = req.params; // This should be the MongoDB document _id
+    const { role, schoolId } = req.user;
+    const query = { _id: subjectId }; // 🛡️ SECURITY: If the user is a principal, scope the query to their school. // This prevents them from deleting subjects in other schools even if they know the ID.
+
+    if (role === "principal") {
+      query.schoolId = schoolId;
+    } else if (role !== "superadmin") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You cannot delete subjects.",
+      });
+    } // This atomic operation will only delete if both _id and schoolId (if applicable) match.
+
+    const deletedSubject = await Subject.findOneAndDelete(query);
+
+    if (!deletedSubject) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Subject not found or you do not have permission to delete it.",
+      });
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "Subject deleted successfully" });
   } catch (e) {
     console.error("Admin Error - Delete subject:", e.message);
     res.status(500).json({ error: e.message });
@@ -1211,7 +1529,15 @@ export async function deleteSubject(req, res) {
 // Get all teacher assignments
 export async function getAssignments(req, res) {
   try {
-    const assignments = await TeacherClassSubject.find()
+    // 🛡️ SECURITY: Only principals can access this. The query is scoped to their school.
+    if (req.user.role !== "principal") {
+      return res
+        .status(403)
+        .json({ success: false, message: "Forbidden: Not authorized." });
+    }
+    const schoolId = req.user.schoolId;
+
+    const assignments = await TeacherClassSubject.find({ schoolId: schoolId })
       .populate("teacherId", "name email")
       .populate("classId", "grade division schoolId")
       .populate("subjectId", "name subjectId")
@@ -1251,6 +1577,14 @@ export async function getAssignments(req, res) {
 // Assign teacher to class + subject
 export async function assignTeacher(req, res) {
   try {
+    // 🛡️ SECURITY: Only principals can assign teachers.
+    if (req.user.role !== "principal") {
+      return res
+        .status(403)
+        .json({ success: false, message: "Forbidden: Not authorized." });
+    }
+    const schoolId = req.user.schoolId;
+
     const { teacherId, classId, subjectId } = req.body;
 
     // Validate that all required fields are provided
@@ -1324,6 +1658,7 @@ export async function assignTeacher(req, res) {
     }
 
     const assignment = new TeacherClassSubject({
+      schoolId,
       teacherId,
       classId,
       subjectId,
@@ -1346,10 +1681,19 @@ export async function assignTeacher(req, res) {
 // Remove teacher assignment by ID
 export async function removeAssignment(req, res) {
   try {
+    // 🛡️ SECURITY: Only principals can remove assignments.
+    if (req.user.role !== "principal") {
+      return res
+        .status(403)
+        .json({ success: false, message: "Forbidden: Not authorized." });
+    }
+    const schoolId = req.user.schoolId;
+
     const { assignmentId } = req.params;
-    const deletedAssignment = await TeacherClassSubject.findByIdAndDelete(
-      assignmentId
-    );
+    const deletedAssignment = await TeacherClassSubject.findByIdAndDelete({
+      _id: assignmentId,
+      schoolId: schoolId,
+    });
 
     if (!deletedAssignment) {
       return res.status(404).json({

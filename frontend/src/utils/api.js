@@ -306,4 +306,91 @@ export const paperAPI = {
   },
 };
 
+// --- NEW SCHOOL MANAGEMENT API FUNCTIONS ---
+export const schoolService = {
+  /**
+   * Public endpoint for a principal to register their school.
+   * @param {object} schoolData - { schoolName, schoolAddress, principalName, principalEmail, password }
+   */
+  registerSchool: async (schoolData) => {
+    try {
+      // This is a public route, so no auth token is needed.
+      const response = await axios.post(
+        `${local_api}schools/register`,
+        schoolData
+      );
+      return response.data;
+    } catch (error) {
+      // Re-throw to be caught by the component
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Superadmin gets a list of all schools pending verification.
+   */
+  getPendingSchools: async () => {
+    try {
+      const response = await api.get("/admin/schools?status=pending");
+      return response.data; // { success, data: [...] }
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Superadmin verifies a school.
+   * @param {string} schoolId - The ID of the school to verify.
+   */
+  verifySchool: async (schoolId) => {
+    try {
+      const response = await api.put(`/admin/schools/verify/${schoolId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+};
+
+// --- NEW ADMIN DASHBOARD API FUNCTION ---
+export const adminService = {
+  /**
+   * Fetches dashboard stats. The backend will scope the data
+   * based on whether the user is a superadmin or a principal.
+   */
+  getDashboardStats: async () => {
+    try {
+      const response = await api.get("/admin/dashboard");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+  /**
+   * Superadmin gets a list of all schools.
+   */
+  getSchools: async () => {
+    try {
+      // This should call the new superadmin route
+      const response = await api.get("/superadmin/schools");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Superadmin creates a new school and its principal.
+   * @param {object} schoolData - Contains school and principal details.
+   */
+  createSchoolWithPrincipal: async (schoolData) => {
+    try {
+      const response = await api.post("/superadmin/schools", schoolData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+};
+
 export default api;

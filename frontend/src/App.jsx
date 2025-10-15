@@ -31,6 +31,11 @@ import Classes from "./Pages/Admin/Classes";
 import Subjects from "./Pages/Admin/Subjects";
 import TeacherAssignments from "./Pages/Admin/TeacherAssignments";
 
+// --- Superadmin Only Imports ---
+import SuperAdminLayout from "./Pages/SuperAdmin/SuperAdminLayout"; // We'll create this layout
+import SuperAdminDashboard from "./Pages/SuperAdmin/Dashboard"; // The verification dashboard
+import SchoolsSuperAdmin from "./Pages/SuperAdmin/Schools_SuperAdmin"; // The school management page is now superadmin-only
+
 function App() {
   return (
     <Router>
@@ -74,7 +79,7 @@ function App() {
             <Route
               path="/admin/*"
               element={
-                <ProtectedRoute requiredRoles={["admin"]}>
+                <ProtectedRoute requiredRoles={["principal"]}>
                   <AdminLayout />
                 </ProtectedRoute>
               }
@@ -95,6 +100,22 @@ function App() {
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="paper/:id" element={<PaperFormat />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
+
+            {/* --- Superadmin Panel (Superadmins ONLY) --- */}
+            {/* This panel is for high-level tasks like verifying new schools and global management. */}
+            <Route
+              path="/superadmin/*"
+              element={
+                <ProtectedRoute requiredRoles={["superadmin"]}>
+                  <SuperAdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<SuperAdminDashboard />} />
+              <Route path="schools" element={<SchoolsSuperAdmin />} />
+              {/* You can add more superadmin-only routes here */}
+            </Route>
           </Routes>
         </div>
       </AuthProvider>

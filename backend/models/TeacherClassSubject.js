@@ -3,6 +3,14 @@ import mongoose from "mongoose";
 
 const teacherClassSubjectSchema = new mongoose.Schema(
   {
+    // 🔑 REQUIRED for multi-school security and performance
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: true,
+      index: true,
+    },
+
     teacherId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

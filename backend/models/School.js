@@ -51,6 +51,17 @@ const schoolSchema = new mongoose.Schema(
       // For example: to hold "vit.edu" to check teacher emails
     },
 
+    principalId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "verified", "rejected"],
+      default: "pending", // <-- New schools are pending by default
+    },
+
     createdAt: {
       type: Date,
       default: Date.now,

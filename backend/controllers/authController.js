@@ -76,13 +76,6 @@ export const getTeacherProfile = async (req, res) => {
   try {
     const user = req.user;
 
-    if (user.role !== "teacher" && user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "User is not a teacher",
-      });
-    }
-
     await user.updateLastLogin();
 
     res.status(200).json({
@@ -131,13 +124,6 @@ export const updateTeacherProfile = async (req, res) => {
     const user = req.user;
     const updateData = req.body;
 
-    if (user.role !== "teacher") {
-      return res.status(403).json({
-        success: false,
-        message: "User is not a teacher",
-      });
-    }
-
     const allowedUpdates = ["name", "role", "phone"];
     allowedUpdates.forEach((field) => {
       if (updateData[field] !== undefined) {
@@ -173,12 +159,6 @@ export const updateTeacherProfile = async (req, res) => {
 export const deleteTeacherAccount = async (req, res) => {
   try {
     const user = req.user;
-    if (user.role !== "teacher") {
-      return res.status(403).json({
-        success: false,
-        message: "User is not a teacher",
-      });
-    }
 
     const firebaseUid = user.firebaseUid;
 
@@ -211,13 +191,6 @@ export const deleteTeacherAccount = async (req, res) => {
 export const verifyToken = async (req, res) => {
   try {
     const user = req.user;
-
-    if (user.role !== "teacher") {
-      return res.status(403).json({
-        success: false,
-        message: "User is not a teacher",
-      });
-    }
 
     res.status(200).json({
       success: true,

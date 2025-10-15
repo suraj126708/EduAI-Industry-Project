@@ -26,7 +26,7 @@ const UserSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["admin", "teacher", "student"],
+      enum: ["principal", "teacher", "student", "superadmin"],
       default: "student",
       trim: true,
     },
@@ -53,7 +53,7 @@ const UserSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["active", "inactive", "suspended"],
+      enum: ["active", "inactive", "suspended", "pending"],
       default: "active",
     },
 

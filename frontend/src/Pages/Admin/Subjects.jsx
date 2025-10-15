@@ -3,7 +3,9 @@ import { useAuth } from "../../contexts/AuthContext";
 import { FaPlus, FaEdit, FaTrash, FaBook } from "react-icons/fa";
 
 const Subjects = () => {
-  const { adminService } = useAuth();
+  // 1. Get userProfile to know the user's role and school name
+  const { adminService, userProfile } = useAuth();
+
   const [subjects, setSubjects] = useState([]);
   const [schools, setSchools] = useState([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -17,37 +19,76 @@ const Subjects = () => {
     name: "",
   });
 
+  // Fetches the list of all schools (for super admin dropdown)
+  const fetchSchools = async () => {
+    try {
+      const result = await adminService.getSchools();
+      const schoolsArray = result.data?.data;
+      if (result.success && Array.isArray(schoolsArray)) {
+        setSchools(schoolsArray);
+      } else {
+        console.error("API did not return a valid array for schools:", result);
+        setSchools([]);
+      }
+    } catch (err) {
+      setError("Failed to fetch schools.");
+      setSchools([]);
+    }
+  };
+
+  // Fetches subjects based on the user's role
+  const fetchSubjects = async () => {
+    try {
+      const result = await adminService.getSubjects();
+      const subjectsArray = result.data?.data;
+      if (result.success && Array.isArray(subjectsArray)) {
+        setSubjects(subjectsArray);
+      } else {
+        console.error("API did not return a valid array for subjects:", result);
+        setSubjects([]);
+      }
+    } catch (err) {
+      setError("Failed to fetch subjects.");
+      setSubjects([]);
+    }
+  };
+
+  // Main data fetching effect
+  useEffect(() => {
+    // Set the schoolId in the form by default for principals
+    if (userProfile?.role === "principal") {
+      setFormData((prev) => ({ ...prev, schoolId: userProfile.schoolId?._id }));
+    }
+    // Only super admins need the full list of schools for the dropdown
+    if (userProfile?.role === "superadmin") {
+      fetchSchools();
+    }
+    fetchSubjects();
+  }, [userProfile]); // Dependency ensures this runs when userProfile is loaded
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const generateSubjectId = (subjectName) => {
+    if (!subjectName) return "";
+    const cleanName = subjectName.toUpperCase().replace(/\s+/g, "");
+    if (cleanName.length >= 2) {
+      const prefix = cleanName.substring(0, Math.min(4, cleanName.length));
+      return `${prefix}101`;
+    }
+    return "";
+  };
+
+  const handleNameChange = (e) => {
+    const name = e.target.value;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      name: name,
+      subjectId: generateSubjectId(name),
     }));
   };
-
-  const fetchSchools = async () => {
-    const result = await adminService.getSchools();
-    if (result.success) {
-      setSchools(result.data);
-    } else {
-      setError(result.error);
-    }
-  };
-
-  const fetchSubjects = async () => {
-    const result = await adminService.getSubjects();
-    if (result.success) {
-      setSubjects(result.data);
-      console.log(result.data);
-    } else {
-      setError(result.error);
-    }
-  };
-
-  useEffect(() => {
-    fetchSchools();
-    fetchSubjects();
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,11 +96,10 @@ const Subjects = () => {
     setError("");
     setSuccess("");
 
-    // Validate subject ID format (e.g., CS101, MATH101)
     const subjectIdPattern = /^[A-Z]{2,4}\d{3}$/;
     if (!subjectIdPattern.test(formData.subjectId)) {
       setError(
-        "Subject ID must be in format like CS101, MATH101 (2-4 letters followed by 3 digits)"
+        "Subject ID must be in format like CS101 (2-4 letters, 3 digits)"
       );
       setLoading(false);
       return;
@@ -70,18 +110,18 @@ const Subjects = () => {
       if (result.success) {
         setSuccess("Subject created successfully!");
         setFormData({
-          schoolId: "",
+          schoolId:
+            userProfile?.role === "principal" ? userProfile.schoolId._id : "",
           subjectId: "",
           name: "",
         });
         setShowCreateForm(false);
-        // Refresh subjects list
-        fetchSubjects();
+        fetchSubjects(); // Refresh the list
       } else {
-        setError(result.error);
+        setError(result.error || "An error occurred.");
       }
     } catch (err) {
-      setError("Failed to create subject");
+      setError("Failed to create subject.");
     } finally {
       setLoading(false);
     }
@@ -95,41 +135,18 @@ const Subjects = () => {
           setSuccess("Subject deleted successfully!");
           setSubjects(subjects.filter((subject) => subject._id !== subjectId));
         } else {
-          setError(result.error);
+          setError(result.error || "Failed to delete.");
         }
       } catch (err) {
-        setError("Failed to delete subject");
+        setError("Failed to delete subject.");
       }
     }
   };
 
+  // Helper function only used by super admins to find school names
   const getSchoolName = (schoolId) => {
     const school = schools.find((s) => s._id === schoolId);
     return school ? school.name : "Unknown School";
-  };
-
-  const generateSubjectId = (subjectName) => {
-    if (!subjectName) return "";
-
-    // Convert to uppercase and remove spaces
-    const cleanName = subjectName.toUpperCase().replace(/\s+/g, "");
-
-    // Take first 2-4 characters and add 101
-    if (cleanName.length >= 2) {
-      const prefix = cleanName.substring(0, Math.min(4, cleanName.length));
-      return `${prefix}101`;
-    }
-
-    return "";
-  };
-
-  const handleNameChange = (e) => {
-    const name = e.target.value;
-    setFormData((prev) => ({
-      ...prev,
-      name: name,
-      subjectId: generateSubjectId(name),
-    }));
   };
 
   return (
@@ -137,7 +154,12 @@ const Subjects = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center">
           <FaBook className="mr-2 text-indigo-600" />
-          Subject Management
+          {/* 2. Title is now dynamic based on user role */}
+          {userProfile?.role === "principal"
+            ? `${
+                userProfile.schoolId?.name || "My School"
+              } - Subject Management`
+            : "Subject Management"}
         </h2>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
@@ -153,7 +175,6 @@ const Subjects = () => {
           {error}
         </div>
       )}
-
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           {success}
@@ -165,26 +186,30 @@ const Subjects = () => {
           <h3 className="text-lg font-semibold mb-4">Create New Subject</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  School *
-                </label>
-                <select
-                  name="schoolId"
-                  value={formData.schoolId}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Select School</option>
-                  {schools.map((school) => (
-                    <option key={school._id} value={school._id}>
-                      {school.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* School selection is now only shown to super admins */}
+              {userProfile?.role === "superadmin" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    School *
+                  </label>
+                  <select
+                    name="schoolId"
+                    value={formData.schoolId}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select School</option>
+                    {schools.map((school) => (
+                      <option key={school._id} value={school._id}>
+                        {school.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
+              {/* Subject Name Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Subject Name *
@@ -200,6 +225,7 @@ const Subjects = () => {
                 />
               </div>
 
+              {/* Subject ID Field */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Subject ID *
@@ -215,12 +241,13 @@ const Subjects = () => {
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Format: 2-4 letters followed by 3 digits (e.g., CS101,
-                  MATH101, ENG101)
+                  MATH101)
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-4">
+            {/* Form Action Buttons */}
+            <div className="flex gap-4 pt-2">
               <button
                 type="submit"
                 disabled={loading}
@@ -257,9 +284,12 @@ const Subjects = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      School
-                    </th>
+                    {/* 4. The "School" column header is now conditional */}
+                    {userProfile?.role === "superadmin" && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        School
+                      </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Subject ID
                     </th>
@@ -274,11 +304,14 @@ const Subjects = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {subjects.map((subject) => (
                     <tr key={subject._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {getSchoolName(subject.schoolId)}
-                        </div>
-                      </td>
+                      {/* 5. The "School" data cell is also conditional */}
+                      {userProfile?.role === "superadmin" && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {getSchoolName(subject.schoolId)}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
                           {subject.subjectId}

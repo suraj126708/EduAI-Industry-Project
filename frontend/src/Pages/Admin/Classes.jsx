@@ -3,7 +3,9 @@ import { useAuth } from "../../contexts/AuthContext";
 import { FaPlus, FaEdit, FaTrash, FaGraduationCap } from "react-icons/fa";
 
 const Classes = () => {
-  const { adminService } = useAuth();
+  // Get user profile and API service from the authentication context
+  const { adminService, userProfile } = useAuth();
+
   const [classes, setClasses] = useState([]);
   const [schools, setSchools] = useState([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -17,46 +19,56 @@ const Classes = () => {
     division: "",
   });
 
-  // Mock data for demonstration - in real app, fetch from API
-  useEffect(() => {
-    // Mock schools data
-    setSchools([]);
-
-    // Mock classes data
-    setClasses([]);
-  }, []);
-
+  // Fetches the list of all schools (for super admin dropdown)
   const fetchSchools = async () => {
-    const result = await adminService.getSchools();
-    if (result.success) {
-      setSchools(result.data);
-      console.log(result.data);
-    } else {
-      setError(result.error);
+    try {
+      const result = await adminService.getSchools();
+      const schoolsArray = result.data?.data;
+      if (result.success && Array.isArray(schoolsArray)) {
+        setSchools(schoolsArray);
+      } else {
+        console.error("API did not return a valid array for schools:", result);
+        setSchools([]);
+      }
+    } catch (err) {
+      setError("Failed to fetch schools.");
+      setSchools([]);
     }
   };
 
+  // Fetches classes based on the user's role
   const fetchClasses = async () => {
-    const result = await adminService.getClasses();
-    if (result.success) {
-      setClasses(result.data);
-      console.log(result.data);
-    } else {
-      setError(result.error);
+    try {
+      const result = await adminService.getClasses();
+      const classesArray = result.data?.data;
+      if (result.success && Array.isArray(classesArray)) {
+        setClasses(classesArray);
+      } else {
+        console.error("API did not return a valid array for classes:", result);
+        setClasses([]);
+      }
+    } catch (err) {
+      setError("Failed to fetch classes.");
+      setClasses([]);
     }
   };
 
+  // Main data fetching effect
   useEffect(() => {
-    fetchSchools();
+    // A principal's school ID is already in their profile, so we can set it in the form by default.
+    if (userProfile?.role === "principal") {
+      setFormData((prev) => ({ ...prev, schoolId: userProfile.schoolId?._id }));
+    }
+    // Only super admins need the list of all schools for the dropdown.
+    if (userProfile?.role === "superadmin") {
+      fetchSchools();
+    }
     fetchClasses();
-  }, []);
+  }, [userProfile]); // Dependency ensures this runs when the user profile is loaded
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -70,18 +82,18 @@ const Classes = () => {
       if (result.success) {
         setSuccess("Class created successfully!");
         setFormData({
-          schoolId: "",
+          schoolId:
+            userProfile?.role === "principal" ? userProfile.schoolId._id : "",
           grade: "",
           division: "",
         });
         setShowCreateForm(false);
-        // Refresh classes list
-        fetchClasses();
+        fetchClasses(); // Refresh the list
       } else {
-        setError(result.error);
+        setError(result.error || "An error occurred.");
       }
     } catch (err) {
-      setError("Failed to create class");
+      setError("Failed to create class.");
     } finally {
       setLoading(false);
     }
@@ -95,14 +107,15 @@ const Classes = () => {
           setSuccess("Class deleted successfully!");
           setClasses(classes.filter((cls) => cls._id !== classId));
         } else {
-          setError(result.error);
+          setError(result.error || "Failed to delete.");
         }
       } catch (err) {
-        setError("Failed to delete class");
+        setError("Failed to delete class.");
       }
     }
   };
 
+  // Helper function only used by super admins to find school names
   const getSchoolName = (schoolId) => {
     const school = schools.find((s) => s._id === schoolId);
     return school ? school.name : "Unknown School";
@@ -113,7 +126,10 @@ const Classes = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center">
           <FaGraduationCap className="mr-2 text-indigo-600" />
-          Class Management
+          {/* Title is now dynamic based on user role */}
+          {userProfile?.role === "principal"
+            ? `${userProfile.schoolId?.name || "My School"} - Class Management`
+            : "Class Management"}
         </h2>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
@@ -129,7 +145,6 @@ const Classes = () => {
           {error}
         </div>
       )}
-
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           {success}
@@ -141,25 +156,28 @@ const Classes = () => {
           <h3 className="text-lg font-semibold mb-4">Create New Class</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  School *
-                </label>
-                <select
-                  name="schoolId"
-                  value={formData.schoolId}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Select School</option>
-                  {schools.map((school) => (
-                    <option key={school._id} value={school._id}>
-                      {school.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* School selection is now only shown to super admins */}
+              {userProfile?.role === "superadmin" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    School *
+                  </label>
+                  <select
+                    name="schoolId"
+                    value={formData.schoolId}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select School</option>
+                    {schools.map((school) => (
+                      <option key={school._id} value={school._id}>
+                        {school.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -173,9 +191,9 @@ const Classes = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">Select Class</option>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((Class) => (
-                    <option key={Class} value={Class}>
-                      Class {Class}
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((grade) => (
+                    <option key={grade} value={grade}>
+                      Class {grade}
                     </option>
                   ))}
                 </select>
@@ -202,7 +220,8 @@ const Classes = () => {
               </div>
             </div>
 
-            <div className="flex gap-4">
+            {/* Form Action Buttons */}
+            <div className="flex gap-4 pt-2">
               <button
                 type="submit"
                 disabled={loading}
@@ -237,9 +256,12 @@ const Classes = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      School
-                    </th>
+                    {/* The "School" column header is now conditional */}
+                    {userProfile?.role === "superadmin" && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        School
+                      </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Class
                     </th>
@@ -254,14 +276,17 @@ const Classes = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {classes.map((cls) => (
                     <tr key={cls._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {getSchoolName(cls.schoolId)}
-                        </div>
-                      </td>
+                      {/* The "School" data cell is also conditional */}
+                      {userProfile?.role === "superadmin" && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {getSchoolName(cls.schoolId)}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                          Class {cls.Class} {cls.grade}
+                          Class {cls.grade}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -269,7 +294,6 @@ const Classes = () => {
                           Division {cls.division}
                         </span>
                       </td>
-
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <button className="text-indigo-600 hover:text-indigo-900">

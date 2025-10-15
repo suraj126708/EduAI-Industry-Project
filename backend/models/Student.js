@@ -3,6 +3,12 @@ import mongoose from "mongoose";
 const studentSchema = new mongoose.Schema(
   {
     // No userId link, standalone student schema
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: true,
+      index: true, // Index for faster queries
+    },
     name: {
       type: String,
       required: true,
@@ -36,7 +42,10 @@ const studentSchema = new mongoose.Schema(
 );
 
 // Ensure uniqueness per class/div/rollNo
-studentSchema.index({ class: 1, div: 1, rollNo: 1 }, { unique: true });
+studentSchema.index(
+  { schoolId: 1, class: 1, div: 1, rollNo: 1 },
+  { unique: true }
+);
 
 const Student = mongoose.model("Student", studentSchema);
 

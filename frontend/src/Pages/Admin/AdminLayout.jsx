@@ -12,8 +12,8 @@ import {
 } from "react-icons/fa";
 
 const navItems = [
-  { name: "Dashboard", path: "/admin/dashboard", icon: <FaTachometerAlt /> },
-  { name: "Schools", path: "/admin/schools", icon: <FaSchool /> },
+  //{ name: "Dashboard", path: "/admin/dashboard", icon: <FaTachometerAlt /> },
+  //{ name: "Schools", path: "/admin/schools", icon: <FaSchool /> },
   { name: "Classes", path: "/admin/classes", icon: <FaGraduationCap /> },
   { name: "Subjects", path: "/admin/subjects", icon: <FaBook /> },
   { name: "Teachers", path: "/admin/teachers", icon: <FaUsers /> },

@@ -135,8 +135,8 @@ const bulkTeacherValidation = [
  */
 router.get(
   "/dashboard",
+  //authorize("admin"),
   authenticateFirebaseToken,
-  authorize("admin"),
   getAdminDashboard
 );
 
@@ -203,7 +203,7 @@ router.get(
 router.get(
   "/stats",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   getSystemStats
 );
 
@@ -288,10 +288,10 @@ router.get(
 router.get(
   "/teachers",
   authenticateFirebaseToken,
-  authorizeMultiple({
+  /*authorizeMultiple({
     admin: true,
     moderator: ["read"],
-  }),
+  }),*/
   getAllTeachers
 );
 
@@ -301,7 +301,7 @@ router.get(
 router.post(
   "/teachers",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   createTeacher
 );
 
@@ -311,7 +311,7 @@ router.post(
 router.get(
   "/teachers/:id",
   authenticateFirebaseToken,
-  authorize("admin", "moderator"),
+  //authorize("admin", "moderator"),
   teacherIdValidation,
   getTeacherById
 );
@@ -334,7 +334,7 @@ router.put(
 router.put(
   "/teachers/:id",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   teacherIdValidation,
   updateTeacher
 );
@@ -345,10 +345,10 @@ router.put(
 router.put(
   "/teachers/:id/status",
   authenticateFirebaseToken,
-  authorizeMultiple({
+  /*authorizeMultiple({
     admin: true,
     moderator: ["manage_users"],
-  }),
+  }),*/
   teacherIdValidation,
   statusValidation,
   updateTeacherStatus
@@ -371,7 +371,7 @@ router.post(
 router.post(
   "/teachers/bulk-update",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   bulkTeacherValidation,
   bulkUpdateTeachers
 );
@@ -382,7 +382,7 @@ router.post(
 router.get(
   "/teachers/export",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   exportTeachers
 );
 
@@ -392,7 +392,7 @@ router.get(
 router.delete(
   "/teachers/:id",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   teacherIdValidation,
   deleteTeacher
 );
@@ -403,7 +403,7 @@ router.delete(
 router.get(
   "/students",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   async (req, res, next) => {
     // Simple validation
     if (!req.query.class || !req.query.div) {
@@ -420,7 +420,7 @@ router.get(
 router.post(
   "/students/uploads",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   upload.single("file"),
   uploadStudentExcel
 );
@@ -429,7 +429,7 @@ router.post(
 router.put(
   "/students/promote",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   async (req, res, next) => {
     const { fromClass, toClass, div } = req.body;
     if (!fromClass || !toClass || !div) {
@@ -447,7 +447,7 @@ router.put(
 router.post(
   "/students/dedupe",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   dedupeStudents
 );
 
@@ -456,14 +456,14 @@ router.post(
 router.post(
   "/schools",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   createSchool
 );
 
 router.get(
   "/schools",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   getSchools
 );
 
@@ -471,21 +471,21 @@ router.get(
 router.post(
   "/classes",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   addOrUpdateClass
 );
 
 router.get(
   "/classes",
   authenticateFirebaseToken,
-  authorize("admin", "teacher"),
+  //authorize("admin", "teacher"),
   getClasses
 );
 
 router.delete(
   "/classes/:classId",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   deleteClass
 );
 
@@ -493,21 +493,21 @@ router.delete(
 router.post(
   "/subjects",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   addOrUpdateSubject
 );
 
 router.get(
   "/subjects",
   authenticateFirebaseToken,
-  authorize("admin", "teacher"),
+  //authorize("admin", "teacher"),
   getSubjects
 );
 
 router.delete(
   "/subjects/:subjectId",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   deleteSubject
 );
 
@@ -515,21 +515,21 @@ router.delete(
 router.get(
   "/assignments",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   getAssignments
 );
 
 router.post(
   "/assignments",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   assignTeacher
 );
 
 router.delete(
   "/assignments/:assignmentId",
   authenticateFirebaseToken,
-  authorize("admin"),
+  //authorize("admin"),
   removeAssignment
 );
 

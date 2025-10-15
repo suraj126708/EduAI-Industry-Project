@@ -5,10 +5,12 @@ import { FaGraduationCap } from "react-icons/fa";
 
 const navLinkBase =
   "px-3 py-2 rounded-md text-sm font-medium transition-colors";
+const activeLinkClass = "bg-indigo-100 text-indigo-700"; // ✅ Add this line
+const inactiveLinkClass = "text-gray-700 hover:bg-gray-100"; // ✅ And this one
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { user, userProfile, isAdmin, signOut } = useAuth();
+  const { user, userProfile, isAnyAdmin, isSuperAdmin, signOut } = useAuth();
 
   const handleSignOut = async () => {
     const result = await signOut();
@@ -74,7 +76,7 @@ const Navbar = () => {
                 >
                   Reports
                 </NavLink>
-                {isAdmin() && (
+                {isAnyAdmin() && (
                   <NavLink
                     to="/admin"
                     className={({ isActive }) =>
@@ -87,6 +89,18 @@ const Navbar = () => {
                     end
                   >
                     Admin
+                  </NavLink>
+                )}
+                {isSuperAdmin() && (
+                  <NavLink
+                    to="/superadmin"
+                    className={({ isActive }) =>
+                      `${navLinkBase} ${
+                        isActive ? activeLinkClass : inactiveLinkClass
+                      }`
+                    }
+                  >
+                    Super Admin
                   </NavLink>
                 )}
               </>

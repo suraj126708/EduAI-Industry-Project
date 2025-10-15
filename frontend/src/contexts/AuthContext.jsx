@@ -55,10 +55,13 @@ export const AuthProvider = ({ children }) => {
     return roles.includes(userProfile.role);
   };
 
-  const isAdmin = () => hasRole("admin");
-  const isModerator = () => hasRole("moderator") || hasRole("admin");
-  const isUser = () =>
-    hasRole("user") || hasRole("moderator") || hasRole("admin");
+  // --- NEW ROLE-BASED ACCESS CONTROL HELPERS ---
+  const isSuperAdmin = () => userProfile?.role === "superadmin";
+  const isPrincipal = () => userProfile?.role === "principal";
+  const isTeacher = () => userProfile?.role === "teacher";
+
+  // A helper to check if the user is any kind of admin
+  const isAnyAdmin = () => isSuperAdmin() || isPrincipal();
 
   const value = {
     user,
@@ -82,9 +85,10 @@ export const AuthProvider = ({ children }) => {
     // Role-based access control methods
     hasRole,
     hasAnyRole,
-    isAdmin,
-    isModerator,
-    isUser,
+    isAnyAdmin,
+    isSuperAdmin,
+    isTeacher,
+    isPrincipal,
     // Admin-specific methods
     adminService: authService.adminService,
   };
