@@ -40,7 +40,7 @@ const Subjects = () => {
   const fetchSubjects = async () => {
     try {
       const result = await adminService.getSubjects();
-      const subjectsArray = result.data?.data;
+      const subjectsArray = result.data;
       if (result.success && Array.isArray(subjectsArray)) {
         setSubjects(subjectsArray);
       } else {

@@ -77,7 +77,7 @@ const Home = () => {
       baseCards.push({
         title: "Admin Panel",
         icon: <FaCogs className="text-pink-500" />,
-        route: "/admin/dashboard",
+        route: "/admin/classes",
       });
     }
 

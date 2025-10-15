@@ -10,13 +10,13 @@ import {
 } from "react-icons/fa";
 
 const AdminUsers = () => {
-  const { adminService } = useAuth();
+  const { adminService, userProfile } = useAuth();
   const [users, setUsers] = useState([]);
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [filters, setFilters] = useState({
     search: "",
@@ -34,8 +34,11 @@ const AdminUsers = () => {
 
   useEffect(() => {
     fetchUsers();
-    fetchSchools();
-  }, [filters]);
+    // Only super admins need the full list of schools
+    if (userProfile?.role === "superadmin") {
+      fetchSchools();
+    }
+  }, [filters, userProfile]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -57,8 +60,10 @@ const AdminUsers = () => {
   const fetchSchools = async () => {
     try {
       const result = await adminService.getSchools();
-      if (result.success) {
-        setSchools(result.data || []);
+      const schoolsArray = result.data?.data; // Access the nested array
+
+      if (result.success && Array.isArray(schoolsArray)) {
+        setSchools(schoolsArray);
       } else {
         console.error("Failed to fetch schools:", result.error);
       }
@@ -83,51 +88,29 @@ const AdminUsers = () => {
     }));
   };
 
+  // 2. SIMPLIFIED: This function now ONLY handles updating a user.
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Ensure we are in edit mode
+    if (!editingUser) return;
+
     setLoading(true);
     setError("");
     setSuccess("");
 
     try {
-      if (editingUser) {
-        // Update existing user
-        const result = await adminService.updateUser(editingUser._id, formData);
-        if (result.success) {
-          setSuccess("User updated successfully!");
-          setEditingUser(null);
-          setFormData({
-            name: "",
-            email: "",
-            role: "teacher",
-            status: "active",
-            schoolId: "",
-          });
-          setShowCreateForm(false);
-          fetchUsers();
-        } else {
-          setError(result.error);
-        }
+      // The logic for creating a new user has been removed.
+      const result = await adminService.updateUser(editingUser._id, formData);
+      if (result.success) {
+        setSuccess("User updated successfully!");
+        setEditingUser(null);
+        setShowEditForm(false);
+        fetchUsers(); // Refresh the list
       } else {
-        // Create new teacher
-        const result = await adminService.createTeacher(formData);
-        if (result.success) {
-          setSuccess("Teacher created successfully!");
-          setFormData({
-            name: "",
-            email: "",
-            role: "teacher",
-            status: "active",
-            schoolId: "",
-          });
-          setShowCreateForm(false);
-          fetchUsers();
-        } else {
-          setError(result.error);
-        }
+        setError(result.error || "Failed to update user.");
       }
     } catch (err) {
-      setError("Failed to save user");
+      setError("An error occurred while saving the user.");
     } finally {
       setLoading(false);
     }
@@ -135,14 +118,20 @@ const AdminUsers = () => {
 
   const handleEdit = (user) => {
     setEditingUser(user);
+
+    let schoolIdToSet = user.schoolId?._id || "";
+    if (userProfile?.role === "principal" && !user.schoolId) {
+      schoolIdToSet = userProfile.schoolId?._id;
+    }
+
     setFormData({
       name: user.name || "",
       email: user.email || "",
       role: user.role || "teacher",
       status: user.status || "active",
-      schoolId: user.schoolId || "",
+      schoolId: schoolIdToSet,
     });
-    setShowCreateForm(true);
+    setShowEditForm(true);
   };
 
   const handleDelete = async (userId) => {
@@ -217,9 +206,9 @@ const AdminUsers = () => {
 
   const getRoleColor = (role) => {
     switch (role) {
-      case "admin":
+      case "superadmin":
         return "bg-purple-100 text-purple-800";
-      case "moderator":
+      case "principal":
         return "bg-blue-100 text-blue-800";
       case "teacher":
         return "bg-indigo-100 text-indigo-800";
@@ -228,10 +217,22 @@ const AdminUsers = () => {
     }
   };
 
-  const getSchoolName = (schoolId) => {
+  /*const getSchoolName = (schoolId) => {
     if (!schoolId) return "No School Assigned";
     const school = schools.find((s) => s._id === schoolId);
     return school ? school.name : "Unknown School";
+  };*/
+
+  const closeEditForm = () => {
+    setShowEditForm(false);
+    setEditingUser(null);
+    setFormData({
+      name: "",
+      email: "",
+      role: "teacher",
+      status: "active",
+      schoolId: "",
+    });
   };
 
   return (
@@ -239,7 +240,12 @@ const AdminUsers = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center">
           <FaUserPlus className="mr-2 text-indigo-600" />
-          Teacher Management
+          {/* ✨ IMPROVEMENT: Make title role-aware */}
+          {userProfile?.role === "principal"
+            ? `${
+                userProfile.schoolId?.name || "My School"
+              } - Teacher Management`
+            : "Teacher Management"}
         </h2>
         <div className="flex gap-2">
           <button
@@ -248,13 +254,6 @@ const AdminUsers = () => {
           >
             <FaDownload className="mr-2" />
             Export
-          </button>
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center"
-          >
-            <FaUserPlus className="mr-2" />
-            Add Teacher
           </button>
         </div>
       </div>
@@ -303,7 +302,7 @@ const AdminUsers = () => {
             >
               <option value="">All Roles</option>
               <option value="teacher">Teacher</option>
-              <option value="admin">Admin</option>
+              <option value="principal">Principal</option>
               <option value="moderator">Moderator</option>
             </select>
           </div>
@@ -336,11 +335,10 @@ const AdminUsers = () => {
         </div>
       </div>
 
-      {showCreateForm && (
+      {/* 3. MODIFIED: The form is now only for editing. */}
+      {showEditForm && (
         <div className="bg-gray-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-semibold mb-4">
-            {editingUser ? "Edit Teacher" : "Add New Teacher"}
-          </h3>
+          <h3 className="text-lg font-semibold mb-4">Edit Teacher</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -353,10 +351,9 @@ const AdminUsers = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email *
@@ -365,32 +362,35 @@ const AdminUsers = () => {
                   type="email"
                   name="email"
                   value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  School *
-                </label>
-                <select
-                  name="schoolId"
-                  value={formData.schoolId}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Select School</option>
-                  {schools.map((school) => (
-                    <option key={school._id} value={school._id}>
-                      {school.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* School dropdown is only for super admins */}
+              {userProfile?.role === "superadmin" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    School *
+                  </label>
+                  <select
+                    name="schoolId"
+                    value={formData.schoolId}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Select School</option>
+                    {schools.map((school) => (
+                      <option key={school._id} value={school._id}>
+                        {school.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
+              {/* Role and Status selects */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Role
@@ -399,14 +399,13 @@ const AdminUsers = () => {
                   name="role"
                   value={formData.role}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 >
                   <option value="teacher">Teacher</option>
                   <option value="admin">Admin</option>
                   <option value="moderator">Moderator</option>
                 </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Status
@@ -415,7 +414,7 @@ const AdminUsers = () => {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
@@ -424,31 +423,17 @@ const AdminUsers = () => {
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 pt-2">
               <button
                 type="submit"
                 disabled={loading}
                 className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
               >
-                {loading
-                  ? "Saving..."
-                  : editingUser
-                  ? "Update Teacher"
-                  : "Add Teacher"}
+                {loading ? "Saving..." : "Update Teacher"}
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setShowCreateForm(false);
-                  setEditingUser(null);
-                  setFormData({
-                    name: "",
-                    email: "",
-                    role: "teacher",
-                    status: "active",
-                    schoolId: "",
-                  });
-                }}
+                onClick={closeEditForm}
                 className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
               >
                 Cancel
@@ -457,7 +442,6 @@ const AdminUsers = () => {
           </form>
         </div>
       )}
-
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800">Teachers List</h3>
@@ -471,7 +455,9 @@ const AdminUsers = () => {
           ) : users.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <FaUserPlus className="mx-auto text-4xl mb-4 text-gray-300" />
-              <p>No teachers found. Add your first teacher to get started.</p>
+              <p>
+                No teachers found. New teachers who sign up will appear here.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -521,9 +507,7 @@ const AdminUsers = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {user.schoolId
-                            ? getSchoolName(user.schoolId._id)
-                            : "No School Assigned"}
+                          {user.schoolId?.name || "No School Assigned"}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

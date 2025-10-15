@@ -366,6 +366,28 @@ export const adminService = {
       throw error.response?.data || error;
     }
   },
+
+  getUsers: async (filters = {}) => {
+    try {
+      // This calls your backend endpoint: GET /api/admin/teachers
+      const response = await api.get("/admin/teachers", {
+        params: filters, // Axios automatically converts this to query params like ?search=...
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  updateUser: async (userId, userData) => {
+    try {
+      // This makes a PUT request to /api/admin/teachers/:id
+      const response = await api.put(`/admin/teachers/${userId}`, userData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
   /**
    * Superadmin gets a list of all schools.
    */
@@ -386,6 +408,17 @@ export const adminService = {
   createSchoolWithPrincipal: async (schoolData) => {
     try {
       const response = await api.post("/superadmin/schools", schoolData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  updateUserStatus: async (userId, status) => {
+    try {
+      const response = await api.put(`/admin/teachers/${userId}/status`, {
+        status,
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

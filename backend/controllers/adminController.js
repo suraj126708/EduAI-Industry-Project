@@ -242,7 +242,7 @@ export const getAllTeachers = async (req, res) => {
     const filter = { role: "teacher" };
 
     if (req.user.role === "principal") {
-      filter.schoolId = req.user.schoolId;
+      filter.schoolId = { $in: [req.user.schoolId, null] };
     } else if (req.user.role === "superadmin" && req.query.schoolId) {
       filter.schoolId = req.query.schoolId;
     }
@@ -485,13 +485,42 @@ export const updateTeacher = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ _id: userId, role: "teacher" });
+    // A principal can only find users in their school OR unassigned users.
+    const findQuery = { _id: userId };
+    if (req.user.role === "principal") {
+      findQuery.schoolId = { $in: [req.user.schoolId, null] };
+    }
+
+    const user = await User.findOne(findQuery);
 
     if (!user) {
       return res.status(404).json({
         success: false,
         message: "Teacher not found",
       });
+    }
+
+    // --- SECURITY CHECKS FOR PRINCIPALS ---
+    if (req.user.role === "principal") {
+      // Prevent a principal from moving a teacher to a DIFFERENT school.
+      if (schoolId && schoolId.toString() !== req.user.schoolId.toString()) {
+        return res
+          .status(403)
+          .json({
+            success: false,
+            message:
+              "Forbidden: You can only assign teachers to your own school.",
+          });
+      }
+      // Prevent a principal from creating a superadmin.
+      if (role === "superadmin") {
+        return res
+          .status(403)
+          .json({
+            success: false,
+            message: "Forbidden: You cannot create a superadmin.",
+          });
+      }
     }
 
     // Update fields if provided
@@ -501,6 +530,13 @@ export const updateTeacher = async (req, res) => {
     if (status !== undefined) user.status = status;
     if (schoolId !== undefined) user.schoolId = schoolId;
     if (phone !== undefined) user.phone = phone;
+
+    // --- SECURELY UPDATE schoolId AND role ---
+    if (req.user.role === "principal") {
+      // A principal can assign a school (only their own) and change roles (except to superadmin).
+      user.schoolId = req.user.schoolId; // ✅ THIS IS THE KEY FIX
+      if (role) user.role = role;
+    }
 
     // --- SUPERADMIN-ONLY UPDATES ---
     // Only a superadmin can change a teacher's role or move them to another school.
