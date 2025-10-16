@@ -296,14 +296,14 @@ const SaveConfirmationModal = ({
         <button
           onClick={handleCancelSave}
           disabled={isSaving}
-          className="px-4 py-2 text-gray-600 ..."
+          className="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           onClick={handleSavePaper}
           disabled={isSaving}
-          className="px-4 py-2 bg-blue-600 ..."
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
           {isSaving ? "Saving..." : "Save Paper"}
         </button>
@@ -319,19 +319,11 @@ function ExamPaperGenerator() {
   const location = useLocation();
   const { id: paperIdFromUrl } = useParams();
 
-  const normalizePaper = useCallback((incoming, fallback) => {
-    // ✅ CORRECTED: This logic drills down to find the real paper data
+  const normalizePaper = useCallback((incoming, fallback = {}) => {
     let data = incoming;
-    if (data?.paper) {
-      data = data.paper;
-    }
-    if (data?.question_paper) {
-      data = data.question_paper;
-    }
-
-    if (Array.isArray(data)) {
-      data = data[0] || {}; // Use the first paper, or an empty object as a fallback.
-    }
+    if (data?.paper) data = data.paper;
+    if (data?.question_paper) data = data.question_paper;
+    if (Array.isArray(data)) data = data[0] || {};
 
     const safeString = (v, fb = "") =>
       typeof v === "string" ? v.trim() || fb : fb;
@@ -339,12 +331,20 @@ function ExamPaperGenerator() {
       Number.isFinite(Number(v)) ? Number(v) : fb;
     const safeArray = (v) => (Array.isArray(v) ? v : []);
 
+    // Clean up the test name
+    let testName = safeString(
+      data?.testName || incoming?.title,
+      fallback.testName
+    );
+    const subject = safeString(data?.subject, fallback.subject);
+
+    if (testName.startsWith("questionPaper")) {
+      testName = subject ? `${subject} Examination` : "Examination"; // Provides a much better default
+    }
+
     const normalized = {
       collegeName: safeString(data?.collegeName, fallback.collegeName),
-      testName: safeString(
-        data?.testName || incoming?.title,
-        fallback.testName
-      ),
+      testName: testName,
       subject: safeString(data?.subject, fallback.subject),
       className: safeString(data?.className, fallback.className),
       maxMarks: safeNumber(data?.maxMarks, fallback.maxMarks),
@@ -356,7 +356,6 @@ function ExamPaperGenerator() {
       sections: safeArray(data?.sections).map((section, sIdx) => ({
         sectionName: safeString(section?.sectionName, `Section ${sIdx + 1}`),
         description: safeString(section?.description),
-        sectionTitle: safeString(section?.sectionTitle),
         questions: safeArray(section?.questions).map((q, qIdx) => ({
           questionNo: safeString(q?.questionNo, `${qIdx + 1}`),
           question: safeString(q?.question),
@@ -372,7 +371,7 @@ function ExamPaperGenerator() {
     return normalized;
   }, []);
 
-  const [paperData, setPaperData] = useState({});
+  const [paperData, setPaperData] = useState(null); // Initialize as null
   const [editMode, setEditMode] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -380,46 +379,71 @@ function ExamPaperGenerator() {
   const [paperId, setPaperId] = useState(paperIdFromUrl || null);
   const [generatedPapers, setGeneratedPapers] = useState([]);
   const [selectedPaperIndex, setSelectedPaperIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true); // <-- 2. Add loading state for better UX
-  const [error, setError] = useState(null); // <-- Add error state
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // If there's no ID, we can't fetch anything.
-    if (!paperIdFromUrl) {
-      setIsLoading(false);
-      setError("No paper ID provided.");
-      return;
-    }
-
-    const fetchPaper = async () => {
+    const loadPaperData = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
-        setIsLoading(true);
-        setError(null);
+        const batchDataString = sessionStorage.getItem("paperBatchData");
+        let batchPapers = [];
+        let initialPaperToView = null;
 
-        const response = await api.get(
-          `/teachers/question-papers/${paperIdFromUrl}`
-        );
+        if (batchDataString) {
+          batchPapers = JSON.parse(batchDataString);
+          setGeneratedPapers(batchPapers);
+          initialPaperToView =
+            batchPapers.find((p) => p._id === paperIdFromUrl) || batchPapers[0];
+          if (initialPaperToView) {
+            const initialIndex = batchPapers.findIndex(
+              (p) => p._id === initialPaperToView._id
+            );
+            setSelectedPaperIndex(initialIndex >= 0 ? initialIndex : 0);
+          }
+        }
 
-        if (response.data && response.data.success) {
-          const fetchedPaper = response.data.data; // The backend returns the full document in 'data'
+        if (paperIdFromUrl) {
+          const response = await api.get(
+            `/teachers/question-papers/${paperIdFromUrl}`
+          );
+          if (response.data && response.data.success) {
+            const fetchedDoc = response.data.data;
+            initialPaperToView = fetchedDoc;
 
-          // Use the 'paper' sub-document for the form, which is what normalizePaper expects
-          setPaperData(normalizePaper(fetchedPaper.paper, {}));
+            if (batchPapers.length > 0) {
+              const paperIndex = batchPapers.findIndex(
+                (p) => p._id === fetchedDoc._id
+              );
+              if (paperIndex !== -1) {
+                batchPapers[paperIndex] = fetchedDoc;
+                setGeneratedPapers([...batchPapers]);
+              }
+            } else {
+              setGeneratedPapers([fetchedDoc]);
+            }
+          } else {
+            throw new Error(response.data.message || "Failed to fetch paper.");
+          }
+        }
 
-          // ✅ CRUCIAL: Set the paperId state for the save function to use
-          setPaperId(fetchedPaper._id);
+        if (initialPaperToView) {
+          setPaperData(normalizePaper(initialPaperToView, {}));
+          setPaperId(initialPaperToView._id);
         } else {
-          throw new Error(response.data.message || "Failed to fetch paper.");
+          setError("No paper data could be found or loaded.");
         }
       } catch (err) {
-        console.error("Error fetching paper:", err);
+        console.error("Error loading paper:", err);
         setError(err.message || "An unknown error occurred.");
       } finally {
         setIsLoading(false);
+        sessionStorage.removeItem("paperBatchData");
       }
     };
 
-    fetchPaper();
+    loadPaperData();
   }, [paperIdFromUrl, normalizePaper]);
 
   const handlePaperSelection = (index) => {
@@ -469,6 +493,7 @@ function ExamPaperGenerator() {
   );
 
   const calculateTotalMarks = useCallback(() => {
+    if (!paperData) return 0;
     return (paperData.sections || []).reduce((total, section) => {
       const sectionSum = (section.questions || []).reduce(
         (sectionTotal, question) =>
@@ -477,7 +502,7 @@ function ExamPaperGenerator() {
       );
       return total + sectionSum;
     }, 0);
-  }, [paperData.sections]);
+  }, [paperData]);
 
   // ✅ REMOVED useCallback - This ensures the function is always new and has the latest state
   const handleSavePaper = async () => {
@@ -849,6 +874,10 @@ function ExamPaperGenerator() {
   if (error) {
     return <div className="text-center p-10 text-red-600">Error: {error}</div>;
   }
+  if (!paperData) {
+    return <div className="text-center p-10">Initializing paper view...</div>;
+  }
+
   return (
     <div>
       {/* Control Panel */}
@@ -874,7 +903,7 @@ function ExamPaperGenerator() {
               Download DOC
             </button>
             <button
-              onClick={handleConfirmSave}
+              onClick={() => setShowSaveModal(true)}
               className="bg-purple-600 text-white py-2 px-4 rounded-lg"
             >
               Save Paper
@@ -883,7 +912,7 @@ function ExamPaperGenerator() {
         )}
       </div>
 
-      {/* ✅ 3. REPLACE the "Multi-paper Selector" dropdown with this Tab UI */}
+      {/* --- Paper Set Tabs UI --- */}
       {generatedPapers.length > 1 && !editMode && (
         <div className="max-w-5xl mx-auto my-4 p-2 bg-white rounded-lg shadow">
           <div className="flex border-b border-gray-200">
@@ -897,7 +926,7 @@ function ExamPaperGenerator() {
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Paper {index + 1}
+                Set {String.fromCharCode(65 + index)}
               </button>
             ))}
           </div>
@@ -906,7 +935,7 @@ function ExamPaperGenerator() {
 
       {showSaveModal && (
         <SaveConfirmationModal
-          handleCancelSave={handleCancelSave}
+          handleCancelSave={() => setShowSaveModal(false)}
           handleSavePaper={handleSavePaper}
           isSaving={isSaving}
         />
