@@ -1,11 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { auth } from "../firebase/firebase";
 import { useNavigate } from "react-router-dom";
 import { Plus, FileText, AlertCircle, Loader2 } from "lucide-react";
@@ -156,77 +150,6 @@ export default function MinimalQuestionPaperForm() {
   });
   const dropdownRefs = useRef({});
   const [showNoBooksModal, setShowNoBooksModal] = useState(false);
-
-  // Cache keys
-  const CACHE_KEY = "qpg_form_state_v1";
-  const QUESTIONS_CACHE_KEY = "qpg_questions_v1";
-
-  // Load cached state once
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const cached = JSON.parse(raw);
-        if (cached.selectedClass) setSelectedClass(cached.selectedClass);
-        if (cached.selectedSubject) setSelectedSubject(cached.selectedSubject);
-        if (cached.selectedExamType)
-          setSelectedExamType(cached.selectedExamType);
-        if (Array.isArray(cached.selectedMainTopics))
-          setSelectedMainTopics(cached.selectedMainTopics);
-        if (typeof cached.numberOfPapers === "number")
-          setNumberOfPapers(cached.numberOfPapers);
-        if (typeof cached.selectedHour === "number")
-          setSelectedHour(cached.selectedHour);
-        if (typeof cached.selectedMinute === "number")
-          setSelectedMinute(cached.selectedMinute);
-      }
-
-      const rawQuestions = localStorage.getItem(QUESTIONS_CACHE_KEY);
-      if (rawQuestions) {
-        const cachedQuestions = JSON.parse(rawQuestions);
-        if (Array.isArray(cachedQuestions) && cachedQuestions.length > 0) {
-          setQuestions(cachedQuestions);
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to load cached form state", e);
-    }
-  }, []);
-
-  // Persist form state
-  useEffect(() => {
-    try {
-      const toSave = {
-        selectedClass,
-        selectedSubject,
-        selectedExamType,
-        selectedMainTopics,
-        numberOfPapers,
-        selectedHour,
-        selectedMinute,
-      };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(toSave));
-    } catch (e) {
-      console.warn("Failed to save form state", e);
-    }
-  }, [
-    selectedClass,
-    selectedSubject,
-    selectedExamType,
-    selectedMainTopics,
-    numberOfPapers,
-    selectedHour,
-    selectedMinute,
-  ]);
-
-  // Persist questions state
-  useEffect(() => {
-    try {
-      localStorage.setItem(QUESTIONS_CACHE_KEY, JSON.stringify(questions));
-    } catch (e) {
-      console.warn("Failed to save questions state", e);
-    }
-  }, [questions]);
 
   // Function to fetch chapters from API
   const fetchChapters = useCallback(async (subject, classId) => {
@@ -626,18 +549,11 @@ export default function MinimalQuestionPaperForm() {
     questionTypeInputs,
   ]);
 
-  const totalQuestions = useMemo(
-    () => questions.reduce((sum, q) => sum + q.numQuestions, 0),
-    [questions]
-  );
+  const totalQuestions = questions.reduce((sum, q) => sum + q.numQuestions, 0);
 
-  const totalMarks = useMemo(
-    () =>
-      questions.reduce(
-        (sum, q) => sum + q.numQuestions * q.marksPerQuestion,
-        0
-      ),
-    [questions]
+  const totalMarks = questions.reduce(
+    (sum, q) => sum + q.numQuestions * q.marksPerQuestion,
+    0
   );
 
   const handleGenerate = useCallback(async () => {
@@ -715,12 +631,6 @@ export default function MinimalQuestionPaperForm() {
         throw new Error("The AI returned an empty or invalid paper.");
       }
 
-      // Store the full array for session persistence (e.g., on page refresh)
-      sessionStorage.setItem(
-        "generatedPapersArray",
-        JSON.stringify(papersArray)
-      );
-
       // Navigate to the viewer, passing the full array of papers in the state
       navigate("/paper", { state: { papers: papersArray } });
 
@@ -797,14 +707,9 @@ export default function MinimalQuestionPaperForm() {
 
   // Handle navigation to paper format page
   const handleViewPaper = useCallback(() => {
-    // Store paper data in sessionStorage for the PaperFormat page to access
-    sessionStorage.setItem(
-      "generatedPaperData",
-      JSON.stringify(generatedPaperData)
-    );
     setShowSuccessModal(false);
     navigate("/paper");
-  }, [generatedPaperData, navigate]);
+  }, [navigate]);
 
   // Handle closing the modal
   const handleCloseModal = useCallback(() => {

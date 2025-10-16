@@ -32,7 +32,7 @@ import TeacherClassSubject from "../models/TeacherClassSubject.js";
  */
 
 const local_url = "http://localhost:8000/";
-const deplyed_url = "https://joshiaryan-eduai-ai-deployment.hf.space/";
+const deplyed_url = "https://suraj6708-eduai.hf.space/";
 // const deplyed_url = "http://127.0.0.1:8000/";
 
 export const getAllTeachers = async (req, res) => {
@@ -352,7 +352,7 @@ export const teacherUploadBook = async (req, res) => {
 
         return axios.post(deplyed_url + "process_pdf/", form, {
           headers: { ...form.getHeaders() },
-          timeout: 5 * 60 * 1000,
+          timeout: 15 * 60 * 1000,
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
           validateStatus: (s) => s >= 200 && s < 500,
