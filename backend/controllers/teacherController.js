@@ -12,6 +12,7 @@ import User from "../models/UserSchema.js";
 import QuestionPaper from "../models/QuestionPaper.js";
 import Class from "../models/Class.js";
 import Subject from "../models/Subject.js";
+import School from "../models/School.js";
 import { validationResult } from "express-validator";
 import path from "path";
 import fs from "fs";
@@ -671,12 +672,14 @@ export const getTeacherAssignments = async (req, res) => {
 export const generateQuestionPaper = async (req, res) => {
   try {
     // Accept new payload shape as-is; also support legacy pdf_name key
-    const body = req.body || {};
-    const classValue = body.class; // could be grade as number/string
-    const subject = body.subject; // could be subject name or id string
-    const pdfName = body.pdf_name || body.pdf_name;
-    const numberofPapers = body.numberofPapers || 1;
-    console.log(body);
+    const {
+      class: classValue,
+      subject,
+      pdf_name: pdfName,
+      numberofPapers = 1,
+      duration,
+      totalMarks, // <-- Get totalMarks from the body
+    } = req.body;
 
     if (!classValue || !subject || !pdfName) {
       return res.status(400).json({
@@ -688,7 +691,7 @@ export const generateQuestionPaper = async (req, res) => {
     // Forward the entire body to the AI service (port 8000)
     const response = await axios.post(
       deplyed_url + "generate_question_paper/",
-      { ...body, pdf_name: pdfName, numberofPapers: numberofPapers },
+      { ...req.body, pdf_name: pdfName, numberofPapers: numberofPapers },
       {
         headers: { "Content-Type": "application/json" },
         timeout: 5 * 60 * 1000,
@@ -730,6 +733,30 @@ export const generateQuestionPaper = async (req, res) => {
 
     // Resolve teacher user, classId (by grade), subjectId (by name or subjectId), and schoolId
     const teacherUser = await User.findById(req.user?._id);
+
+    // 1. Resolve School Name for College Name
+    let resolvedSchoolName = "New High School"; // Default fallback
+    if (teacherUser?.schoolId) {
+      const school = await School.findById(teacherUser.schoolId);
+      if (school) {
+        resolvedSchoolName = school.name;
+      }
+    }
+
+    // 2. Format Duration String
+    let formattedDuration = "2 hours"; // Default fallback
+    if (
+      duration &&
+      typeof duration.hours !== "undefined" &&
+      typeof duration.minutes !== "undefined"
+    ) {
+      const { hours, minutes } = duration;
+      const parts = [];
+      if (hours > 0) parts.push(`${hours} hour${hours > 1 ? "s" : ""}`);
+      if (minutes > 0) parts.push(`${minutes} minute${minutes > 1 ? "s" : ""}`);
+      if (parts.length > 0) formattedDuration = parts.join(" ");
+    }
+    // --- END: NEW DATA RESOLUTION LOGIC ---
 
     let resolvedClassId = undefined;
     let resolvedClassGrade = undefined;
@@ -778,15 +805,13 @@ export const generateQuestionPaper = async (req, res) => {
     const savedPapers = await Promise.all(
       aiPapersArray.map(async (aiPaper) => {
         // Create a new document for each paper in the array
+        // --- START: MODIFIED finalPaper OBJECT ---
+        // This object now intelligently combines AI output with reliable fallbacks
         const finalPaper = {
-          ...aiPaper, // 1. Start with all the data from the AI
-
-          // 2. Now, conditionally overwrite the keys we care about.
-          // If aiPaper.timeAllowed is a valid string, use it. If it's null or undefined, use the default.
-          timeAllowed: aiPaper.timeAllowed || "2 hours",
-
-          // For arrays, we need a better check because an empty array [] is "truthy".
-          // This checks if the array exists AND has items in it.
+          ...aiPaper,
+          collegeName: aiPaper.collegeName || resolvedSchoolName,
+          maxMarks: aiPaper.maxMarks || totalMarks || 0,
+          timeAllowed: aiPaper.timeAllowed || formattedDuration,
           instructions:
             aiPaper.instructions && aiPaper.instructions.length > 0
               ? aiPaper.instructions
@@ -794,15 +819,15 @@ export const generateQuestionPaper = async (req, res) => {
                   "All questions are compulsory.",
                   "Read each question carefully.",
                 ],
-
           date: aiPaper.date || new Date().toISOString().split("T")[0],
         };
+        // --- END: MODIFIED finalPaper OBJECT ---
 
         const newPaper = await QuestionPaper.create({
           paper: finalPaper,
-          title: body.pdf_name || body.pdf_name || undefined,
+          title: pdfName || undefined,
           status: "draft",
-          llmPrompt: body,
+          llmPrompt: req.body,
           createdBy: teacherUser?._id,
           schoolId: resolvedSchoolId,
           classId: resolvedClassId,

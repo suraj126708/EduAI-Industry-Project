@@ -569,6 +569,7 @@ export default function MinimalQuestionPaperForm() {
 
       // ✅ CHANGE 1: The payload is now more detailed to improve AI results.
       const payload = {
+        totalMarks: totalMarks,
         class: selectedClass,
         subject: selectedSubject,
         pdf_name: pdfName,
