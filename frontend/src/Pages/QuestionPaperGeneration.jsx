@@ -632,8 +632,14 @@ export default function MinimalQuestionPaperForm() {
         throw new Error("The AI returned an empty or invalid paper.");
       }
 
-      // Navigate to the viewer, passing the full array of papers in the state
-      navigate("/paper", { state: { papers: papersArray } });
+      // 1. Get the ID of the first paper to use in the URL
+      const firstPaperId = papersArray[0]._id;
+
+      // 2. Store the entire array of papers in session storage for the viewer page
+      sessionStorage.setItem("paperBatchData", JSON.stringify(papersArray));
+
+      // 3. Navigate to the specific paper's view page
+      navigate(`/paper/${firstPaperId}`);
 
       setErrors({});
 
