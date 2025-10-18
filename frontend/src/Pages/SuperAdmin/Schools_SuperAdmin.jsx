@@ -12,6 +12,7 @@ const Schools = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [tempPassword, setTempPassword] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -19,6 +20,7 @@ const Schools = () => {
     establishedYear: "",
     address: "",
     contact: "",
+    emailDomain: "",
     // --- NEW FIELDS FOR PRINCIPAL CREATION ---
     principalName: "",
     principalEmail: "",
@@ -60,13 +62,32 @@ const Schools = () => {
       const result = await adminService.createSchoolWithPrincipal(formData);
       if (result.success) {
         setSuccess("School and Principal account created successfully!");
+        // Show temporary password if provided
+        if (result.data?.temporaryPassword) {
+          setTempPassword(result.data.temporaryPassword);
+        }
+        // Reset form data
+        setFormData({
+          name: "",
+          type: "public",
+          establishedYear: "",
+          address: "",
+          contact: "",
+          emailDomain: "",
+          principalName: "",
+          principalEmail: "",
+          principalPassword: "",
+        });
         setShowCreateForm(false);
         fetchSchools(); // Refresh the list
       } else {
         throw new Error(result.message || "Failed to create school");
       }
     } catch (err) {
-      setError(err.message);
+      console.error("Error creating school:", err);
+      setError(
+        err.message || err.response?.data?.message || "Failed to create school"
+      );
     } finally {
       setLoading(false);
     }
@@ -89,7 +110,14 @@ const Schools = () => {
           School Management (Superadmin)
         </h2>
         <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
+          onClick={() => {
+            setShowCreateForm(!showCreateForm);
+            if (showCreateForm) {
+              setTempPassword("");
+              setError("");
+              setSuccess("");
+            }
+          }}
           className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center"
         >
           <FaPlus className="mr-2" />
@@ -105,6 +133,19 @@ const Schools = () => {
       {success && (
         <div className="bg-green-100 border-green-400 text-green-700 p-3 rounded mb-4">
           {success}
+          {tempPassword && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-sm font-medium text-yellow-800">
+                Temporary Password for Principal:
+              </p>
+              <p className="text-sm font-mono bg-yellow-100 p-1 rounded mt-1">
+                {tempPassword}
+              </p>
+              <p className="text-xs text-yellow-700 mt-1">
+                Please share this password with the principal securely.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -132,6 +173,20 @@ const Schools = () => {
                   />
                 </div>
                 <div>
+                  <label>School Type *</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    name="type"
+                    value={formData.type}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="public">Public</option>
+                    <option value="private">Private</option>
+                    <option value="government">Government</option>
+                  </select>
+                </div>
+                <div>
                   <label>Established Year</label>
                   <input
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -139,6 +194,30 @@ const Schools = () => {
                     name="establishedYear"
                     value={formData.establishedYear}
                     onChange={handleInputChange}
+                    min="1800"
+                    max={new Date().getFullYear()}
+                  />
+                </div>
+                <div>
+                  <label>Contact Number</label>
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    type="tel"
+                    name="contact"
+                    value={formData.contact}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label>Email Domain (Optional)</label>
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    type="text"
+                    name="emailDomain"
+                    value={formData.emailDomain}
+                    onChange={handleInputChange}
+                    placeholder="e.g., school.edu"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -149,6 +228,7 @@ const Schools = () => {
                     value={formData.address}
                     onChange={handleInputChange}
                     rows={2}
+                    required
                   />
                 </div>
               </div>
