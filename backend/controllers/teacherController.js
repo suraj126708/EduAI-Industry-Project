@@ -392,8 +392,8 @@ export const teacherUploadBook = async (req, res) => {
 
       // Send the final success response. The temporary file is now permanent.
       return res.status(201).json({
+        success: true,
         message: "Book uploaded and processed successfully.",
-        book,
       });
     } else {
       // FAILURE: Processing failed.
@@ -1009,5 +1009,43 @@ export const getQuestionPaperById = async (req, res) => {
       message: "Failed to retrieve question paper",
       error: error.message,
     });
+  }
+};
+
+export const deleteTeacherQuestionPaper = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No paper IDs provided" });
+    }
+
+    const deleted = [];
+
+    for (const paperId of ids) {
+      const paper = await QuestionPaper.findById(paperId);
+      if (!paper) continue;
+
+      const isOwner = paper.createdBy?.toString() === req.user?._id?.toString();
+      const isAdmin = req.user?.role === "admin";
+
+      if (isOwner || isAdmin) {
+        await QuestionPaper.findByIdAndDelete(paperId);
+        deleted.push(paperId);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${deleted.length} paper(s) deleted successfully.`,
+      data: deleted,
+    });
+  } catch (error) {
+    console.error("Delete paper error:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to delete papers" });
   }
 };
