@@ -24,6 +24,7 @@ import {
   updateQuestionPaper,
   getMyQuestionPapers,
   getQuestionPaperById,
+  deleteTeacherQuestionPaper,
 } from "../controllers/teacherController.js";
 import {
   authenticateFirebaseToken,
@@ -121,6 +122,13 @@ router.put(
   authenticateFirebaseToken,
   authorize("teacher", "admin"),
   updateQuestionPaper
+);
+
+router.delete(
+  "/question-papers",
+  authenticateFirebaseToken,
+  authorize("teacher", "admin"),
+  deleteTeacherQuestionPaper
 );
 
 // --- FILE UPLOAD AND GENERATION ROUTES ---
