@@ -16,7 +16,7 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [showEditForm, setShowEditForm] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [filters, setFilters] = useState({
     search: "",
@@ -27,6 +27,7 @@ const AdminUsers = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    password: "",
     role: "teacher",
     status: "active",
     schoolId: "",
@@ -74,10 +75,18 @@ const AdminUsers = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+
+    // ✨ Your requested feature: Sync email to password
+    setFormData((prev) => {
+      const newFormData = { ...prev, [name]: value };
+
+      // If in CREATE mode (no editingUser) AND changing the email field:
+      if (!editingUser && name === "email") {
+        newFormData.password = value; // Set password to match email
+      }
+
+      return newFormData;
+    });
   };
 
   const handleFilterChange = (e) => {
@@ -88,32 +97,63 @@ const AdminUsers = () => {
     }));
   };
 
-  // 2. SIMPLIFIED: This function now ONLY handles updating a user.
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Ensure we are in edit mode
-    if (!editingUser) return;
-
     setLoading(true);
     setError("");
     setSuccess("");
 
     try {
-      // The logic for creating a new user has been removed.
-      const result = await adminService.updateUser(editingUser._id, formData);
+      let result;
+      if (editingUser) {
+        // --- UPDATE LOGIC ---
+        // Don't send password on update
+        const { password, ...updateData } = formData;
+        result = await adminService.updateUser(editingUser._id, updateData);
+      } else {
+        // --- CREATE LOGIC ---
+        // 'formData' will contain the defaults for role and status
+        result = await adminService.createUser(formData);
+      }
+
       if (result.success) {
-        setSuccess("User updated successfully!");
-        setEditingUser(null);
-        setShowEditForm(false);
+        const action = editingUser ? "updated" : "created";
+        setSuccess(`User ${action} successfully!`);
+        closeForm(); // Use the renamed close function
         fetchUsers(); // Refresh the list
       } else {
-        setError(result.error || "Failed to update user.");
+        // Handle backend validation errors (e.g., "auth/weak-password")
+        setError(
+          result.message ||
+            result.error ||
+            `Failed to ${editingUser ? "update" : "create"} user.`
+        );
       }
     } catch (err) {
-      setError("An error occurred while saving the user.");
+      // Handle network errors or other exceptions
+      setError(`An error occurred while saving the user: ${err.message}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  //New function to open the modal in "Create" mode
+  const handleShowCreateForm = () => {
+    setEditingUser(null); // Ensure we are NOT in edit mode
+
+    // Set default schoolId for principals
+    const defaultSchoolId =
+      userProfile?.role === "principal" ? userProfile.schoolId?._id || "" : "";
+
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      role: "teacher", // Default role (hidden on create)
+      status: "active", // Default status (hidden on create)
+      schoolId: defaultSchoolId,
+    });
+    setShowForm(true);
   };
 
   const handleEdit = (user) => {
@@ -130,8 +170,9 @@ const AdminUsers = () => {
       role: user.role || "teacher",
       status: user.status || "active",
       schoolId: schoolIdToSet,
+      password: "", // Clear password, it's not needed for edit
     });
-    setShowEditForm(true);
+    setShowForm(true);
   };
 
   const handleDelete = async (userId) => {
@@ -217,18 +258,14 @@ const AdminUsers = () => {
     }
   };
 
-  /*const getSchoolName = (schoolId) => {
-    if (!schoolId) return "No School Assigned";
-    const school = schools.find((s) => s._id === schoolId);
-    return school ? school.name : "Unknown School";
-  };*/
-
-  const closeEditForm = () => {
-    setShowEditForm(false);
+  // Renamed and fixed to reset password
+  const closeForm = () => {
+    setShowForm(false);
     setEditingUser(null);
     setFormData({
       name: "",
       email: "",
+      password: "", // Reset password
       role: "teacher",
       status: "active",
       schoolId: "",
@@ -240,7 +277,6 @@ const AdminUsers = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center">
           <FaUserPlus className="mr-2 text-indigo-600" />
-          {/* ✨ IMPROVEMENT: Make title role-aware */}
           {userProfile?.role === "principal"
             ? `${
                 userProfile.schoolId?.name || "My School"
@@ -248,6 +284,14 @@ const AdminUsers = () => {
             : "Teacher Management"}
         </h2>
         <div className="flex gap-2">
+          {/* "Add Teacher" Button */}
+          <button
+            onClick={handleShowCreateForm}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center"
+          >
+            <FaUserPlus className="mr-2" />
+            Add Teacher
+          </button>
           <button
             onClick={handleExport}
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"
@@ -335,10 +379,12 @@ const AdminUsers = () => {
         </div>
       </div>
 
-      {/* 3. MODIFIED: The form is now only for editing. */}
-      {showEditForm && (
+      {/* Create / Edit Form */}
+      {showForm && (
         <div className="bg-gray-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-semibold mb-4">Edit Teacher</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            {editingUser ? "Edit Teacher" : "Create New Teacher"}
+          </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -351,9 +397,12 @@ const AdminUsers = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
+                  // --- CHANGE: Name is now editable ---
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
+
+              {/* --- NEW: Email Field --- */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email *
@@ -362,10 +411,35 @@ const AdminUsers = () => {
                   type="email"
                   name="email"
                   value={formData.email}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                  onChange={handleInputChange}
+                  required
+                  // --- CHANGE: Email is READ-ONLY on edit ---
+                  readOnly={!!editingUser}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                    editingUser ? "bg-gray-100" : "" // Visual cue
+                  }`}
                 />
               </div>
+
+              {/* Password field ONLY shows for NEW users */}
+              {!editingUser && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password *
+                  </label>
+                  <input
+                    type="text" // Use "text" so user can see the email sync
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Defaults to email. Must be at least 6 characters.
+                  </p>
+                </div>
+              )}
 
               {/* School dropdown is only for super admins */}
               {userProfile?.role === "superadmin" && (
@@ -390,37 +464,41 @@ const AdminUsers = () => {
                 </div>
               )}
 
-              {/* Role and Status selects */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
-                </label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="teacher">Teacher</option>
-                  <option value="admin">Admin</option>
-                  <option value="moderator">Moderator</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="suspended">Suspended</option>
-                </select>
-              </div>
+              {/* --- CHANGE: Role and Status only show on EDIT --- */}
+              {editingUser && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Role
+                    </label>
+                    <select
+                      name="role"
+                      value={formData.role}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="teacher">Teacher</option>
+                      <option value="admin">Admin</option>
+                      <option value="moderator">Moderator</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Status
+                    </label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex gap-4 pt-2">
@@ -429,11 +507,15 @@ const AdminUsers = () => {
                 disabled={loading}
                 className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
               >
-                {loading ? "Saving..." : "Update Teacher"}
+                {loading
+                  ? "Saving..."
+                  : editingUser
+                  ? "Update Teacher"
+                  : "Create Teacher"}
               </button>
               <button
                 type="button"
-                onClick={closeEditForm}
+                onClick={closeForm} // Use the renamed function
                 className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
               >
                 Cancel
@@ -442,6 +524,8 @@ const AdminUsers = () => {
           </form>
         </div>
       )}
+
+      {/* Teachers List Table */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800">Teachers List</h3>
@@ -456,7 +540,7 @@ const AdminUsers = () => {
             <div className="text-center py-8 text-gray-500">
               <FaUserPlus className="mx-auto text-4xl mb-4 text-gray-300" />
               <p>
-                No teachers found. New teachers who sign up will appear here.
+                No teachers found. Use the "Add Teacher" button to create one.
               </p>
             </div>
           ) : (

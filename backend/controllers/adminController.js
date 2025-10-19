@@ -300,14 +300,24 @@ export const getAllTeachers = async (req, res) => {
 // -----------------------------
 export const createTeacher = async (req, res) => {
   try {
-    const { name, email, phone, specialization, experienceYears } = req.body;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation errors",
+        errors: errors.array(),
+      });
+    }
 
+    // 1. Get inputs from request body (password is now required)
+    const { name, email, password, phone, specialization, experienceYears } =
+      req.body;
+
+    // 2. Determine School ID based on user role
     let schoolId;
     if (req.user.role === "principal") {
       schoolId = req.user.schoolId;
-    }
-    // If a superadmin is creating a teacher, they MUST provide the school ID.
-    else if (req.user.role === "superadmin") {
+    } else if (req.user.role === "superadmin") {
       schoolId = req.body.schoolId; // Superadmin gets it from the body
       if (!schoolId) {
         return res.status(400).json({
@@ -315,17 +325,54 @@ export const createTeacher = async (req, res) => {
           message: "Superadmin must provide a schoolId to create a teacher.",
         });
       }
-    }
-    // Check if user with this email already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
+    } else {
+      // This should be caught by route-level auth, but as a safeguard:
+      return res.status(403).json({
         success: false,
-        message: "User with this email already exists",
+        message: "Forbidden: You do not have permission to create a teacher.",
       });
     }
 
-    // Create User with teacher role (Mongo)
+    // 3. Check if user with this email already exists in MongoDB
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({
+        // 409 Conflict is more appropriate
+        success: false,
+        message: "A user with this email already exists in the database.",
+      });
+    }
+
+    // 4. Create Firebase Auth user FIRST
+    let firebaseUser;
+    try {
+      firebaseUser = await admin.auth().createUser({
+        email,
+        password: password, // Use the provided password
+        displayName: name,
+        disabled: false,
+      });
+    } catch (firebaseCreateErr) {
+      // Handle specific Firebase errors
+      if (firebaseCreateErr?.code === "auth/email-already-exists") {
+        return res.status(409).json({
+          success: false,
+          message:
+            "A user with this email already exists in the authentication system.",
+        });
+      }
+      if (firebaseCreateErr?.code === "auth/weak-password") {
+        return res.status(400).json({
+          success: false,
+          message: firebaseCreateErr.message, // e.g., "Password must be at least 6 characters"
+        });
+      }
+      // For other errors, log and throw
+      console.error("Firebase create user error:", firebaseCreateErr);
+      throw new Error("Failed to create user in authentication system.");
+    }
+
+    // 5. Create User in MongoDB (now that Firebase user is confirmed)
     const user = new User({
       name,
       email,
@@ -333,55 +380,30 @@ export const createTeacher = async (req, res) => {
       phone,
       schoolId: schoolId,
       status: "active",
+      firebaseUid: firebaseUser.uid, // Link to Firebase user
     });
 
-    // Generate a temporary password and create Firebase Auth user
-    // Do not store this password in the database
-    const generateTempPassword = () => {
-      const charset =
-        "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*";
-      let pwd = "";
-      for (let i = 0; i < 12; i++) {
-        pwd += charset[Math.floor(Math.random() * charset.length)];
-      }
-      return `Temp@${pwd}`;
-    };
-
-    let tempPassword = generateTempPassword();
-    let firebaseUser;
+    // 6. Set Firebase Custom Claims
     try {
-      firebaseUser = await admin.auth().createUser({
-        email,
-        password: tempPassword,
-        displayName: name,
-        disabled: false,
+      await admin.auth().setCustomUserClaims(firebaseUser.uid, {
+        role: "teacher",
+        schoolId: schoolId.toString(), // Store schoolId in claims as well
       });
-    } catch (firebaseCreateErr) {
-      // If Firebase user exists already, try to fetch and proceed
-      if (firebaseCreateErr?.code === "auth/email-already-exists") {
-        firebaseUser = await admin.auth().getUserByEmail(email);
-        // If the user already exists in Firebase, do not attempt to reset password here automatically
-        // Force temp password to null to indicate existing credentials should be used
-        tempPassword = null;
-      } else {
-        throw firebaseCreateErr;
-      }
+    } catch (claimsErr) {
+      // This is a problem. For robustness, we should delete the new Firebase user
+      // to prevent an inconsistent state.
+      console.error("Firebase custom claims update error:", claimsErr);
+      await admin.auth().deleteUser(firebaseUser.uid);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to set user claims, rolling back user creation.",
+      });
     }
 
-    if (firebaseUser?.uid) {
-      try {
-        await admin.auth().setCustomUserClaims(firebaseUser.uid, {
-          role: "teacher",
-        });
-      } catch (claimsErr) {
-        console.error("Firebase custom claims update error:", claimsErr);
-      }
-      user.firebaseUid = firebaseUser.uid;
-    }
-
+    // 7. Save MongoDB user
     await user.save();
 
-    // Create TeacherProfile if additional teacher-specific data is provided
+    // 8. Create TeacherProfile (optional)
     let teacherProfile = null;
     if (specialization || experienceYears) {
       teacherProfile = new TeacherProfile({
@@ -392,20 +414,22 @@ export const createTeacher = async (req, res) => {
       await teacherProfile.save();
     }
 
-    // Populate the user with school info
+    // 9. Populate school info for the response
     await user.populate("schoolId", "name");
 
+    // 10. Send success response
     res.status(201).json({
       success: true,
-      message: "Teacher created successfully",
+      message:
+        "Teacher created successfully. You can now share the email and password with them.",
       data: {
         user: user.toJSON(),
         teacherProfile: teacherProfile ? teacherProfile.toJSON() : null,
-        // Return a one-time temporary password only in this response (not persisted)
-        temporaryPassword: tempPassword,
+        // DO NOT return the password
       },
     });
   } catch (error) {
+    // General error handler
     console.error("Admin Error - Create teacher:", error.message);
     res.status(500).json({
       success: false,

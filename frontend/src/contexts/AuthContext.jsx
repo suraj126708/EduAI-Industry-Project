@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { authService } from "../firebase/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/firebase";
+import { adminService } from "../utils/api";
 
 const AuthContext = createContext({});
 
@@ -90,7 +91,7 @@ export const AuthProvider = ({ children }) => {
     isTeacher,
     isPrincipal,
     // Admin-specific methods
-    adminService: authService.adminService,
+    adminService: adminService,
   };
 
   return (

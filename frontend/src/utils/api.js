@@ -379,6 +379,18 @@ export const adminService = {
     }
   },
 
+  // --- (NEW) Function to create a teacher ---
+  createUser: async (teacherData) => {
+    try {
+      // This calls: POST /api/admin/teachers
+      const response = await api.post("/admin/teachers", teacherData);
+      return response.data;
+    } catch (error) {
+      // We throw the whole error so the component can read the error.response.data
+      throw error;
+    }
+  },
+
   updateUser: async (userId, userData) => {
     try {
       // This makes a PUT request to /api/admin/teachers/:id

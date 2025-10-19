@@ -59,6 +59,18 @@ const teacherIdValidation = [
     .withMessage("Invalid teacher ID format"),
 ];
 
+// --- NEW VALIDATION ---
+const createTeacherValidation = [
+  body("email").isEmail().withMessage("Must be a valid email address"),
+  body("name").notEmpty().withMessage("Name is required"),
+  body("password")
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters long"),
+  body("phone").optional().isString(),
+  body("specialization").optional().isString(),
+  body("experienceYears").optional().isNumeric(),
+];
+
 const roleValidation = [
   body("role")
     .notEmpty()
@@ -302,6 +314,7 @@ router.post(
   "/teachers",
   authenticateFirebaseToken,
   //authorize("admin"),
+  createTeacherValidation,
   createTeacher
 );
 
