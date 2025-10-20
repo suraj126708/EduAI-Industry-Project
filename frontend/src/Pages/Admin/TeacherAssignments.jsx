@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import Unauthorized from "../../components/Unauthorized";
+import { bookAPI } from "../../utils/api";
 import {
   FaPlus,
   FaEdit,
@@ -40,13 +41,26 @@ const TeacherAssignments = () => {
 
   const fetchAssignments = async () => {
     try {
-      const result = await adminService.getAssignments();
-      if (result.success) {
-        setAssignments(result.data || []);
+      const result = await adminService.getTeacherAssignmentsforAdmin();
+      console.log("Teacher Assignment: ", result);
+      const assignmentsArray = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.data)
+        ? result.data
+        : Array.isArray(result?.assignments)
+        ? result.assignments
+        : Array.isArray(result?.data?.data)
+        ? result.data.data
+        : [];
+
+      if (Array.isArray(assignmentsArray)) {
+        setAssignments(assignmentsArray);
       } else {
-        setError(result.error);
+        console.error("Failed to fetch assignments:", result);
+        setError("Failed to fetch assignments: Data not an array");
       }
     } catch (err) {
+      console.error("Fetch assignments error:", err);
       setError("Failed to fetch assignments");
     }
   };
@@ -54,8 +68,10 @@ const TeacherAssignments = () => {
   const fetchTeachers = async () => {
     try {
       const result = await adminService.getUsers({ role: "teacher" });
-      if (result.success) {
-        setTeachers(result.data.teachers || []);
+      const teachersArray = result.data?.teachers; // This path was correct
+
+      if (Array.isArray(teachersArray)) {
+        setTeachers(teachersArray);
       } else {
         console.error("Failed to fetch teachers:", result.error);
       }
@@ -67,8 +83,10 @@ const TeacherAssignments = () => {
   const fetchClasses = async () => {
     try {
       const result = await adminService.getClasses();
-      if (result.success) {
-        setClasses(result.data || []);
+      const classesArray = result.data?.classes || result.data?.data;
+
+      if (Array.isArray(classesArray)) {
+        setClasses(classesArray);
       } else {
         console.error("Failed to fetch classes:", result.error);
       }
@@ -80,8 +98,10 @@ const TeacherAssignments = () => {
   const fetchSubjects = async () => {
     try {
       const result = await adminService.getSubjects();
-      if (result.success) {
-        setSubjects(result.data || []);
+      const subjectsArray = result.data?.subjects || result.data?.data; // Correct path
+
+      if (Array.isArray(subjectsArray)) {
+        setSubjects(subjectsArray);
       } else {
         console.error("Failed to fetch subjects:", result.error);
       }

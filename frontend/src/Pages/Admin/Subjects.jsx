@@ -23,8 +23,8 @@ const Subjects = () => {
   const fetchSchools = async () => {
     try {
       const result = await adminService.getSchools();
-      const schoolsArray = result.data?.data;
-      if (result.success && Array.isArray(schoolsArray)) {
+      const schoolsArray = result.data.data;
+      if (Array.isArray(schoolsArray)) {
         setSchools(schoolsArray);
       } else {
         console.error("API did not return a valid array for schools:", result);
@@ -40,14 +40,15 @@ const Subjects = () => {
   const fetchSubjects = async () => {
     try {
       const result = await adminService.getSubjects();
-      const subjectsArray = result.data;
-      if (result.success && Array.isArray(subjectsArray)) {
+      const subjectsArray = result.data.data;
+      if (Array.isArray(subjectsArray)) {
         setSubjects(subjectsArray);
       } else {
         console.error("API did not return a valid array for subjects:", result);
         setSubjects([]);
       }
     } catch (err) {
+      console.error("Failed to fetch subjects:", err);
       setError("Failed to fetch subjects.");
       setSubjects([]);
     }

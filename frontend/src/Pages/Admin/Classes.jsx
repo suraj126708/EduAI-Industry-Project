@@ -23,8 +23,8 @@ const Classes = () => {
   const fetchSchools = async () => {
     try {
       const result = await adminService.getSchools();
-      const schoolsArray = result.data;
-      if (result.success && Array.isArray(schoolsArray)) {
+      const schoolsArray = result.data.data;
+      if (Array.isArray(schoolsArray)) {
         setSchools(schoolsArray);
       } else {
         console.error("API did not return a valid array for schools:", result);
@@ -40,8 +40,8 @@ const Classes = () => {
   const fetchClasses = async () => {
     try {
       const result = await adminService.getClasses();
-      const classesArray = result.data;
-      if (result.success && Array.isArray(classesArray)) {
+      const classesArray = result.data.data;
+      if (Array.isArray(classesArray)) {
         setClasses(classesArray);
       } else {
         console.error("API did not return a valid array for classes:", result);

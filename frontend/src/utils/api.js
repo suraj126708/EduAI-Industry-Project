@@ -175,44 +175,6 @@ export const bookAPI = {
     }
   },
 
-  // Fetch classes (admin or public)
-  getClasses: async () => {
-    try {
-      const response = await api.get(`${local_api}admin/classes`);
-      return response;
-    } catch (error) {
-      console.error("Get classes error:", error);
-      return { data: { data: [] } };
-    }
-  },
-
-  // Fetch subjects (admin or public)
-  getSubjects: async () => {
-    try {
-      const response = await api.get(`${local_api}admin/subjects`);
-      return response;
-    } catch (error) {
-      console.error("Get subjects error:", error);
-      return { data: { data: [] } };
-    }
-  },
-
-  getTeacherAssignments: async (schoolId, email) => {
-    try {
-      const params = new URLSearchParams();
-      if (schoolId) params.append("schoolId", schoolId);
-      if (email) params.append("email", email);
-
-      const response = await api.get(
-        `${local_api}teachers/assignments?${params.toString()}`
-      );
-      return response;
-    } catch (error) {
-      console.error("Get teacher assignments error:", error);
-      throw error;
-    }
-  },
-
   // Other helpers (optional)
 
   // Get book by ID
@@ -265,6 +227,25 @@ export const bookAPI = {
       return response.data; // { success, message, data }
     } catch (error) {
       console.error("Delete book error:", error);
+      throw error;
+    }
+  },
+  getTeacherAssignments: async (schoolId, email) => {
+    try {
+      const params = new URLSearchParams();
+      if (schoolId) params.append("schoolId", schoolId);
+      if (email) params.append("email", email);
+
+      // This correctly calls the TEACHER route: /api/teachers/assignments
+      const response = await api.get(
+        `${local_api}teachers/assignments?${params.toString()}`
+      );
+
+      // Note: This returns the full axios response object.
+      // Your frontend component will need to access result.data.data
+      return response;
+    } catch (error) {
+      console.error("Get teacher assignments error:", error);
       throw error;
     }
   },
@@ -434,6 +415,105 @@ export const adminService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
+    }
+  },
+
+  // Fetch classes (admin or public)
+  getClasses: async () => {
+    try {
+      const response = await api.get(`${local_api}admin/classes`);
+      return response;
+    } catch (error) {
+      console.error("Get classes error:", error);
+      return { data: { data: [] } };
+    }
+  },
+
+  // Fetch subjects (admin or public)
+  getSubjects: async () => {
+    try {
+      const response = await api.get(`${local_api}admin/subjects`);
+      return response;
+    } catch (error) {
+      console.error("Get subjects error:", error);
+      return { data: { data: [] } };
+    }
+  },
+  getTeacherAssignmentsforAdmin: async (schoolId, email) => {
+    try {
+      // Build params object properly and pass to axios
+      const params = {};
+      if (schoolId) params.schoolId = schoolId;
+      if (email) params.email = email;
+
+      // Use relative path (api has baseURL) and pass params
+      const response = await api.get("/admin/assignments", { params });
+      // Return the response.data (consistent with other API helpers)
+      return response.data;
+    } catch (error) {
+      console.error("Get teacher assignments error:", error);
+      // Preserve error details for components
+      throw error.response?.data || error;
+    }
+  },
+  removeAssignment: async (assignmentId) => {
+    try {
+      // This calls: DELETE /api/admin/assignments/:id
+      const response = await api.delete(`/admin/assignments/${assignmentId}`);
+      return response.data; // Returns { success, message, data }
+    } catch (error) {
+      // We throw the whole error so the component can read the error.response.data
+      throw error;
+    }
+  },
+  assignTeacher: async (assignmentData) => {
+    try {
+      // This calls: POST /api/admin/assignments
+      const response = await api.post("/admin/assignments", assignmentData);
+      return response.data; // Returns { success, data }
+    } catch (error) {
+      // We throw the whole error so the component can read the error.response.data
+      throw error;
+    }
+  },
+  deleteSubject: async (subjectId) => {
+    try {
+      // This calls: DELETE /api/admin/subjects/:id
+      const response = await api.delete(`/admin/subjects/${subjectId}`);
+      return response.data; // Returns { success, message, data }
+    } catch (error) {
+      // Throws the error to be caught by the component
+      throw error;
+    }
+  },
+  createClass: async (classData) => {
+    try {
+      // This calls: POST /api/admin/classes
+      const response = await api.post("/admin/classes", classData);
+      return response.data; // Returns { success, data }
+    } catch (error) {
+      // Throws the error to be caught by the component
+      throw error;
+    }
+  },
+  createSubject: async (subjectData) => {
+    try {
+      // This calls: POST /api/admin/subjects
+      const response = await api.post("/admin/subjects", subjectData);
+      return response.data; // Returns { success, data }
+    } catch (error) {
+      // Throws the error to be caught by the component
+      throw error;
+    }
+  },
+  deleteClass: async (classId) => {
+    try {
+      // Calls: DELETE /api/admin/classes/:id
+      const response = await api.delete(`/admin/classes/${classId}`);
+      return response.data; // Should return { success, message, data }
+    } catch (error) {
+      // Throws the error to be caught by the component
+      throw error;
     }
   },
 };

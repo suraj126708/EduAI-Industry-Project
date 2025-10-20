@@ -1525,15 +1525,21 @@ export async function addOrUpdateClass(req, res) {
       grade,
       division
     );
-
-    if (existingClass) {
-      // Update if necessary or just return
-      return res.json(existingClass);
+    let isNew = false;
+    if (!existingClass) {
+      // Create new class if it doesn't exist
+      existingClass = new Class({ schoolId, grade, division });
+      await existingClass.save();
+      isNew = true;
     }
+    // If it exists, we just return it (no update logic needed based on your original code)
 
-    const newClass = new Class({ schoolId, grade, division });
-    await newClass.save();
-    res.status(201).json(newClass);
+    // --- 👇 FIX: Return consistent success response ---
+    res.status(isNew ? 201 : 200).json({
+      success: true,
+      message: `Class ${isNew ? "created" : "already exists"}`,
+      data: existingClass, // Send back the created/existing class
+    });
   } catch (e) {
     console.error("Admin Error - Add/Update class:", e.message);
     res.status(500).json({ error: e.message });
@@ -1638,6 +1644,7 @@ export async function addOrUpdateSubject(req, res) {
     }
 
     let subject = await Subject.findOne({ schoolId, subjectId });
+    let isNew = false;
     if (subject) {
       // Update subject name if different
       if (subject.name !== name) {
@@ -1645,14 +1652,20 @@ export async function addOrUpdateSubject(req, res) {
         await subject.save();
       }
       return res.json(subject);
+    } else {
+      // Create new subject
+      subject = new Subject({ schoolId, subjectId, name });
+      await subject.save();
+      isNew = true;
     }
-
-    subject = new Subject({ schoolId, subjectId, name });
-    await subject.save();
-    res.status(201).json(subject);
+    res.status(isNew ? 201 : 200).json({
+      success: true,
+      message: `Subject ${isNew ? "created" : "found/updated"} successfully`,
+      data: subject, // Send back the created/updated subject
+    });
   } catch (e) {
     console.error("Admin Error - Add/Update subject:", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.message || "Failed to save subject." });
   }
 }
 
@@ -1728,27 +1741,48 @@ export async function getAssignments(req, res) {
 
     const assignments = await TeacherClassSubject.find({ schoolId: schoolId })
       .populate("teacherId", "name email")
-      .populate("classId", "grade division schoolId")
+      .populate({
+        path: "classId",
+        select: "grade division schoolId",
+        // Nested populate to get school details *from* the class
+        populate: {
+          path: "schoolId",
+          select: "name",
+        },
+      })
       .populate("subjectId", "name subjectId")
-      .populate("classId.schoolId", "name")
       .sort({ createdAt: -1 });
 
-    // Transform the data to include readable names
-    const transformedAssignments = assignments.map((assignment) => ({
-      _id: assignment._id,
-      teacherId: assignment.teacherId._id,
-      teacherName: assignment.teacherId.name,
-      teacherEmail: assignment.teacherId.email,
-      classId: assignment.classId._id,
-      className: `Grade ${assignment.classId.grade} - Division ${assignment.classId.division}`,
-      schoolName: assignment.classId.schoolId?.name || "Unknown School",
-      subjectId: assignment.subjectId._id,
-      subjectName: assignment.subjectId.name,
-      subjectCode: assignment.subjectId.subjectId,
-      assignedAt: assignment.assignedAt,
-      createdAt: assignment.createdAt,
-      updatedAt: assignment.updatedAt,
-    }));
+    // --- 💡 START OF FIX ---
+    // This .map() block safely handles null references
+    const transformedAssignments = assignments.map((assignment) => {
+      // Use "|| {}" to provide a fallback empty object if a reference is null
+      const teacher = assignment.teacherId || {};
+      const classData = assignment.classId || {};
+      const subject = assignment.subjectId || {};
+
+      // schoolData is nested, so we access it from the (now safe) classData
+      const schoolData = classData.schoolId || {};
+
+      return {
+        _id: assignment._id,
+        teacherId: teacher._id, // Will be undefined, not an error
+        teacherName: teacher.name || "Deleted Teacher",
+        teacherEmail: teacher.email || "N/A",
+        classId: classData._id, // Will be undefined, not an error
+        className: `Grade ${classData.grade || "?"} - Division ${
+          classData.division || "?"
+        }`,
+        schoolName: schoolData.name || "Unknown School",
+        subjectId: subject._id, // Will be undefined, not an error
+        subjectName: subject.name || "Deleted Subject",
+        subjectCode: subject.subjectId || "N/A",
+        assignedAt: assignment.assignedAt,
+        createdAt: assignment.createdAt,
+        updatedAt: assignment.updatedAt,
+      };
+    });
+    // --- 💡 END OF FIX ---
 
     res.status(200).json({
       success: true,
@@ -1879,7 +1913,7 @@ export async function removeAssignment(req, res) {
     const schoolId = req.user.schoolId;
 
     const { assignmentId } = req.params;
-    const deletedAssignment = await TeacherClassSubject.findByIdAndDelete({
+    const deletedAssignment = await TeacherClassSubject.findOneAndDelete({
       _id: assignmentId,
       schoolId: schoolId,
     });

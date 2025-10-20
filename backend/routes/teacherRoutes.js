@@ -69,7 +69,7 @@ router.get("/", authenticateFirebaseToken, authorize("admin"), getAllTeachers);
 router.get(
   "/assignments",
   authenticateFirebaseToken,
-  authorize("teacher"),
+  authorize("teacher", "principal"),
   getTeacherAssignments
 );
 
