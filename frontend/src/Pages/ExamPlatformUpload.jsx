@@ -420,6 +420,7 @@ const ExamPlatformUpload = () => {
             setLoaderProgress(baseProgress + progress * 0.8);
           },
         });
+        console.log("API Result from uploadBook:", apiResult);
 
         // --- This part only runs on SUCCESS ---
         const stepProgression = async () => {
@@ -431,7 +432,7 @@ const ExamPlatformUpload = () => {
         };
         await stepProgression();
 
-        const returnedBook = apiResult?.book;
+        const returnedBook = apiResult?.data;
         const processedStatus = returnedBook?.processedStatus || "pending";
         const chunks = returnedBook?.noOfChunks ?? null;
 

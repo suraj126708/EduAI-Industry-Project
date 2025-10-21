@@ -142,6 +142,8 @@ export default function MinimalQuestionPaperForm() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [generatedPaperData, setGeneratedPaperData] = useState(null);
+
+  const [allAssignments, setAllAssignments] = useState([]);
   // Removed final LLM note modal; using per-row subtopics instead
   const [toast, setToast] = useState({
     visible: false,
@@ -239,6 +241,38 @@ export default function MinimalQuestionPaperForm() {
     questions,
   ]);
 
+  useEffect(() => {
+    // Always reset subject list and selection when class changes
+    setSubjectOptions([]);
+    setSelectedSubject("");
+
+    if (selectedClass && allAssignments.length > 0 && classOptions.length > 0) {
+      // 1. Find the _id of the selected class (which is a grade string)
+      const classObj = classOptions.find((c) => c.grade === selectedClass);
+
+      if (classObj) {
+        const selectedClassId = classObj._id;
+
+        // 2. Filter assignments to find only those matching the selected class
+        const assignmentsForClass = allAssignments.filter(
+          (a) => a.classId?._id === selectedClassId
+        );
+
+        // 3. Derive unique subjects from that filtered list
+        const uniqueSubjectMap = new Map();
+        assignmentsForClass.forEach((a) => {
+          if (a.subjectId && a.subjectId._id && a.subjectId.name) {
+            if (!uniqueSubjectMap.has(a.subjectId._id)) {
+              uniqueSubjectMap.set(a.subjectId._id, a.subjectId.name);
+            }
+          }
+        });
+        const sortedSubjects = Array.from(uniqueSubjectMap.values()).sort();
+        setSubjectOptions(sortedSubjects);
+      }
+    }
+  }, [selectedClass, allAssignments, classOptions]);
+
   // --- DATA FETCHING LOGIC ---
   useEffect(() => {
     const fetchAssignments = async () => {
@@ -264,29 +298,53 @@ export default function MinimalQuestionPaperForm() {
           currentUser.email
         );
 
-        if (response.data.success) {
-          const { classes, subjects } = response.data.data;
+        if (response.data?.success) {
+          // Get the assignments array from the correct path
+          const fetchedAssignments = response.data.data?.assignments || [];
 
-          const formattedClasses = classes.map((c) => ({
-            _id: c._id,
-            grade: c.grade.toString(),
-          }));
-          const formattedSubjects = subjects.map((s) => s.name);
+          setAllAssignments(fetchedAssignments);
 
-          setClassOptions(formattedClasses);
-          setSubjectOptions(formattedSubjects);
-
-          if (formattedClasses.length === 0 || formattedSubjects.length === 0) {
+          // Derive unique classes
+          const uniqueClassMap = new Map();
+          fetchedAssignments.forEach((a) => {
+            if (
+              a.classId &&
+              a.classId._id &&
+              typeof a.classId.grade === "number"
+            ) {
+              if (!uniqueClassMap.has(a.classId._id)) {
+                uniqueClassMap.set(a.classId._id, {
+                  _id: a.classId._id,
+                  // Keep grade as string for consistency if needed by PaperDetailsForm
+                  grade: String(a.classId.grade),
+                  // label: String(a.classId.grade) // Add label if needed by PaperDetailsForm
+                });
+              }
+            }
+          });
+          const sortedClasses = Array.from(uniqueClassMap.values()).sort(
+            (a, b) => parseInt(a.grade) - parseInt(b.grade)
+          );
+          setClassOptions(sortedClasses); // Update class options state
+          if (fetchedAssignments.length === 0) {
+            console.warn(
+              "No unique classes or subjects derived from assignments."
+            );
+            // Consider showing the NoBooksModal only if NO assignments were fetched
             setShowNoBooksModal(true);
           }
         } else {
           throw new Error(
-            response.data.message || "Could not retrieve your assignments."
+            response.data?.message || "Could not retrieve your assignments."
           );
         }
       } catch (err) {
         console.error("Error fetching assignments:", err);
         setFetchError(err.message);
+        // Reset options on error
+        setClassOptions([]);
+        setSubjectOptions([]);
+        setAllAssignments([]);
       } finally {
         setIsLoading(false);
       }

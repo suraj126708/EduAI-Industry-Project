@@ -394,6 +394,12 @@ export const teacherUploadBook = async (req, res) => {
       return res.status(201).json({
         success: true,
         message: "Book uploaded and processed successfully.",
+        data: {
+          // Send a smaller object
+          _id: book._id,
+          processedStatus: book.processedStatus,
+          noOfChunks: book.noOfChunks,
+        },
       });
     } else {
       // FAILURE: Processing failed.
