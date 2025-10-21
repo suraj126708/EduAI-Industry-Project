@@ -587,66 +587,36 @@ export const getTeacherAssignments = async (req, res) => {
       })
       .sort({ assignedAt: -1 });
 
-    // Extract unique classes and subjects
-    const classes = [];
-    const subjects = [];
-    const classMap = new Map();
-    const subjectMap = new Map();
-
-    assignments.forEach((assignment) => {
-      if (
-        assignment.classId &&
-        !classMap.has(assignment.classId._id.toString())
-      ) {
-        classes.push({
-          _id: assignment.classId._id,
-          grade: assignment.classId.grade,
-          division: assignment.classId.division,
-          schoolName: assignment.classId.schoolId?.name || "Unknown School",
-        });
-        classMap.set(assignment.classId._id.toString(), true);
-      }
-
-      if (
-        assignment.subjectId &&
-        !subjectMap.has(assignment.subjectId._id.toString())
-      ) {
-        subjects.push({
-          _id: assignment.subjectId._id,
-          name: assignment.subjectId.name,
-          subjectId: assignment.subjectId.subjectId,
-          schoolName: assignment.subjectId.schoolId?.name || "Unknown School",
-        });
-        subjectMap.set(assignment.subjectId._id.toString(), true);
-      }
-    });
-
     res.status(200).json({
       success: true,
       message: "Teacher assignments retrieved successfully",
       data: {
         teacher: {
+          // Include teacher info if needed elsewhere
           _id: teacher._id,
           name: teacher.name,
           email: teacher.email,
           schoolId: teacher.schoolId,
         },
-        classes,
-        subjects,
         assignments: assignments.map((assignment) => ({
+          // Optionally simplify structure
           _id: assignment._id,
-          class: assignment.classId
+          classId: assignment.classId
             ? {
                 _id: assignment.classId._id,
                 grade: assignment.classId.grade,
                 division: assignment.classId.division,
+                schoolName:
+                  assignment.classId.schoolId?.name || "Unknown School",
               }
             : null,
-          subject: assignment.subjectId
+          subjectId: assignment.subjectId
             ? {
                 _id: assignment.subjectId._id,
                 name: assignment.subjectId.name,
-                subjectId: assignment.subjectId.subjectId,
+                subjectId: assignment.subjectId.subjectId, // The code like 'CS101'
+                schoolName:
+                  assignment.subjectId.schoolId?.name || "Unknown School",
               }
             : null,
           assignedAt: assignment.assignedAt,

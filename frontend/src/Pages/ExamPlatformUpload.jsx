@@ -105,6 +105,11 @@ const ExamPlatformUpload = () => {
   const [activeTab, setActiveTab] = useState("upload");
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
+
+  const [teacherAssignments, setTeacherAssignments] = useState([]);
+  // Store the unique list of classes for the dropdown
+  const [uniqueClasses, setUniqueClasses] = useState([]);
+
   const [documentRows, setDocumentRows] = useState([
     {
       id: Date.now(),
@@ -114,6 +119,7 @@ const ExamPlatformUpload = () => {
       status: "pending",
       progress: 0,
       error: null,
+      filteredSubjects: [],
     },
   ]);
   const [isUploading, setIsUploading] = useState(false);
@@ -164,72 +170,134 @@ const ExamPlatformUpload = () => {
   // Fetch teacher assignments (classes and subjects)
   useEffect(() => {
     const loadTeacherAssignments = async () => {
-      if (!schoolId) return; // Wait for schoolId to be loaded
+      if (!schoolId) return;
 
       setAssignmentsLoading(true);
       setAssignmentsError(null);
 
       try {
         const currentUser = auth.currentUser;
-        if (!currentUser) {
-          console.error("No current user found");
-          setAssignmentsError("No current user found");
-          return;
-        }
+        if (!currentUser) throw new Error("No current user found");
 
+        // Call the TEACHER assignment endpoint via bookAPI
         const response = await bookAPI.getTeacherAssignments(
           schoolId,
           currentUser.email
         );
-        const { classes: assignedClasses, subjects: assignedSubjects } =
-          response.data.data;
 
-        console.log("Teacher assignments loaded:", {
-          assignedClasses,
-          assignedSubjects,
+        // Expect backend response: { success: true, data: { assignments: [...] } }
+        const fetchedAssignments = response.data?.data?.assignments || [];
+        console.log("Teacher assignments loaded:", fetchedAssignments);
+
+        setTeacherAssignments(fetchedAssignments); // Store the raw assignments
+
+        // Derive unique classes for the Class dropdown
+        const uniqueClassMap = new Map();
+        fetchedAssignments.forEach((a) => {
+          if (
+            a.classId &&
+            a.classId._id &&
+            typeof a.classId.grade === "number"
+          ) {
+            if (!uniqueClassMap.has(a.classId._id)) {
+              uniqueClassMap.set(a.classId._id, {
+                _id: a.classId._id,
+                value: String(a.classId.grade),
+                label: String(a.classId.grade),
+                grade: a.classId.grade,
+              });
+            }
+          } else {
+            console.warn(
+              "Skipping assignment due to missing/invalid classId:",
+              a
+            );
+          }
         });
-
-        // Transform classes data (preserve raw numeric grade for API)
-        const cls = assignedClasses.map((c) => ({
-          value: c.grade.toString().padStart(2, "0"), // UI value with leading zero
-          label: `${c.grade}`,
-          grade: c.grade, // keep raw grade for backend
-          _id: c._id,
-          schoolName: c.schoolName,
-        }));
-
-        // Transform subjects data
-        const subj = assignedSubjects.map((s) => ({
-          value: s.subjectId || s.name.toLowerCase().replace(/\s+/g, "_"),
-          label: s.name,
-          name: s.name,
-          subjectId: s.subjectId,
-          _id: s._id,
-          schoolName: s.schoolName,
-        }));
-
-        setClasses(cls);
-        setSubjects(subj);
+        const sortedClasses = Array.from(uniqueClassMap.values()).sort(
+          (a, b) => a.grade - b.grade
+        );
+        // Set the state used by the Class dropdown
+        setUniqueClasses(sortedClasses);
       } catch (error) {
         console.error("Failed to load teacher assignments:", error);
         setAssignmentsError(
-          error.message || "Failed to load teacher assignments"
+          error.response?.data?.error ||
+            error.message ||
+            "Failed to load teacher assignments"
         );
-        setClasses([]);
-        setSubjects([]);
+        setTeacherAssignments([]);
+        setUniqueClasses([]);
       } finally {
         setAssignmentsLoading(false);
       }
     };
 
     loadTeacherAssignments();
-  }, [schoolId]); // Depend on schoolId
+  }, [schoolId]);
+
+  const handleClassChangeForRow = (rowId, selectedClassValue) => {
+    // Find the class object that matches the selected value (grade string)
+    const selectedClassObj = uniqueClasses.find(
+      (c) => c.value === selectedClassValue
+    );
+    const selectedClassId = selectedClassObj?._id; // Get the MongoDB _id
+
+    let filteredSubs = [];
+    if (selectedClassId) {
+      // Find all assignments for this teacher matching the selected class _id
+      const relevantAssignments = teacherAssignments.filter(
+        (a) => a.classId?._id === selectedClassId && a.subjectId
+      );
+
+      // Extract unique subjects from these relevant assignments
+      const subjectMap = new Map();
+      relevantAssignments.forEach((a) => {
+        if (a.subjectId && !subjectMap.has(a.subjectId._id)) {
+          subjectMap.set(a.subjectId._id, {
+            _id: a.subjectId._id,
+            // Use subjectId (code like CS101) or a formatted name as value
+            value:
+              a.subjectId.subjectId ||
+              a.subjectId.name.toLowerCase().replace(/\s+/g, "_"),
+            label: a.subjectId.name, // Display name like "Computer Science"
+            name: a.subjectId.name, // Keep raw name
+            subjectId: a.subjectId.subjectId, // Keep raw code
+          });
+        }
+      });
+      filteredSubs = Array.from(subjectMap.values()).sort((a, b) =>
+        a.label.localeCompare(b.label)
+      ); // Sort alphabetically
+    }
+
+    // Update the specific row in documentRows state
+    setDocumentRows((rows) =>
+      rows.map((r) =>
+        r.id === rowId
+          ? {
+              ...r,
+              class: selectedClassValue, // Set the selected class value (e.g., "7")
+              subject: "", // Reset subject selection
+              filteredSubjects: filteredSubs, // Update the subjects available for this row
+            }
+          : r
+      )
+    );
+  };
 
   // Row management functions
-  const updateRow = (id, key, value) =>
-    setDocumentRows((rows) =>
-      rows.map((r) => (r.id === id ? { ...r, [key]: value } : r))
-    );
+  const updateRow = (id, key, value) => {
+    if (key === "class") {
+      // If the class dropdown changes, use the dedicated handler
+      handleClassChangeForRow(id, value);
+    } else {
+      // For any other field (like subject, file, etc.), update directly
+      setDocumentRows((rows) =>
+        rows.map((r) => (r.id === id ? { ...r, [key]: value } : r))
+      );
+    }
+  };
   const addNewRow = () =>
     setDocumentRows((rows) => [
       ...rows,
@@ -302,20 +370,32 @@ const ExamPlatformUpload = () => {
 
     const promises = validRows.map(async (row, index) => {
       const formData = new FormData();
-      const selectedClass = classes.find((c) => c.value === row.class);
-      const selectedSubject = subjects.find((s) => s.value === row.subject);
+      const selectedClassObj = uniqueClasses.find((c) => c.value === row.class);
+      const selectedSubjectObj = row.filteredSubjects.find(
+        (s) => s.value === row.subject
+      );
+
+      // Basic check if objects were found (should normally be true if selection happened)
+      if (!selectedClassObj || !selectedSubjectObj) {
+        console.error(
+          "Could not find selected class/subject object for row:",
+          row
+        );
+        updateRow(row.id, "status", "error");
+        updateRow(row.id, "error", "Internal error: selection mismatch.");
+        return {
+          success: false,
+          filename: row.file?.name || "unknown",
+          error: "Selection mismatch",
+        };
+      }
 
       formData.append("pdf", row.file);
-      formData.append("classId", selectedClass?.grade || row.class);
-      formData.append(
-        "subject",
-        selectedSubject?.name || selectedSubject?.label || row.subject
-      );
+      // Send the data the backend expects (check your teacherUploadBook controller)
+      formData.append("classId", String(selectedClassObj.grade)); // Send the grade number as string
+      formData.append("subject", selectedSubjectObj.name); // Send the subject name
       formData.append("schoolId", schoolId);
-      formData.append(
-        "title",
-        selectedSubject?.label || row.subject.replace("_", " ")
-      );
+      formData.append("title", selectedSubjectObj.label); // Use subject label as title
       formData.append("author", "System");
       formData.append("year", new Date().getFullYear());
 
@@ -585,10 +665,11 @@ const ExamPlatformUpload = () => {
                                     updateRow(row.id, "class", e.target.value)
                                   }
                                   className="md:col-span-1 h-11 border-gray-300 rounded-md shadow-sm w-full"
+                                  disabled={assignmentsLoading}
                                 >
                                   <option value="">Class</option>
-                                  {classes.map((c) => (
-                                    <option key={c.value} value={c.value}>
+                                  {uniqueClasses.map((c) => (
+                                    <option key={c._id} value={c.value}>
                                       {c.label}
                                     </option>
                                   ))}
@@ -601,8 +682,8 @@ const ExamPlatformUpload = () => {
                                   className="md:col-span-1 h-11 border-gray-300 rounded-md shadow-sm w-full"
                                 >
                                   <option value="">Subject</option>
-                                  {subjects.map((s) => (
-                                    <option key={s.value} value={s.value}>
+                                  {row.filteredSubjects.map((s) => (
+                                    <option key={s._id} value={s.value}>
                                       {s.label}
                                     </option>
                                   ))}
