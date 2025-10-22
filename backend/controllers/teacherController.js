@@ -655,6 +655,8 @@ export const generateQuestionPaper = async (req, res) => {
       numberofPapers = 1,
       duration,
       totalMarks, // <-- Get totalMarks from the body
+
+      examType,
     } = req.body;
 
     if (!classValue || !subject || !pdfName) {
@@ -811,6 +813,7 @@ export const generateQuestionPaper = async (req, res) => {
           subjectId: resolvedSubjectId,
           subject: resolvedSubjectName,
           teacherEmail: teacherUser?.email,
+          examType: examType || undefined,
         });
         return newPaper;
       })
@@ -968,7 +971,7 @@ export const getQuestionPaperById = async (req, res) => {
 
     // --- Authorization Check ---
     const isOwner = paper.createdBy?.toString() === req.user?._id?.toString();
-    const isAdmin = req.user?.role === "admin";
+    const isAdmin = req.user?.role === "principal";
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({

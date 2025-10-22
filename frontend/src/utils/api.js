@@ -516,6 +516,31 @@ export const adminService = {
       throw error;
     }
   },
+
+  getPapers: async () => {
+    try {
+      // Use the 'api' instance to make an authenticated GET request
+      const response = await api.get("/admin/papers");
+
+      // The AdminPapers.js component expects the full response data
+      // e.g., { success: true, data: { papers: [...] } }
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching papers for admin:", error);
+
+      // Return the error response from the server if it exists
+      if (error.response && error.response.data) {
+        return error.response.data; // e.g., { success: false, message: "..." }
+      }
+
+      // Fallback for network or other errors
+      return {
+        success: false,
+        message:
+          error.message || "An unknown error occurred while fetching papers.",
+      };
+    }
+  },
 };
 
 export default api;

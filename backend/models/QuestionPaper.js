@@ -69,6 +69,11 @@ const questionPaperSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: null,
     },
+
+    examType: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,

@@ -38,6 +38,7 @@ import {
   getClasses,
   getSubjects,
   createTeacher,
+  getAllPapersForSchool,
 } from "../controllers/adminController.js";
 import {
   authenticateFirebaseToken,
@@ -532,18 +533,14 @@ router.get(
   getAssignments
 );
 
-router.post(
-  "/assignments",
-  authenticateFirebaseToken,
-  //authorize("admin"),
-  assignTeacher
-);
+router.post("/assignments", authenticateFirebaseToken, assignTeacher);
 
 router.delete(
   "/assignments/:assignmentId",
   authenticateFirebaseToken,
-  //authorize("admin"),
   removeAssignment
 );
+
+router.get("/papers", authenticateFirebaseToken, getAllPapersForSchool);
 
 export default router;

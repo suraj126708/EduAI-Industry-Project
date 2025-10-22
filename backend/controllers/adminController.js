@@ -15,9 +15,12 @@ import Subject from "../models/Subject.js";
 import TeacherProfile from "../models/Teacher.js";
 import TeacherClassSubject from "../models/TeacherClassSubject.js";
 import StudentProfile from "../models/Student.js";
+import QuestionPaper from "../models/QuestionPaper.js";
+
 import { validationResult } from "express-validator";
 import admin from "../config/firebase.js";
 import XLSX from "xlsx";
+import mongoose from "mongoose";
 import path from "path";
 import fs from "fs";
 
@@ -1935,6 +1938,128 @@ export async function removeAssignment(req, res) {
     res.status(500).json({
       success: false,
       error: error.message,
+    });
+  }
+}
+
+// @desc    Get all question papers for the admin's school
+// @route   GET /api/admin/papers
+// @access  Private (Admin)
+export async function getAllPapersForSchool(req, res) {
+  try {
+    const schoolIdFromUser = req.user.schoolId; // This is an ObjectId object
+
+    if (!schoolIdFromUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin is not associated with a school.",
+      });
+    }
+
+    const paperGroups = await QuestionPaper.aggregate([
+      // 1. Match using the top-level 'schoolId' field
+      {
+        $match: { schoolId: schoolIdFromUser },
+      },
+
+      // 2. Sort by top-level 'createdAt'
+      {
+        $sort: { createdAt: -1 },
+      },
+      // 3. Add a field for grouping by top-level 'createdAt'
+      {
+        $addFields: {
+          roundedCreatedAt: {
+            $dateTrunc: {
+              date: "$createdAt", // Use top-level field
+              unit: "minute",
+            },
+          },
+        },
+      },
+      // 4. Group by batchId or the fallback composite key (using top-level fields)
+      {
+        $group: {
+          _id: {
+            batchKey: {
+              $ifNull: [
+                "$generationBatchId", // Use top-level field
+                {
+                  // Otherwise, build the composite key
+                  subject: "$subject", // Use top-level field
+                  class: "$classGrade", // Use top-level field
+                  time: "$roundedCreatedAt",
+                },
+              ],
+            },
+          },
+          sets: { $sum: 1 }, // Count the papers in the group
+          firstFullDocument: { $first: "$$ROOT" }, // Get the entire document
+          papers: { $push: "$$ROOT" },
+        },
+      },
+      // 5. Promote the 'firstFullDocument' details to the top level
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: [
+              "$firstFullDocument", // Start with the full, original paper
+              {
+                // Add/overwrite these fields
+                sets: "$sets",
+                papers: "$papers",
+                _id: "$firstFullDocument._id", // Ensure the _id is the paper's ID
+              },
+            ],
+          },
+        },
+      },
+      // 6. Sort the final groups (newest batch first)
+      {
+        $sort: { createdAt: -1 },
+      },
+      // 7. Manually populate the teacher's info (this will work now)
+      {
+        $lookup: {
+          from: "users",
+          localField: "createdBy",
+          foreignField: "_id",
+          as: "createdByUser",
+        },
+      },
+      {
+        $unwind: {
+          path: "$createdByUser",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          createdBy: {
+            _id: "$createdByUser._id",
+            name: "$createdByUser.name",
+            email: "$createdByUser.email",
+          },
+        },
+      },
+      {
+        $project: { createdByUser: 0 },
+      },
+    ]);
+
+    console.log(`Aggregation found ${paperGroups.length} paper groups.`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        papers: paperGroups,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching papers for admin:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching papers.",
     });
   }
 }

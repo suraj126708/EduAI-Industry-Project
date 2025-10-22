@@ -97,7 +97,7 @@ router.get(
 router.get(
   "/my-question-papers",
   authenticateFirebaseToken,
-  authorize("teacher", "admin"),
+  authorize("teacher"),
   getMyQuestionPapers
 );
 
@@ -113,21 +113,21 @@ router.delete(
 router.get(
   "/question-papers/:id",
   authenticateFirebaseToken,
-  authorize("teacher", "admin"),
+  authorize("teacher", "principal"),
   getQuestionPaperById
 );
 
 router.put(
   "/question-papers/:id",
   authenticateFirebaseToken,
-  authorize("teacher", "admin"),
+  authorize("teacher", "principal"),
   updateQuestionPaper
 );
 
 router.delete(
   "/question-papers",
   authenticateFirebaseToken,
-  authorize("teacher", "admin"),
+  authorize("teacher", "principal"),
   deleteTeacherQuestionPaper
 );
 
