@@ -9,6 +9,7 @@ import {
   FaGraduationCap,
   FaBook,
   FaChalkboardTeacher,
+  FaBookOpen,
 } from "react-icons/fa";
 
 const navItems = [
@@ -22,6 +23,7 @@ const navItems = [
     path: "/admin/assignments",
     icon: <FaChalkboardTeacher />,
   },
+  { name: "Books", path: "/admin/books", icon: <FaBookOpen /> },
   { name: "Students", path: "/admin/students", icon: <FaUsers /> },
   { name: "Question Papers", path: "/admin/papers", icon: <FaFileAlt /> },
   { name: "Results", path: "/admin/stats", icon: <FaChartBar /> },

@@ -39,6 +39,7 @@ import {
   getSubjects,
   createTeacher,
   getAllPapersForSchool,
+  getBooksByClass,
 } from "../controllers/adminController.js";
 import {
   authenticateFirebaseToken,
@@ -48,6 +49,7 @@ import {
 } from "../middleware/authMiddleware.js";
 
 import upload from "../middleware/uploadMiddleware.js";
+//import { auth } from "firebase-admin";
 
 const router = express.Router();
 
@@ -542,5 +544,7 @@ router.delete(
 );
 
 router.get("/papers", authenticateFirebaseToken, getAllPapersForSchool);
+
+router.get("/books-by-class", authenticateFirebaseToken, getBooksByClass); // Use appropriate middleware
 
 export default router;

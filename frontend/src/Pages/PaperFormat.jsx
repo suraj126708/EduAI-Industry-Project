@@ -14,21 +14,41 @@ const PaperView = ({ paperData, calculateTotalMarks }) => (
           <h1 className="college-name text-2xl font-bold text-blue-800 mb-2">
             {paperData.collegeName || "New High School"}
           </h1>
+          {/* --- CHANGE 1: Use examType for the main title --- */}
           <h2 className="test-name text-lg font-semibold text-gray-700 mb-2">
-            {paperData.testName}
+            {paperData.examType || paperData.testName || "Examination"}
           </h2>
-          <h3 className="subject-class text-md font-medium text-gray-600 mb-3">
+
+          {/* --- CHANGE 2: REMOVE this h3 --- */}
+          {/* <h3 className="subject-class text-md font-medium text-gray-600 mb-3">
             {paperData.subject} - {paperData.className}
-          </h3>
-          <div className="exam-details flex justify-between items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg">
-            <span>
+          </h3> */}
+
+          {/* --- CHANGE 3: Add Subject and Class to the details row --- */}
+          {/* Use grid for better alignment on smaller screens */}
+          <div className="exam-details grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg text-left sm:text-center">
+            <span className="col-span-1">
+              {" "}
+              {/* Make Date span 1 column */}
               <strong>Date:</strong>{" "}
               {paperData.date || new Date().toISOString().split("T")[0]}
             </span>
-            <span>
-              <strong>Max. Marks:</strong> {calculateTotalMarks()}
+            {/* Added Subject */}
+            <span className="col-span-1">
+              <strong>Subject:</strong> {paperData.subject || "-"}
             </span>
-            <span>
+            {/* Added Class */}
+            <span className="col-span-1">
+              <strong>Class:</strong> {paperData.className || "-"}
+            </span>
+            <span className="col-span-1">
+              {" "}
+              {/* Make Marks span 1 */}
+              <strong>Marks:</strong> {calculateTotalMarks()}
+            </span>
+            <span className="col-span-1">
+              {" "}
+              {/* Make Time span 1 */}
               <strong>Time:</strong> {paperData.timeAllowed}
             </span>
           </div>
@@ -320,40 +340,59 @@ function ExamPaperGenerator() {
   const { id: paperIdFromUrl } = useParams();
 
   const normalizePaper = useCallback((incoming, fallback = {}) => {
-    let data = incoming;
-    if (data?.paper) data = data.paper;
-    if (data?.question_paper) data = data.question_paper;
-    if (Array.isArray(data)) data = data[0] || {};
+    // --- START: MODIFIED LOGIC ---
+    const topLevelData = incoming || {}; // Original document
+    let paperObjectData = incoming?.paper || {}; // Data inside 'paper' field
+    // --- END: MODIFIED LOGIC ---
 
+    // Keep these helpers
     const safeString = (v, fb = "") =>
       typeof v === "string" ? v.trim() || fb : fb;
     const safeNumber = (v, fb = 0) =>
       Number.isFinite(Number(v)) ? Number(v) : fb;
     const safeArray = (v) => (Array.isArray(v) ? v : []);
 
-    // Clean up the test name
+    // --- START: MODIFIED FIELD RESOLUTION ---
+    // Prioritize top-level fields saved by your controller,
+    // then fall back to fields inside the 'paper' object, then to fallback object.
+    const subject = safeString(
+      topLevelData.subject || paperObjectData.subject,
+      fallback.subject
+    );
+    const className = safeString(
+      topLevelData.classGrade || paperObjectData.className, // Use classGrade from top-level
+      fallback.className
+    );
+    const examType = safeString(topLevelData.examType, fallback.examType); // Get from top level
+
+    // Use testName from inside 'paper' object or top-level title
     let testName = safeString(
-      data?.testName || incoming?.title,
+      paperObjectData.testName || topLevelData.title,
       fallback.testName
     );
-    const subject = safeString(data?.subject, fallback.subject);
-
     if (testName.startsWith("questionPaper")) {
-      testName = subject ? `${subject} Examination` : "Examination"; // Provides a much better default
+      // If it's the default generated name, use examType or fallback
+      testName =
+        examType || (subject ? `${subject} Examination` : "Examination");
     }
+    // --- END: MODIFIED FIELD RESOLUTION ---
 
     const normalized = {
-      collegeName: safeString(data?.collegeName, fallback.collegeName),
-      testName: testName,
-      subject: safeString(data?.subject, fallback.subject),
-      className: safeString(data?.className, fallback.className),
-      maxMarks: safeNumber(data?.maxMarks, fallback.maxMarks),
-      timeAllowed: safeString(data?.timeAllowed, fallback.timeAllowed),
-      date: safeString(data?.date, fallback.date),
-      instructions: safeArray(data?.instructions)
+      // These come from inside 'paper' object primarily
+      collegeName: safeString(
+        paperObjectData.collegeName,
+        fallback.collegeName
+      ),
+      testName: testName, // Use the cleaned-up testName
+      timeAllowed: safeString(
+        paperObjectData.timeAllowed,
+        fallback.timeAllowed
+      ),
+      date: safeString(paperObjectData.date, fallback.date),
+      instructions: safeArray(paperObjectData.instructions)
         .map(safeString)
         .filter(Boolean),
-      sections: safeArray(data?.sections).map((section, sIdx) => ({
+      sections: safeArray(paperObjectData.sections).map((section, sIdx) => ({
         sectionName: safeString(section?.sectionName, `Section ${sIdx + 1}`),
         description: safeString(section?.description),
         questions: safeArray(section?.questions).map((q, qIdx) => ({
@@ -363,6 +402,17 @@ function ExamPaperGenerator() {
           options: safeArray(q?.options).map(safeString).filter(Boolean),
         })),
       })),
+
+      // --- START: ADDED/MODIFIED FIELDS ---
+      // These now reliably come from top-level or fallbacks
+      subject: subject,
+      className: className,
+      examType: examType,
+      // maxMarks can come from top-level if saved there, or inside paper object
+      maxMarks: safeNumber(
+        topLevelData.totalMarks || paperObjectData.maxMarks,
+        fallback.maxMarks
+      ),
     };
 
     if (normalized.instructions.length === 0 && fallback.instructions) {

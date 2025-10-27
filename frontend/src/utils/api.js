@@ -541,6 +541,16 @@ export const adminService = {
       };
     }
   },
+
+  getBooksByClass: async () => {
+    try {
+      const response = await api.get("/admin/books-by-class");
+      return response.data; // Should be { success: true, data: [...] }
+    } catch (error) {
+      console.error("Error fetching books by class for admin:", error);
+      return error.response?.data || { success: false, message: error.message };
+    }
+  },
 };
 
 export default api;

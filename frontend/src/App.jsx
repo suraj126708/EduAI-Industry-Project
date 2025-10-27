@@ -30,6 +30,7 @@ import Schools from "./Pages/Admin/Schools";
 import Classes from "./Pages/Admin/Classes";
 import Subjects from "./Pages/Admin/Subjects";
 import TeacherAssignments from "./Pages/Admin/TeacherAssignments";
+import Books from "./Pages/Admin/Books";
 
 // --- Superadmin Only Imports ---
 import SuperAdminLayout from "./Pages/SuperAdmin/SuperAdminLayout"; // We'll create this layout
@@ -89,6 +90,7 @@ function App() {
               <Route path="schools" element={<Schools />} />
               <Route path="classes" element={<Classes />} />
               <Route path="subjects" element={<Subjects />} />
+              <Route path="books" element={<Books />} />
               <Route path="teachers" element={<AdminUsers />} />
               <Route path="assignments" element={<TeacherAssignments />} />
               <Route path="students" element={<AdminStudents />} />

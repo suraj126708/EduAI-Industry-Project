@@ -16,6 +16,7 @@ import TeacherProfile from "../models/Teacher.js";
 import TeacherClassSubject from "../models/TeacherClassSubject.js";
 import StudentProfile from "../models/Student.js";
 import QuestionPaper from "../models/QuestionPaper.js";
+import Book from "../models/BookSchema.js";
 
 import { validationResult } from "express-validator";
 import admin from "../config/firebase.js";
@@ -2061,5 +2062,105 @@ export async function getAllPapersForSchool(req, res) {
       success: false,
       message: "Server error while fetching papers.",
     });
+  }
+}
+
+// @desc    Get all books for the admin's school, grouped by class
+// @route   GET /api/admin/books-by-class
+// @access  Private (Admin/Principal)
+export async function getBooksByClass(req, res) {
+  try {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Admin has no school assigned." });
+    }
+
+    const booksGroupedByClass = await Book.aggregate([
+      // 1. Match books for the admin's school
+      {
+        $match: { schoolId: new mongoose.Types.ObjectId(schoolId) },
+      },
+      // 2. Sort by Class ID and then maybe book title or creation date
+      {
+        $sort: { classId: 1, createdAt: -1 }, // Sort primarily by class, then newest book first
+      },
+      // 3. Populate Teacher info (Uploaded By)
+      {
+        $lookup: {
+          from: "users", // Your users collection name
+          localField: "uploadedBy",
+          foreignField: "_id",
+          as: "uploaderInfo",
+        },
+      },
+      // 4. Populate Class info
+      {
+        $lookup: {
+          from: "classes", // Your classes collection name
+          localField: "classId",
+          foreignField: "_id",
+          as: "classInfo",
+        },
+      },
+      // 5. Unwind the populated arrays (usually contain one element)
+      {
+        $unwind: {
+          path: "$uploaderInfo",
+          preserveNullAndEmptyArrays: true, // Keep book even if uploader deleted
+        },
+      },
+      {
+        $unwind: {
+          path: "$classInfo",
+          preserveNullAndEmptyArrays: true, // Keep book even if class deleted (though unlikely)
+        },
+      },
+      // 6. Group by Class ID
+      {
+        $group: {
+          _id: "$classId", // Group by the class ObjectId
+          classGrade: { $first: "$classInfo.grade" }, // Get the grade number
+          books: {
+            // Push relevant book details into an array for this class
+            $push: {
+              _id: "$_id",
+              title: "$title",
+              subject: "$subject",
+              author: "$author",
+              year: "$year",
+              uploadedAt: "$createdAt",
+              uploadedBy: {
+                name: "$uploaderInfo.name",
+                email: "$uploaderInfo.email",
+              },
+              processedStatus: "$processedStatus",
+              noOfChunks: "$noOfChunks",
+            },
+          },
+        },
+      },
+      // 7. Sort the final groups by class grade (numeric sort)
+      {
+        $sort: { classGrade: 1 },
+      },
+      // 8. Project to rename _id to classId for clarity (optional)
+      {
+        $project: {
+          _id: 0, // Remove the default _id group field
+          classId: "$_id", // Rename _id to classId
+          classGrade: 1,
+          books: 1,
+        },
+      },
+    ]);
+
+    res.status(200).json({ success: true, data: booksGroupedByClass });
+  } catch (error) {
+    console.error("Error fetching books for admin:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error fetching books." });
   }
 }
