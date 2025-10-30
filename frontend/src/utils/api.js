@@ -553,4 +553,44 @@ export const adminService = {
   },
 };
 
+export const teacherAPI = {
+  getStudentsByClass: async (grade, division) => {
+    try {
+      const res = await api.get("/teachers/students-by-class", {
+        params: { grade, division },
+      });
+      return res.data; // Returns { success: true, data: [...] }
+    } catch (err) {
+      console.error("Error fetching students:", err);
+      throw err;
+    }
+  },
+
+  getFilteredPaperGroups: async (classGrade, subject, examType) => {
+    try {
+      const res = await api.get("/teachers/my-question-papers-grouped", {
+        params: { classGrade, subject, examType },
+      });
+      return res.data; // Returns { success: true, data: [...] }
+    } catch (err) {
+      console.error("Error fetching paper groups:", err);
+      throw err;
+    }
+  },
+};
+
+export const evaluationAPI = {
+  uploadAnswerSheet: async (formData) => {
+    try {
+      const res = await api.post("/evaluations/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data; // Returns { success: true, data: [...] }
+    } catch (err) {
+      console.error("Error uploading answer sheet:", err);
+      throw err;
+    }
+  },
+};
+
 export default api;

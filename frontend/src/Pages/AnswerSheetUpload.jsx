@@ -1,779 +1,468 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useAuth } from "../contexts/AuthContext";
+// Import the new services
+import {
+  bookAPI,
+  teacherAPI,
+  evaluationAPI,
+  fetchTeacherProfile,
+} from "../utils/api";
+import { Loader2, AlertCircle, UploadCloud } from "lucide-react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
-const currentYear = new Date().getFullYear();
-const mockClasses = ["Class 1", "Class 2", "Class 3"];
-const mockDivisions = ["A", "B", "C"];
-const mockExams = ["Midterm", "Final", "Unit Test"];
-const mockPaperTypes = ["Same for all students", "According to sets"];
-const mockPaperSets = ["Set A", "Set B", "Set C", "Set D"];
-const mockAttendanceOptions = ["Present", "Absent"];
-const mockStudents = [
-  { rollNo: 1, name: "Amit" },
-  { rollNo: 2, name: "Ravi" },
-  { rollNo: 3, name: "Leena" },
-  { rollNo: 4, name: "Sara" },
-];
+// Reusable Select component (No changes)
+const SelectInput = ({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  error,
+  disabled = false,
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className={`w-full px-3 py-2 border ${
+        error ? "border-red-500" : "border-gray-300"
+      } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100`}
+    >
+      <option value="">{placeholder || `Select ${label}...`}</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+    {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+  </div>
+);
 
-function getRenamedFileName(
-  rollNo,
-  className,
-  division,
-  year,
-  index,
-  ext = "pdf"
-) {
-  return `${rollNo}_${className.replace(
-    /\s/g,
-    ""
-  )}_${division}_${year}_${index}.${ext}`;
-}
+const EvaluationSetupForm = () => {
+  const { user } = useAuth();
 
-function AnswerSheetBulkUpload() {
-  const [selectedClass, setSelectedClass] = useState("");
+  // --- State for Dropdowns ---
+  const [selectedGrade, setSelectedGrade] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
-  const [selectedExam, setSelectedExam] = useState("");
-  const [selectedPaperType, setSelectedPaperType] = useState("");
-  const [filterConfirmed, setFilterConfirmed] = useState(false);
-  const [uploads, setUploads] = useState({}); // rollNo => [{file,..}]
-  const [errors, setErrors] = useState({});
-  const [fileInputs, setFileInputs] = useState({}); // rollNo => inputs array, each tracks its file
-  const [studentSets, setStudentSets] = useState({}); // rollNo => selectedSet
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedExamType, setSelectedExamType] = useState("");
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedPaperGroup, setSelectedPaperGroup] = useState(null);
 
-  const handleClassChange = (e) => setSelectedClass(e.target.value);
-  const handleDivisionChange = (e) => setSelectedDivision(e.target.value);
-  const handleExamChange = (e) => setSelectedExam(e.target.value);
-  const handlePaperTypeChange = (e) => setSelectedPaperType(e.target.value);
+  // --- State for Data Options ---
+  const [allAssignments, setAllAssignments] = useState([]);
+  const [gradeOptions, setGradeOptions] = useState([]);
+  const [divisionOptions, setDivisionOptions] = useState([]);
+  const [subjectOptions, setSubjectOptions] = useState([]);
+  const [paperGroupOptions, setPaperGroupOptions] = useState([]);
 
-  const handleSetChange = (rollNo, set) => {
-    setStudentSets((prev) => ({
-      ...prev,
-      [rollNo]: set,
-    }));
-  };
+  // --- State for Students & Uploads ---
+  const [students, setStudents] = useState([]);
+  const [paperSets, setPaperSets] = useState([]);
+  const [selectedSets, setSelectedSets] = useState({});
+  const [uploadedFiles, setUploadedFiles] = useState({});
+  const [uploadStatus, setUploadStatus] = useState({});
 
-  const handleConfirm = () => {
-    if (
-      !selectedClass ||
-      !selectedDivision ||
-      !selectedExam ||
-      !selectedPaperType
-    ) {
-      alert("Please select class, division, exam, and paper type");
+  // --- Loading & Error State ---
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [isLoadingPapers, setIsLoadingPapers] = useState(false);
+
+  // === 1. Fetch Initial Assignments (on load) ===
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      if (!user || !user.email) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        // --- REFACTORED ---
+        const profile = await fetchTeacherProfile();
+        const schoolId = profile.schoolId;
+        if (!schoolId) throw new Error("School ID not found.");
+
+        // This call was already using bookAPI, so it's fine
+        const res = await bookAPI.getTeacherAssignments(schoolId, user.email);
+        if (!res.data.success) throw new Error(res.data.message);
+        // --- END REFACTOR ---
+
+        const assignments = res.data.data.assignments || [];
+        setAllAssignments(assignments);
+
+        const uniqueGrades = [
+          ...new Set(assignments.map((a) => a.classId.grade)),
+        ];
+        setGradeOptions(
+          uniqueGrades
+            .sort((a, b) => a - b)
+            .map((grade) => ({ value: grade, label: `Class ${grade}` }))
+        );
+      } catch (err) {
+        setError(err.message || "Failed to load initial data.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchInitialData();
+  }, [user]);
+
+  // === 2. Update Division Options (No API call, logic is fine) ===
+  useEffect(() => {
+    if (!selectedGrade) {
+      setDivisionOptions([]);
+      setSelectedDivision("");
       return;
     }
-    setFilterConfirmed(true);
-  };
+    const divisions = [
+      ...new Set(
+        allAssignments
+          .filter((a) => a.classId.grade === parseInt(selectedGrade))
+          .map((a) => a.classId.division)
+      ),
+    ];
+    setDivisionOptions(
+      divisions.sort().map((div) => ({ value: div, label: div }))
+    );
+  }, [selectedGrade, allAssignments]);
 
-  const handleResetFilter = () => {
-    setSelectedClass("");
-    setSelectedDivision("");
-    setSelectedExam("");
-    setSelectedPaperType("");
-    setFilterConfirmed(false);
-    setUploads({});
-    setErrors({});
-    setFileInputs({});
-    setStudentSets({});
-  };
-
-  // Initialize file inputs and set all students as present by default
-  React.useEffect(() => {
-    if (filterConfirmed) {
-      const initialInputs = {};
-      const initialSets = {};
-      mockStudents.forEach((s) => {
-        initialInputs[s.rollNo] = [{ file: null }];
-        initialSets[s.rollNo] = "Present"; // Default to present
-      });
-      setFileInputs(initialInputs);
-      setStudentSets(initialSets);
-    }
-  }, [filterConfirmed]);
-
-  // Handle file select for each input
-  const handleFileChange = (rollNo, inputIdx, fileList) => {
-    setErrors((prev) => ({ ...prev, [rollNo]: "" }));
-    const file = fileList[0];
-    if (!file) return;
-    let ext =
-      file.type === "application/pdf" ? "pdf" : file.name.split(".").pop();
-    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
-      setErrors((prev) => ({
-        ...prev,
-        [rollNo]: "Only image or PDF files allowed",
-      }));
+  // === 3. Update Subject Options (No API call, logic is fine) ===
+  useEffect(() => {
+    if (!selectedGrade || !selectedDivision) {
+      setSubjectOptions([]);
+      setSelectedSubject("");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setErrors((prev) => ({
-        ...prev,
-        [rollNo]: "File size must be under 10MB",
-      }));
+    const subjects = [
+      ...new Map(
+        allAssignments
+          .filter(
+            (a) =>
+              a.classId.grade === parseInt(selectedGrade) &&
+              a.classId.division === selectedDivision
+          )
+          .map((a) => [a.subjectId._id, a.subjectId.name])
+      ),
+    ];
+    setSubjectOptions(
+      subjects.map(([id, name]) => ({ value: name, label: name }))
+    );
+  }, [selectedDivision, selectedGrade, allAssignments]);
+
+  // === 4. Fetch Students (when Division changes) ===
+  useEffect(() => {
+    if (!selectedGrade || !selectedDivision) {
+      setStudents([]);
       return;
     }
-    const newFile = new File(
-      [file],
-      getRenamedFileName(
-        rollNo,
-        selectedClass,
-        selectedDivision,
-        currentYear,
-        inputIdx + 1,
-        ext
-      ),
-      { type: file.type }
-    );
-    setFileInputs((prev) => ({
-      ...prev,
-      [rollNo]: prev[rollNo].map((input, idx) =>
-        idx === inputIdx ? { ...input, file: newFile } : input
-      ),
-    }));
-    setUploads((prev) => ({
-      ...prev,
-      [rollNo]: [
-        ...(prev[rollNo]
-          ? prev[rollNo].filter((_, idx) => idx !== inputIdx)
-          : []),
-        { file: newFile, status: "Ready" },
-      ].sort((a, b) => a.file.name.localeCompare(b.file.name)),
-    }));
+    const fetchStudents = async () => {
+      setIsLoadingStudents(true);
+      setStudents([]);
+      try {
+        // --- REFACTORED ---
+        const res = await teacherAPI.getStudentsByClass(
+          selectedGrade,
+          selectedDivision
+        );
+        if (res.success) {
+          setStudents(res.data);
+        } else {
+          throw new Error(res.message);
+        }
+        // --- END REFACTOR ---
+      } catch (err) {
+        setError(`Failed to fetch students: ${err.message}`);
+      } finally {
+        setIsLoadingStudents(false);
+      }
+    };
+    fetchStudents();
+  }, [selectedGrade, selectedDivision]);
+
+  // === 5. Fetch Filtered Paper Groups (when filters change) ===
+  useEffect(() => {
+    if (!selectedGrade || !selectedSubject || !selectedExamType) {
+      setPaperGroupOptions([]);
+      return;
+    }
+    const fetchPapers = async () => {
+      setIsLoadingPapers(true);
+      setPaperGroupOptions([]);
+      try {
+        // --- REFACTORED ---
+        const res = await teacherAPI.getFilteredPaperGroups(
+          selectedGrade,
+          selectedSubject,
+          selectedExamType
+        );
+        if (res.success) {
+          setPaperGroupOptions(
+            res.data.map((group) => ({
+              value: group._id,
+              label: group.groupTitle,
+              fullGroup: group,
+            }))
+          );
+        } else {
+          throw new Error(res.message);
+        }
+        // --- END REFACTOR ---
+      } catch (err) {
+        setError(`Failed to fetch papers: ${err.message}`);
+      } finally {
+        setIsLoadingPapers(false);
+      }
+    };
+    fetchPapers();
+  }, [selectedGrade, selectedSubject, selectedExamType]);
+
+  // === 6. Handle Paper Group Change (No API call, logic is fine) ===
+  const handlePaperGroupChange = (paperId) => {
+    const groupOption = paperGroupOptions.find((opt) => opt.value === paperId);
+    if (groupOption) {
+      setSelectedPaperGroup(groupOption.fullGroup);
+      setPaperSets(groupOption.fullGroup.papers);
+    } else {
+      setSelectedPaperGroup(null);
+      setPaperSets([]);
+    }
   };
 
-  // Camera capture handler (always adds a new field)
-  const handleCameraCapture = (rollNo, fileList) => {
-    const file = fileList[0];
-    if (!file) return;
-    let ext =
-      file.type === "application/pdf" ? "pdf" : file.name.split(".").pop();
-    const nextIdx = (fileInputs[rollNo]?.length || 0) + 1;
-    const newFile = new File(
-      [file],
-      getRenamedFileName(
-        rollNo,
-        selectedClass,
-        selectedDivision,
-        currentYear,
-        nextIdx,
-        ext
-      ),
-      { type: file.type }
-    );
-    setFileInputs((prev) => ({
-      ...prev,
-      [rollNo]: [...(prev[rollNo] || []), { file: newFile }],
-    }));
-    setUploads((prev) => ({
-      ...prev,
-      [rollNo]: [...(prev[rollNo] || []), { file: newFile, status: "Ready" }],
-    }));
+  // === 7. Handlers for student list (No API call, logic is fine) ===
+  const handleSetSelection = (studentId, paperSetId) => {
+    setSelectedSets((prev) => ({ ...prev, [studentId]: paperSetId }));
   };
 
-  // Only add "+"" if latest input has a file selected
-  const handleAddInput = (rollNo) => {
-    const inputs = fileInputs[rollNo] || [];
-    if (!inputs[inputs.length - 1].file) return; // Block adding empty input
-    setFileInputs((prev) => ({
-      ...prev,
-      [rollNo]: [...inputs, { file: null }],
-    }));
+  const handleFileChange = (studentId, file) => {
+    if (file) {
+      setUploadedFiles((prev) => ({ ...prev, [studentId]: file }));
+    }
   };
 
-  // Remove a file input (and its file) before uploading
-  const handleRemoveFile = (rollNo, idx) => {
-    setFileInputs((prev) => ({
-      ...prev,
-      [rollNo]: prev[rollNo].filter((_, i) => i !== idx),
-    }));
-    setUploads((prev) => ({
-      ...prev,
-      [rollNo]: prev[rollNo]?.filter((_, i) => i !== idx),
-    }));
-  };
+  // === 8. Handle Submit ===
+  const handleSubmit = async (studentId) => {
+    const questionPaperId = selectedSets[studentId];
+    const answerSheetFile = uploadedFiles[studentId];
 
-  // Global submit function to upload all answer sheets
-  const handleGlobalSubmit = () => {
-    const presentStudents = getPresentStudents();
-    const studentsWithoutFiles = presentStudents.filter(
-      (student) =>
-        !uploads[student.rollNo] || uploads[student.rollNo].length === 0
-    );
-
-    if (studentsWithoutFiles.length > 0) {
+    if (!questionPaperId || !answerSheetFile) {
       alert(
-        `Please upload answer sheets for all present students. Missing files for: ${studentsWithoutFiles
-          .map((s) => s.name)
-          .join(", ")}`
+        "Please select a paper set and upload an answer sheet for this student."
       );
       return;
     }
 
-    // Start uploading all files
-    presentStudents.forEach((student) => {
-      if (uploads[student.rollNo]) {
-        setUploads((prev) => ({
-          ...prev,
-          [student.rollNo]: prev[student.rollNo].map((item) => ({
-            ...item,
-            status: "Uploading",
-          })),
-        }));
+    setUploadStatus((prev) => ({ ...prev, [studentId]: "loading" }));
+
+    try {
+      const formData = new FormData();
+      formData.append("studentId", studentId);
+      formData.append("questionPaperId", questionPaperId);
+      formData.append("answerSheet", answerSheetFile);
+
+      // --- REFACTORED ---
+      const res = await evaluationAPI.uploadAnswerSheet(formData);
+      if (res.success) {
+        setUploadStatus((prev) => ({ ...prev, [studentId]: "success" }));
+      } else {
+        throw new Error(res.message);
       }
-    });
-
-    // Simulate upload completion
-    setTimeout(() => {
-      presentStudents.forEach((student) => {
-        if (uploads[student.rollNo]) {
-          setUploads((prev) => ({
-            ...prev,
-            [student.rollNo]: prev[student.rollNo].map((item) => ({
-              ...item,
-              status: "Uploaded",
-            })),
-          }));
-        }
-      });
-    }, 2000);
-  };
-
-  // Individual submit function for absent students
-  const handleIndividualSubmit = (rollNo) => {
-    if (!uploads[rollNo] || uploads[rollNo].length === 0) {
-      setErrors((prev) => ({ ...prev, [rollNo]: "File required" }));
-      return;
-    }
-
-    // Start uploading files for this student
-    setUploads((prev) => ({
-      ...prev,
-      [rollNo]: prev[rollNo].map((item) => ({
-        ...item,
-        status: "Uploading",
-      })),
-    }));
-
-    // Simulate upload completion
-    setTimeout(() => {
-      setUploads((prev) => ({
+      // --- END REFACTOR ---
+    } catch (err) {
+      setUploadStatus((prev) => ({
         ...prev,
-        [rollNo]: prev[rollNo].map((item) => ({
-          ...item,
-          status: "Uploaded",
-        })),
+        [studentId]: "error",
+        message: err.message,
       }));
-    }, 1500);
-  };
-
-  // Check if student is marked as absent
-  const isStudentAbsent = (rollNo) => {
-    return studentSets[rollNo] === "Absent";
-  };
-
-  // Get absent students
-  const getAbsentStudents = () => {
-    return mockStudents.filter((student) => isStudentAbsent(student.rollNo));
-  };
-
-  // Get present students (not marked absent)
-  const getPresentStudents = () => {
-    return mockStudents.filter((student) => !isStudentAbsent(student.rollNo));
-  };
-
-  // Check if all present students have files ready
-  const allPresentStudentsReady = () => {
-    const presentStudents = getPresentStudents();
-    return presentStudents.every(
-      (student) => uploads[student.rollNo] && uploads[student.rollNo].length > 0
-    );
-  };
-
-  // Get status for a student
-  const getStudentStatus = (rollNo) => {
-    if (isStudentAbsent(rollNo)) {
-      return "Absent";
     }
-
-    if (!uploads[rollNo] || uploads[rollNo].length === 0) {
-      return "Pending";
-    }
-
-    return "Ready";
   };
 
+  // === 9. JSX (No changes needed) ===
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="max-w-5xl w-full bg-white shadow-lg rounded-xl p-8">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Answer Sheet Upload
-          </h2>
-          <p className="text-gray-500">
-            Select section once; upload multiple answer sheets per student
-          </p>
+    <div className="space-y-6">
+      <div className="p-4 border rounded-lg bg-white shadow-sm">
+        <h3 className="text-lg font-medium mb-4">Select Evaluation Criteria</h3>
+        {error && (
+          <div className="flex items-center p-3 mb-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+            <span className="text-sm text-red-800">{error}</span>
+          </div>
+        )}
+        {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <SelectInput
+            label="Class"
+            value={selectedGrade}
+            onChange={setSelectedGrade}
+            options={gradeOptions}
+            disabled={isLoading}
+          />
+          <SelectInput
+            label="Division"
+            value={selectedDivision}
+            onChange={setSelectedDivision}
+            options={divisionOptions}
+            disabled={!selectedGrade}
+          />
+          <SelectInput
+            label="Subject"
+            value={selectedSubject}
+            onChange={setSelectedSubject}
+            options={subjectOptions}
+            disabled={!selectedDivision}
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Exam Date
+            </label>
+            <DatePicker
+              selected={selectedDate}
+              onChange={(date) => setSelectedDate(date)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+              placeholderText="Select Date (Optional)"
+            />
+          </div>
+          <SelectInput
+            label="Exam Type"
+            value={selectedExamType}
+            onChange={setSelectedExamType}
+            options={[
+              { value: "Unit Test", label: "Unit Test" },
+              { value: "Midterm", label: "Midterm" },
+              { value: "Final", label: "Final" },
+            ]}
+            disabled={!selectedSubject}
+          />
+          <SelectInput
+            label="Question Paper"
+            value={selectedPaperGroup ? selectedPaperGroup._id : ""}
+            onChange={handlePaperGroupChange}
+            options={paperGroupOptions}
+            placeholder={
+              isLoadingPapers ? "Loading papers..." : "Select Paper..."
+            }
+            disabled={isLoadingPapers || !selectedExamType}
+          />
         </div>
-        {!filterConfirmed ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <select
-                className="border rounded p-2 w-full"
-                value={selectedClass}
-                onChange={handleClassChange}
-              >
-                <option value="">Select Class</option>
-                {mockClasses.map((cls) => (
-                  <option key={cls}>{cls}</option>
-                ))}
-              </select>
-              <select
-                className="border rounded p-2 w-full"
-                value={selectedDivision}
-                onChange={handleDivisionChange}
-              >
-                <option value="">Select Division</option>
-                {mockDivisions.map((div) => (
-                  <option key={div}>{div}</option>
-                ))}
-              </select>
-              <select
-                className="border rounded p-2 w-full"
-                value={selectedExam}
-                onChange={handleExamChange}
-              >
-                <option value="">Select Exam</option>
-                {mockExams.map((ex) => (
-                  <option key={ex}>{ex}</option>
-                ))}
-              </select>
-              <select
-                className="border rounded p-2 w-full"
-                value={selectedPaperType}
-                onChange={handlePaperTypeChange}
-              >
-                <option value="">Select Paper Type</option>
-                {mockPaperTypes.map((type) => (
-                  <option key={type}>{type}</option>
-                ))}
-              </select>
+      </div>
+
+      {/* --- Student List Table --- */}
+      {(isLoadingStudents || students.length > 0) && (
+        <div className="p-4 border rounded-lg bg-white shadow-sm">
+          <h3 className="text-lg font-medium mb-4">Upload Answer Sheets</h3>
+          {isLoadingStudents ? (
+            <div className="flex items-center justify-center p-6">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-500 mr-2" />
+              <span className="text-gray-500">Loading students...</span>
             </div>
-            <div className="flex justify-center">
-              <button
-                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={handleConfirm}
-              >
-                Show Student List
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <div className="space-x-4 text-gray-600">
-                <span>
-                  <b>Class:</b> {selectedClass}
-                </span>
-                <span>
-                  <b>Division:</b> {selectedDivision}
-                </span>
-                <span>
-                  <b>Exam:</b> {selectedExam}
-                </span>
-                <span>
-                  <b>Paper Type:</b> {selectedPaperType}
-                </span>
-                <span>
-                  <b>Year:</b> {currentYear}
-                </span>
-              </div>
-              <button
-                className="px-3 py-1 rounded text-sm border"
-                onClick={handleResetFilter}
-              >
-                Change Section
-              </button>
-            </div>
+          ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full bg-white text-sm rounded-lg">
-                <thead className="bg-gray-100 text-gray-700">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th className="py-2 px-4 text-left">Roll No.</th>
-                    <th className="py-2 px-4 text-left">Name</th>
-                    {selectedPaperType === "According to sets" ? (
-                      <th className="py-2 px-4 text-left">Paper Set</th>
-                    ) : (
-                      <th className="py-2 px-4 text-left">Attendance</th>
-                    )}
-                    <th className="py-2 px-4 text-left">Upload</th>
-                    <th className="py-2 px-4 text-left">Camera</th>
-                    <th className="py-2 px-4 text-left">Files (Renamed)</th>
-                    <th className="py-2 px-4 text-left">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Student
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Paper Set
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Answer Sheet
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {mockStudents.map((student) => (
-                    <tr
-                      key={student.rollNo}
-                      className="border-b last:border-none"
-                    >
-                      <td className="py-2 px-4">{student.rollNo}</td>
-                      <td className="py-2 px-4">{student.name}</td>
-                      <td className="py-2 px-4">
-                        {selectedPaperType === "According to sets" ? (
-                          <select
-                            className="border rounded p-1 text-sm"
-                            value={studentSets[student.rollNo] || ""}
-                            onChange={(e) =>
-                              handleSetChange(student.rollNo, e.target.value)
-                            }
-                          >
-                            <option value="">Select Set</option>
-                            {mockPaperSets.map((set) => (
-                              <option key={set} value={set}>
-                                {set}
-                              </option>
-                            ))}
-                            <option value="Absent">Absent</option>
-                          </select>
-                        ) : (
-                          <select
-                            className="border rounded p-1 text-sm"
-                            value={studentSets[student.rollNo] || "Present"}
-                            onChange={(e) =>
-                              handleSetChange(student.rollNo, e.target.value)
-                            }
-                          >
-                            {mockAttendanceOptions.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </td>
-                      <td className="py-2 px-4">
-                        {(fileInputs[student.rollNo] || []).map(
-                          (input, idx) => (
-                            <div key={idx} className="flex items-center mb-2">
-                              <input
-                                type="file"
-                                accept="application/pdf,image/*"
-                                className="block w-full"
-                                style={{ maxWidth: "150px" }}
-                                onChange={(e) =>
-                                  handleFileChange(
-                                    student.rollNo,
-                                    idx,
-                                    e.target.files
-                                  )
-                                }
-                              />
-                              {/* Show + only if current input contains a file and it's the last input */}
-                              {input.file &&
-                                idx ===
-                                  fileInputs[student.rollNo].length - 1 && (
-                                  <button
-                                    type="button"
-                                    className="text-blue-600 ml-2"
-                                    onClick={() =>
-                                      handleAddInput(student.rollNo)
-                                    }
-                                    title="Add another file"
-                                  >
-                                    <span className="text-xl font-bold">+</span>
-                                  </button>
-                                )}
-                              {/* Optionally a remove button for each upload */}
-                              {input.file && (
-                                <button
-                                  className="text-xs text-red-500 ml-2"
-                                  type="button"
-                                  onClick={() =>
-                                    handleRemoveFile(student.rollNo, idx)
-                                  }
-                                  title="Remove file"
-                                >
-                                  x
-                                </button>
-                              )}
-                            </div>
-                          )
-                        )}
-                        {errors[student.rollNo] && (
-                          <div className="text-red-500 text-xs mt-1">
-                            {errors[student.rollNo]}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2 px-4">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="block w-full"
-                          style={{ maxWidth: "140px" }}
-                          onChange={(e) =>
-                            e.target.files.length > 0 &&
-                            handleCameraCapture(student.rollNo, e.target.files)
-                          }
-                        />
-                        <div className="text-xs text-gray-400 mt-1">
-                          Camera (mobile)
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {students.map((student) => (
+                    <tr key={student._id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {student.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Roll: {student.rollNumber}
                         </div>
                       </td>
-                      <td className="py-2 px-4">
-                        <ul className="list-disc pl-4">
-                          {uploads[student.rollNo]?.length > 0 &&
-                            uploads[student.rollNo].map((item, idx) => (
-                              <li key={idx} className="mb-1">
-                                {item.file.name}
-                              </li>
-                            ))}
-                        </ul>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <select
+                          value={selectedSets[student._id] || ""}
+                          onChange={(e) =>
+                            handleSetSelection(student._id, e.target.value)
+                          }
+                          className="w-full text-sm border-gray-300 rounded-md shadow-sm"
+                          disabled={paperSets.length === 0}
+                        >
+                          <option value="">Select set...</option>
+                          {paperSets.map((set, index) => (
+                            <option key={set._id} value={set._id}>
+                              Set {String.fromCharCode(65 + index)} (
+                              {set.paper?.maxMarks || 0} Marks)
+                            </option>
+                          ))}
+                        </select>
                       </td>
-                      <td className="py-2 px-4">
-                        {(() => {
-                          const status = getStudentStatus(student.rollNo);
-                          const hasUploading = uploads[student.rollNo]?.some(
-                            (item) => item.status === "Uploading"
-                          );
-                          const hasUploaded = uploads[student.rollNo]?.every(
-                            (item) => item.status === "Uploaded"
-                          );
-
-                          let displayStatus = status;
-                          if (hasUploading) displayStatus = "Uploading";
-                          else if (hasUploaded) displayStatus = "Uploaded";
-
-                          return (
-                            <span
-                              className={`px-2 py-1 rounded ${
-                                displayStatus === "Uploaded"
-                                  ? "bg-green-100 text-green-700"
-                                  : displayStatus === "Uploading"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : displayStatus === "Ready"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : displayStatus === "Absent"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-gray-200 text-gray-700"
-                              }`}
-                            >
-                              {displayStatus}
-                            </span>
-                          );
-                        })()}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <label className="text-sm text-gray-600 cursor-pointer">
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png"
+                            onChange={(e) =>
+                              handleFileChange(student._id, e.target.files[0])
+                            }
+                            className="block w-full text-sm text-gray-500
+                              file:mr-4 file:py-2 file:px-4
+                              file:rounded-md file:border-0
+                              file:text-sm file:font-semibold
+                              file:bg-indigo-50 file:text-indigo-700
+                              hover:file:bg-indigo-100"
+                          />
+                        </label>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleSubmit(student._id)}
+                          disabled={
+                            !selectedSets[student._id] ||
+                            !uploadedFiles[student._id] ||
+                            uploadStatus[student._id] === "loading"
+                          }
+                          className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400"
+                        >
+                          {uploadStatus[student._id] === "loading" ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <UploadCloud className="w-4 h-4 mr-2" />
+                          )}
+                          {uploadStatus[student._id] === "success"
+                            ? "Uploaded"
+                            : "Upload"}
+                        </button>
+                        {uploadStatus[student._id] === "error" && (
+                          <p
+                            className="text-xs text-red-600 mt-1"
+                            title={uploadStatus[student._id].message}
+                          >
+                            Upload failed.
+                          </p>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-
-            {/* Global Submit Button */}
-            <div className="mt-6 flex justify-center">
-              <button
-                className={`px-8 py-3 rounded-lg text-white font-semibold ${
-                  allPresentStudentsReady()
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-gray-400 cursor-not-allowed"
-                }`}
-                disabled={!allPresentStudentsReady()}
-                onClick={handleGlobalSubmit}
-              >
-                Submit All Answer Sheets
-              </button>
-            </div>
-
-            {/* Absent Students Section */}
-            {getAbsentStudents().length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">
-                  Absent Students
-                </h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white text-sm rounded-lg border">
-                    <thead className="bg-red-50 text-gray-700">
-                      <tr>
-                        <th className="py-2 px-4 text-left">Roll No.</th>
-                        <th className="py-2 px-4 text-left">Name</th>
-                        <th className="py-2 px-4 text-left">Attendance</th>
-                        <th className="py-2 px-4 text-left">Upload</th>
-                        <th className="py-2 px-4 text-left">Camera</th>
-                        <th className="py-2 px-4 text-left">Files (Renamed)</th>
-                        <th className="py-2 px-4 text-left">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getAbsentStudents().map((student) => (
-                        <tr
-                          key={student.rollNo}
-                          className="border-b last:border-none bg-red-50"
-                        >
-                          <td className="py-2 px-4">{student.rollNo}</td>
-                          <td className="py-2 px-4">{student.name}</td>
-                          <td className="py-2 px-4">
-                            <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm">
-                              Absent
-                            </span>
-                          </td>
-                          <td className="py-2 px-4">
-                            {(fileInputs[student.rollNo] || []).map(
-                              (input, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center mb-2"
-                                >
-                                  <input
-                                    type="file"
-                                    accept="application/pdf,image/*"
-                                    className="block w-full"
-                                    style={{ maxWidth: "150px" }}
-                                    onChange={(e) =>
-                                      handleFileChange(
-                                        student.rollNo,
-                                        idx,
-                                        e.target.files
-                                      )
-                                    }
-                                  />
-                                  {input.file &&
-                                    idx ===
-                                      fileInputs[student.rollNo].length - 1 && (
-                                      <button
-                                        type="button"
-                                        className="text-blue-600 ml-2"
-                                        onClick={() =>
-                                          handleAddInput(student.rollNo)
-                                        }
-                                        title="Add another file"
-                                      >
-                                        <span className="text-xl font-bold">
-                                          +
-                                        </span>
-                                      </button>
-                                    )}
-                                  {input.file && (
-                                    <button
-                                      className="text-xs text-red-500 ml-2"
-                                      type="button"
-                                      onClick={() =>
-                                        handleRemoveFile(student.rollNo, idx)
-                                      }
-                                      title="Remove file"
-                                    >
-                                      x
-                                    </button>
-                                  )}
-                                </div>
-                              )
-                            )}
-                            {errors[student.rollNo] && (
-                              <div className="text-red-500 text-xs mt-1">
-                                {errors[student.rollNo]}
-                              </div>
-                            )}
-                            <button
-                              className={`px-3 py-1 rounded text-white mt-2 text-sm ${
-                                !uploads[student.rollNo] ||
-                                uploads[student.rollNo].length === 0 ||
-                                uploads[student.rollNo].some(
-                                  (f) =>
-                                    f.status === "Uploading" ||
-                                    f.status === "Uploaded"
-                                )
-                                  ? "bg-gray-400 cursor-not-allowed"
-                                  : "bg-green-600 hover:bg-green-700"
-                              }`}
-                              disabled={
-                                !uploads[student.rollNo] ||
-                                uploads[student.rollNo].length === 0 ||
-                                uploads[student.rollNo].some(
-                                  (f) =>
-                                    f.status === "Uploading" ||
-                                    f.status === "Uploaded"
-                                )
-                              }
-                              onClick={() =>
-                                handleIndividualSubmit(student.rollNo)
-                              }
-                            >
-                              Submit
-                            </button>
-                          </td>
-                          <td className="py-2 px-4">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              capture="environment"
-                              className="block w-full"
-                              style={{ maxWidth: "140px" }}
-                              onChange={(e) =>
-                                e.target.files.length > 0 &&
-                                handleCameraCapture(
-                                  student.rollNo,
-                                  e.target.files
-                                )
-                              }
-                            />
-                            <div className="text-xs text-gray-400 mt-1">
-                              Camera (mobile)
-                            </div>
-                          </td>
-                          <td className="py-2 px-4">
-                            <ul className="list-disc pl-4">
-                              {uploads[student.rollNo]?.length > 0 &&
-                                uploads[student.rollNo].map((item, idx) => (
-                                  <li key={idx} className="mb-1">
-                                    {item.file.name}
-                                  </li>
-                                ))}
-                            </ul>
-                          </td>
-                          <td className="py-2 px-4">
-                            {(() => {
-                              const status = getStudentStatus(student.rollNo);
-                              const hasUploading = uploads[
-                                student.rollNo
-                              ]?.some((item) => item.status === "Uploading");
-                              const hasUploaded = uploads[
-                                student.rollNo
-                              ]?.every((item) => item.status === "Uploaded");
-
-                              let displayStatus = status;
-                              if (hasUploading) displayStatus = "Uploading";
-                              else if (hasUploaded) displayStatus = "Uploaded";
-
-                              return (
-                                <span
-                                  className={`px-2 py-1 rounded ${
-                                    displayStatus === "Uploaded"
-                                      ? "bg-green-100 text-green-700"
-                                      : displayStatus === "Uploading"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : displayStatus === "Ready"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : displayStatus === "Absent"
-                                      ? "bg-red-100 text-red-700"
-                                      : "bg-gray-200 text-gray-700"
-                                  }`}
-                                >
-                                  {displayStatus}
-                                </span>
-                              );
-                            })()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
-}
+};
 
-export default AnswerSheetBulkUpload;
+export default EvaluationSetupForm;
