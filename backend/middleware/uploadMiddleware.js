@@ -87,5 +87,11 @@ const pdfUpload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }, // Limit 50MB for PDFs
 });
 
+export const uploadAnswerSheet = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
+
 export { pdfUpload };
 export default upload;

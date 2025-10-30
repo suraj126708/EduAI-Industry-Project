@@ -25,6 +25,8 @@ import {
   getMyQuestionPapers,
   getQuestionPaperById,
   deleteTeacherQuestionPaper,
+  getStudentsByClass,
+  getFilteredQuestionPaperGroups,
 } from "../controllers/teacherController.js";
 import {
   authenticateFirebaseToken,
@@ -99,6 +101,20 @@ router.get(
   authenticateFirebaseToken,
   authorize("teacher"),
   getMyQuestionPapers
+);
+
+router.get(
+  "/students-by-class",
+  authenticateFirebaseToken,
+  authorize("teacher"),
+  getStudentsByClass
+);
+
+router.get(
+  "/my-question-papers-grouped",
+  authenticateFirebaseToken,
+  authorize("teacher"),
+  getFilteredQuestionPaperGroups
 );
 
 // --- ROUTES WITH PARAMETERS BUT MORE SPECIFIC THAN /:id ---

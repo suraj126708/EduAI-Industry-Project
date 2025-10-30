@@ -20,6 +20,7 @@ import axios from "axios";
 import FormData from "form-data";
 import Book from "../models/BookSchema.js";
 import TeacherClassSubject from "../models/TeacherClassSubject.js";
+import Student from "../models/Student.js";
 
 /**
  * Get all teachers (Admin only)
@@ -1026,5 +1027,149 @@ export const deleteTeacherQuestionPaper = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Failed to delete papers" });
+  }
+};
+
+// @desc    Get students by class grade and division
+// @route   GET /api/teachers/students-by-class
+// @access  Private (Teacher)
+export const getStudentsByClass = async (req, res) => {
+  try {
+    const { grade, division } = req.query;
+    const schoolId = req.user.schoolId;
+
+    if (!grade || !division) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Grade and division are required." });
+    }
+
+    // 1. Find the Class document
+    const classDoc = await Class.findOne({
+      grade: grade,
+      division: division,
+      schoolId: schoolId,
+    });
+
+    if (!classDoc) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Class not found." });
+    }
+
+    // 2. Find all students in that class
+    const students = await Student.find({
+      classId: classDoc._id,
+    }).sort({ rollNumber: 1, name: 1 });
+
+    res.status(200).json({ success: true, data: students });
+  } catch (error) {
+    console.error("Teacher Error - Get students by class:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve students",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get question paper groups, filtered by criteria
+// @route   GET /api/teachers/my-question-papers-grouped
+// @access  Private (Teacher)
+export const getFilteredQuestionPaperGroups = async (req, res) => {
+  try {
+    const { classGrade, subject, examType } = req.query;
+    const teacherId = req.user._id;
+
+    if (!classGrade || !subject) {
+      return res.status(400).json({
+        success: false,
+        message: "Class and Subject are required to find papers.",
+      });
+    }
+
+    // 1. Build the initial match filter
+    const matchFilter = {
+      createdBy: teacherId,
+      classGrade: classGrade,
+      subject: subject,
+    };
+
+    // Add optional filters
+    if (examType) matchFilter.examType = examType;
+    // Add date filter if needed, e.g.:
+    // if (date) matchFilter['paper.date'] = date;
+
+    const paperGroups = await QuestionPaper.aggregate([
+      // 1. Match papers based on filters
+      { $match: matchFilter },
+      // 2. Sort by creation date (newest first)
+      { $sort: { createdAt: -1 } },
+      // 3. Add a field for grouping by timestamp (rounded to the minute)
+      {
+        $addFields: {
+          roundedCreatedAt: {
+            $dateTrunc: { date: "$createdAt", unit: "minute" },
+          },
+        },
+      },
+      // 4. Group by batchId or the fallback composite key
+      {
+        $group: {
+          _id: {
+            batchKey: {
+              $ifNull: [
+                "$generationBatchId",
+                {
+                  subject: "$subject",
+                  class: "$classGrade",
+                  time: "$roundedCreatedAt",
+                },
+              ],
+            },
+          },
+          sets: { $sum: 1 },
+          firstDoc: { $first: "$$ROOT" },
+          papers: { $push: "$$ROOT" },
+        },
+      },
+      // 5. Format the output
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: [
+              "$firstDoc",
+              {
+                sets: "$sets",
+                papers: "$papers",
+                _id: "$firstDoc._id", // Use paper's ID as the group's "viewable" ID
+                // Create a user-friendly title for the dropdown
+                groupTitle: {
+                  $concat: [
+                    "$firstDoc.subject",
+                    " - ",
+                    "$firstDoc.examType",
+                    " (",
+                    { $toString: "$sets" },
+                    " sets)",
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+      // 6. Sort the final groups
+      { $sort: { createdAt: -1 } },
+    ]);
+
+    return res.status(200).json({ success: true, data: paperGroups });
+  } catch (error) {
+    console.error("Teacher Error - Get filtered paper groups:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve question paper groups",
+      error: error.message,
+    });
   }
 };

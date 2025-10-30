@@ -21,6 +21,7 @@ import authRoutes from "./routes/authRoutes.js";
 import teacherRoutes from "./routes/teacherRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import schoolRoutes from "./routes/schoolRoutes.js";
+import evaluationRoute from "./routes/evaluationRoutes.js";
 
 // Import database connection
 import connectDB from "./config/db.js";
@@ -127,6 +128,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/teachers", teacherRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/superadmin", schoolRoutes);
+app.use("/api/evaluation", evaluationRoute);
 //app.use("/api/books", bookRoutes);
 
 // ✅ NEW (Works in Express v5)
