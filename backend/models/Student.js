@@ -14,11 +14,13 @@ const studentSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    classId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Class",
+    class: {
+      type: String,
       required: true,
-      index: true,
+    },
+    div: {
+      type: String,
+      required: true,
     },
     rollNo: {
       type: Number,

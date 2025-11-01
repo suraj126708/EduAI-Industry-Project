@@ -14,7 +14,7 @@ import Class from "../models/Class.js";
 import Subject from "../models/Subject.js";
 import TeacherProfile from "../models/Teacher.js";
 import TeacherClassSubject from "../models/TeacherClassSubject.js";
-import StudentProfile from "../models/Student.js";
+import Student from "../models/Student.js";
 import QuestionPaper from "../models/QuestionPaper.js";
 import Book from "../models/BookSchema.js";
 
@@ -1064,7 +1064,7 @@ export const getStudentsByClassDivision = async (req, res) => {
     // 🛡️ SECURITY: Use the principal's schoolId from the authenticated user token.
     const schoolId = req.user.schoolId;
 
-    const students = await StudentProfile.find({
+    const students = await Student.find({
       schoolId: schoolId, // Filter by the principal's school
       class: cls,
       div: div,
@@ -1092,7 +1092,7 @@ export const getStudentsByClassDivision = async (req, res) => {
   }
 };
 
-// Bulk Upload Students (Excel)
+// Upload Students (Excel)
 export const uploadStudentExcel = async (req, res) => {
   try {
     if (!req.file) {
@@ -1101,7 +1101,7 @@ export const uploadStudentExcel = async (req, res) => {
         .json({ success: false, message: "Excel file required" });
     }
     // 🔑 Get the principal's schoolId to associate with all uploaded students.
-    const schoolId = req.user.schoolId;
+    const schoolId = req.user.schoolId; // This line is correct
 
     const workbook = XLSX.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
@@ -1109,35 +1109,61 @@ export const uploadStudentExcel = async (req, res) => {
 
     let successCount = 0;
     let failedRows = [];
+
     for (const r of jsonData) {
-      const name = String(r.name || r.Name || "").trim();
-      const clsRaw = r.class ?? r.Class ?? "";
-      const divRaw = r.div ?? r.Div ?? "";
-      const rollRaw = r.rollNo ?? r["Roll No"] ?? r["Roll"] ?? 0;
-      const parentContact = r.parentContact || "";
-      const parentEmail = r.parentEmail || "";
+      try {
+        const name = String(r.name || r.Name || "").trim();
+        const clsRaw = String(r.class ?? r.Class ?? "").trim();
+        const divRaw = String(r.div ?? r.Div ?? "").trim();
+        const rollRaw = r.rollNo ?? r["Roll No"] ?? r["Roll"] ?? 0;
 
-      // Basic validation: require name, class, div, rollNo
-      if (!name || !clsRaw || !divRaw || !rollRaw) {
-        failedRows.push(r);
-        continue;
-      }
+        // --- 🔑 PARSE ROLL NO ---
+        const rollNo = parseInt(rollRaw);
 
-      // Upsert student document directly (no user doc)
-      await StudentProfile.findOneAndUpdate(
-        { name, class: clsRaw, div: divRaw, rollNo: rollRaw }, // key to avoid duplicates
-        {
-          name,
+        const parentContact = String(r.parentContact || "").trim();
+        const parentEmail = String(r.parentEmail || "").trim();
+
+        // Basic validation: require name, class, div, rollNo
+        if (!name || !clsRaw || !divRaw || isNaN(rollNo) || rollNo === 0) {
+          failedRows.push({
+            row: r,
+            error: "Missing required fields (name, class, div, rollNo)",
+          });
+          continue;
+        }
+
+        // --- 🔑 UPDATED QUERY ---
+        // We find a student by their unique key: school, class, division, and roll number.
+        const query = {
+          schoolId: schoolId,
           class: clsRaw,
           div: divRaw,
-          rollNo: rollRaw,
-          parentContact,
-          parentEmail,
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
+          rollNo: rollNo,
+        };
 
-      successCount++;
+        // This is the data that will be set or updated.
+        const studentData = {
+          schoolId: schoolId, // <-- Save the schoolId
+          name: name,
+          class: clsRaw,
+          div: divRaw,
+          rollNo: rollNo,
+          parentContact: parentContact,
+          parentEmail: parentEmail,
+        };
+
+        await Student.findOneAndUpdate(
+          query, // The unique key
+          studentData, // The data to set
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        // -------------------------
+
+        successCount++;
+      } catch (upsertError) {
+        // Catch duplicate key errors if the index is set
+        failedRows.push({ row: r, error: upsertError.message });
+      }
     }
 
     try {
@@ -1150,6 +1176,7 @@ export const uploadStudentExcel = async (req, res) => {
       data: {
         successCount,
         failedRows,
+        failedCount: failedRows.length,
       },
     });
   } catch (error) {
@@ -1177,7 +1204,7 @@ export const bulkPromoteStudents = async (req, res) => {
     // 🛡️ SECURITY: Get the schoolId from the authenticated principal.
     const schoolId = req.user.schoolId; // Perform the update operation, strictly filtering by the principal's school.
 
-    const result = await StudentProfile.updateMany(
+    const result = await Student.updateMany(
       { schoolId: schoolId, class: fromClass, div: div }, // Securely scope the update
       { $set: { class: toClass } }
     );
@@ -1208,7 +1235,7 @@ export const dedupeStudents = async (req, res) => {
   try {
     // Your deduplication logic, e.g., remove duplicate student profiles or users
     // Example:
-    const duplicates = await StudentProfile.aggregate([
+    const duplicates = await Student.aggregate([
       { $sort: { createdAt: -1 } },
       {
         $group: {
@@ -1230,7 +1257,7 @@ export const dedupeStudents = async (req, res) => {
     );
 
     if (idsToDelete.length > 0) {
-      await StudentProfile.deleteMany({ _id: { $in: idsToDelete } });
+      await Student.deleteMany({ _id: { $in: idsToDelete } });
     }
 
     res.json({

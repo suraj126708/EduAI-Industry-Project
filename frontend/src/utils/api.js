@@ -335,10 +335,6 @@ export const schoolService = {
 
 // --- NEW ADMIN DASHBOARD API FUNCTION ---
 export const adminService = {
-  /**
-   * Fetches dashboard stats. The backend will scope the data
-   * based on whether the user is a superadmin or a principal.
-   */
   getDashboardStats: async () => {
     try {
       const response = await api.get("/admin/dashboard");
@@ -551,15 +547,53 @@ export const adminService = {
       return error.response?.data || { success: false, message: error.message };
     }
   },
+
+  uploadStudentExcel: async (formData) => {
+    try {
+      // This calls: POST /api/admin/students/uploads
+      // The 'api' instance automatically adds the auth token
+      const response = await api.post("/admin/students/uploads", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        // You can add an onUploadProgress callback here if you
+        // want to show a loading bar in your component.
+      });
+
+      // Returns { success, message, data: { successCount, failedRows } }
+      return response.data;
+    } catch (error) {
+      // Re-throw the error so the component can catch it
+      console.error("Error uploading student Excel:", error);
+      throw error.response?.data || error;
+    }
+  },
+  getStudents: async (grade, division, rollNumber) => {
+    try {
+      const params = { grade };
+      if (division) params.division = division;
+      if (rollNumber) params.rollNumber = rollNumber;
+
+      // This calls GET /api/teachers/students-by-class
+      const response = await api.get("/teachers/students-by-class", { params });
+      return response.data; // { success, data: [...] }
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      throw error.response?.data || error;
+    }
+  },
 };
 
 export const teacherAPI = {
-  getStudentsByClass: async (grade, division) => {
+  getStudentsByClass: async (grade, division, rollNumber) => {
     try {
-      const res = await api.get("/teachers/students-by-class", {
-        params: { grade, division },
-      });
-      return res.data; // Returns { success: true, data: [...] }
+      const params = { grade, division };
+      if (rollNumber) {
+        params.rollNumber = rollNumber;
+      }
+
+      const res = await api.get("/teachers/students-by-class", { params });
+      return res.data;
     } catch (err) {
       console.error("Error fetching students:", err);
       throw err;
@@ -582,7 +616,7 @@ export const teacherAPI = {
 export const evaluationAPI = {
   uploadAnswerSheet: async (formData) => {
     try {
-      const res = await api.post("/evaluations/upload", formData, {
+      const res = await api.post("/evaluation/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data; // Returns { success: true, data: [...] }

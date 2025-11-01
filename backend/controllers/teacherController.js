@@ -13,14 +13,15 @@ import QuestionPaper from "../models/QuestionPaper.js";
 import Class from "../models/Class.js";
 import Subject from "../models/Subject.js";
 import School from "../models/School.js";
+import Book from "../models/BookSchema.js";
+import TeacherClassSubject from "../models/TeacherClassSubject.js";
+import Student from "../models/Student.js";
+
 import { validationResult } from "express-validator";
 import path from "path";
 import fs from "fs";
 import axios from "axios";
 import FormData from "form-data";
-import Book from "../models/BookSchema.js";
-import TeacherClassSubject from "../models/TeacherClassSubject.js";
-import Student from "../models/Student.js";
 
 /**
  * Get all teachers (Admin only)
@@ -1035,32 +1036,45 @@ export const deleteTeacherQuestionPaper = async (req, res) => {
 // @access  Private (Teacher)
 export const getStudentsByClass = async (req, res) => {
   try {
-    const { grade, division } = req.query;
-    const schoolId = req.user.schoolId;
+    const { grade, division, rollNumber } = req.query;
+    const schoolId = req.user.schoolId; // Get schoolId from the authenticated user
 
-    if (!grade || !division) {
+    // --- THIS IS THE FIX ---
+    // We only require a 'grade'. 'division' and 'rollNumber' are optional.
+    if (!grade) {
       return res
         .status(400)
-        .json({ success: false, message: "Grade and division are required." });
+        .json({ success: false, message: "Grade is required." });
     }
 
-    // 1. Find the Class document
-    const classDoc = await Class.findOne({
-      grade: grade,
-      division: division,
+    // 1. Build the student query
+    const studentQuery = {
       schoolId: schoolId,
-    });
+      class: grade, // Match the 'class' field (e.g., "10")
+    };
 
-    if (!classDoc) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Class not found." });
+    // 2. Add optional filters
+    if (division) {
+      studentQuery.div = division; // Match the 'div' field (e.g., "A")
     }
 
-    // 2. Find all students in that class
-    const students = await Student.find({
-      classId: classDoc._id,
-    }).sort({ rollNumber: 1, name: 1 });
+    if (rollNumber) {
+      const roll = parseInt(rollNumber);
+      if (!isNaN(roll) && roll > 0) {
+        studentQuery.rollNo = roll; // Match the 'rollNo' field (as a number)
+      } else if (rollNumber.trim() !== "") {
+        // Handle non-numeric roll numbers (like 'A-01') if they are strings
+        studentQuery.rollNo = new RegExp(rollNumber.trim(), "i");
+      }
+    }
+    // --- END OF FIX ---
+
+    // 3. Find all students matching the query
+    const students = await Student.find(studentQuery).sort({
+      div: 1, // Sort by division first
+      rollNo: 1, // Then by roll number
+      name: 1,
+    });
 
     res.status(200).json({ success: true, data: students });
   } catch (error) {

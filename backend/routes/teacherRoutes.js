@@ -106,7 +106,7 @@ router.get(
 router.get(
   "/students-by-class",
   authenticateFirebaseToken,
-  authorize("teacher"),
+  authorize("teacher", "principal"),
   getStudentsByClass
 );
 

@@ -7,7 +7,7 @@ import {
   evaluationAPI,
   fetchTeacherProfile,
 } from "../utils/api";
-import { Loader2, AlertCircle, UploadCloud } from "lucide-react";
+import { Loader2, AlertCircle, UploadCloud, Search } from "lucide-react"; // Import Search
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -74,6 +74,10 @@ const EvaluationSetupForm = () => {
   const [error, setError] = useState(null);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [isLoadingPapers, setIsLoadingPapers] = useState(false);
+
+  // --- ADDED THESE 2 LINES ---
+  const [searchRollNo, setSearchRollNo] = useState("");
+  const [studentFetchError, setStudentFetchError] = useState(null);
 
   // === 1. Fetch Initial Assignments (on load) ===
   useEffect(() => {
@@ -154,37 +158,40 @@ const EvaluationSetupForm = () => {
     );
   }, [selectedDivision, selectedGrade, allAssignments]);
 
-  // === 4. Fetch Students (when Division changes) ===
-  useEffect(() => {
+  // === 4. THIS BLOCK WAS DELETED ===
+  // (The old, automatic student fetching useEffect)
+
+  // === 5. NEW: Handler to manually fetch students ===
+  const handleFetchStudents = async () => {
     if (!selectedGrade || !selectedDivision) {
-      setStudents([]);
+      setStudentFetchError("Please select a Class and Division first.");
       return;
     }
-    const fetchStudents = async () => {
-      setIsLoadingStudents(true);
-      setStudents([]);
-      try {
-        // --- REFACTORED ---
-        const res = await teacherAPI.getStudentsByClass(
-          selectedGrade,
-          selectedDivision
-        );
-        if (res.success) {
-          setStudents(res.data);
-        } else {
-          throw new Error(res.message);
+    setIsLoadingStudents(true);
+    setStudentFetchError(null);
+    setStudents([]); // Clear previous results
+    try {
+      const res = await teacherAPI.getStudentsByClass(
+        selectedGrade,
+        selectedDivision,
+        searchRollNo // Pass the optional roll number
+      );
+      if (res.success) {
+        setStudents(res.data);
+        if (res.data.length === 0) {
+          setStudentFetchError("No students found matching these criteria.");
         }
-        // --- END REFACTOR ---
-      } catch (err) {
-        setError(`Failed to fetch students: ${err.message}`);
-      } finally {
-        setIsLoadingStudents(false);
+      } else {
+        throw new Error(res.message);
       }
-    };
-    fetchStudents();
-  }, [selectedGrade, selectedDivision]);
+    } catch (err) {
+      setStudentFetchError(`Failed to fetch students: ${err.message}`);
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  };
 
-  // === 5. Fetch Filtered Paper Groups (when filters change) ===
+  // === 6. Fetch Filtered Paper Groups (when filters change) ===
   useEffect(() => {
     if (!selectedGrade || !selectedSubject || !selectedExamType) {
       setPaperGroupOptions([]);
@@ -221,7 +228,7 @@ const EvaluationSetupForm = () => {
     fetchPapers();
   }, [selectedGrade, selectedSubject, selectedExamType]);
 
-  // === 6. Handle Paper Group Change (No API call, logic is fine) ===
+  // === 7. Handle Paper Group Change (No API call, logic is fine) ===
   const handlePaperGroupChange = (paperId) => {
     const groupOption = paperGroupOptions.find((opt) => opt.value === paperId);
     if (groupOption) {
@@ -233,7 +240,7 @@ const EvaluationSetupForm = () => {
     }
   };
 
-  // === 7. Handlers for student list (No API call, logic is fine) ===
+  // === 8. Handlers for student list (No API call, logic is fine) ===
   const handleSetSelection = (studentId, paperSetId) => {
     setSelectedSets((prev) => ({ ...prev, [studentId]: paperSetId }));
   };
@@ -244,7 +251,7 @@ const EvaluationSetupForm = () => {
     }
   };
 
-  // === 8. Handle Submit ===
+  // === 9. Handle Submit ===
   const handleSubmit = async (studentId) => {
     const questionPaperId = selectedSets[studentId];
     const answerSheetFile = uploadedFiles[studentId];
@@ -281,9 +288,10 @@ const EvaluationSetupForm = () => {
     }
   };
 
-  // === 9. JSX (No changes needed) ===
+  // === 10. JSX (No changes needed) ===
   return (
     <div className="space-y-6">
+      {/* --- Main Criteria Form --- */}
       <div className="p-4 border rounded-lg bg-white shadow-sm">
         <h3 className="text-lg font-medium mb-4">Select Evaluation Criteria</h3>
         {error && (
@@ -294,7 +302,8 @@ const EvaluationSetupForm = () => {
         )}
         {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* --- Row 1: Class, Division, Roll No --- */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <SelectInput
             label="Class"
             value={selectedGrade}
@@ -309,6 +318,38 @@ const EvaluationSetupForm = () => {
             options={divisionOptions}
             disabled={!selectedGrade}
           />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Roll No. (Optional)
+            </label>
+            <input
+              type="text"
+              value={searchRollNo}
+              onChange={(e) => setSearchRollNo(e.target.value)}
+              placeholder="Search by Roll No..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+              disabled={!selectedDivision}
+            />
+          </div>
+          <button
+            onClick={handleFetchStudents}
+            disabled={!selectedDivision || isLoadingStudents}
+            className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400"
+          >
+            {isLoadingStudents ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Search className="w-5 h-5 mr-2" />
+            )}
+            Fetch Students
+          </button>
+        </div>
+
+        {/* --- Separator --- */}
+        <hr className="my-6" />
+
+        {/* --- Row 2: Subject, Exam Type, Paper --- */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SelectInput
             label="Subject"
             value={selectedSubject}
@@ -352,115 +393,127 @@ const EvaluationSetupForm = () => {
       </div>
 
       {/* --- Student List Table --- */}
-      {(isLoadingStudents || students.length > 0) && (
-        <div className="p-4 border rounded-lg bg-white shadow-sm">
-          <h3 className="text-lg font-medium mb-4">Upload Answer Sheets</h3>
-          {isLoadingStudents ? (
-            <div className="flex items-center justify-center p-6">
-              <Loader2 className="w-6 h-6 animate-spin text-gray-500 mr-2" />
-              <span className="text-gray-500">Loading students...</span>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Student
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Paper Set
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Answer Sheet
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {students.map((student) => (
-                    <tr key={student._id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {student.name}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Roll: {student.rollNumber}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={selectedSets[student._id] || ""}
+      <div className="p-4 border rounded-lg bg-white shadow-sm">
+        <h3 className="text-lg font-medium mb-4">Upload Answer Sheets</h3>
+        {studentFetchError && (
+          <div className="flex items-center p-3 mb-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+            <span className="text-sm text-red-800">{studentFetchError}</span>
+          </div>
+        )}
+        {isLoadingStudents ? (
+          <div className="flex items-center justify-center p-6">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-500 mr-2" />
+            <span className="text-gray-500">Loading students...</span>
+          </div>
+        ) : students.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                {/* ... (table headers remain the same) ... */}
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Student
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Paper Set
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Answer Sheet
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {students.map((student) => (
+                  <tr key={student._id}>
+                    {/* ... (table row content remains the same) ... */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {student.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Roll: {student.rollNumber}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select
+                        value={selectedSets[student._id] || ""}
+                        onChange={(e) =>
+                          handleSetSelection(student._id, e.target.value)
+                        }
+                        className="w-full text-sm border-gray-300 rounded-md shadow-sm"
+                        disabled={paperSets.length === 0}
+                      >
+                        <option value="">Select set...</option>
+                        {paperSets.map((set, index) => (
+                          <option key={set._id} value={set._id}>
+                            Set {String.fromCharCode(65 + index)} (
+                            {set.paper?.maxMarks || 0} Marks)
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <label className="text-sm text-gray-600 cursor-pointer">
+                        <input
+                          type="file"
+                          accept="application/pdf,image/jpeg,image/png"
                           onChange={(e) =>
-                            handleSetSelection(student._id, e.target.value)
+                            handleFileChange(student._id, e.target.files[0])
                           }
-                          className="w-full text-sm border-gray-300 rounded-md shadow-sm"
-                          disabled={paperSets.length === 0}
-                        >
-                          <option value="">Select set...</option>
-                          {paperSets.map((set, index) => (
-                            <option key={set._id} value={set._id}>
-                              Set {String.fromCharCode(65 + index)} (
-                              {set.paper?.maxMarks || 0} Marks)
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <label className="text-sm text-gray-600 cursor-pointer">
-                          <input
-                            type="file"
-                            accept="application/pdf,image/jpeg,image/png"
-                            onChange={(e) =>
-                              handleFileChange(student._id, e.target.files[0])
-                            }
-                            className="block w-full text-sm text-gray-500
-                              file:mr-4 file:py-2 file:px-4
-                              file:rounded-md file:border-0
-                              file:text-sm file:font-semibold
-                              file:bg-indigo-50 file:text-indigo-700
-                              hover:file:bg-indigo-100"
-                          />
-                        </label>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleSubmit(student._id)}
-                          disabled={
-                            !selectedSets[student._id] ||
-                            !uploadedFiles[student._id] ||
-                            uploadStatus[student._id] === "loading"
-                          }
-                          className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400"
-                        >
-                          {uploadStatus[student._id] === "loading" ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <UploadCloud className="w-4 h-4 mr-2" />
-                          )}
-                          {uploadStatus[student._id] === "success"
-                            ? "Uploaded"
-                            : "Upload"}
-                        </button>
-                        {uploadStatus[student._id] === "error" && (
-                          <p
-                            className="text-xs text-red-600 mt-1"
-                            title={uploadStatus[student._id].message}
-                          >
-                            Upload failed.
-                          </p>
+                          className="block w-full text-sm text-gray-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-md file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-indigo-50 file:text-indigo-700
+                            hover:file:bg-indigo-100"
+                        />
+                      </label>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => handleSubmit(student._id)}
+                        disabled={
+                          !selectedSets[student._id] ||
+                          !uploadedFiles[student._id] ||
+                          uploadStatus[student._id] === "loading"
+                        }
+                        className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400"
+                      >
+                        {uploadStatus[student._id] === "loading" ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <UploadCloud className="w-4 h-4 mr-2" />
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                        {uploadStatus[student._id] === "success"
+                          ? "Uploaded"
+                          : "Upload"}
+                      </button>
+                      {uploadStatus[student._id] === "error" && (
+                        <p
+                          className="text-xs text-red-600 mt-1"
+                          title={uploadStatus[student._id].message}
+                        >
+                          Upload failed.
+                        </p>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          !isLoadingStudents && (
+            <p className="text-sm text-gray-500 px-2 py-4">
+              Select a class and division, then click "Fetch Students" to begin.
+            </p>
+          )
+        )}
+      </div>
     </div>
   );
 };
