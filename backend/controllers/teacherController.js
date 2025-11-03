@@ -1092,7 +1092,7 @@ export const getStudentsByClass = async (req, res) => {
 // @access  Private (Teacher)
 export const getFilteredQuestionPaperGroups = async (req, res) => {
   try {
-    const { classGrade, subject, examType } = req.query;
+    const { classGrade, subject, examType, date } = req.query;
     const teacherId = req.user._id;
 
     if (!classGrade || !subject) {
@@ -1109,10 +1109,23 @@ export const getFilteredQuestionPaperGroups = async (req, res) => {
       subject: subject,
     };
 
-    // Add optional filters
     if (examType) matchFilter.examType = examType;
-    // Add date filter if needed, e.g.:
-    // if (date) matchFilter['paper.date'] = date;
+
+    if (date) {
+      try {
+        const startDate = new Date(date);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 1);
+
+        matchFilter.createdAt = {
+          $gte: startDate,
+          $lt: endDate,
+        };
+      } catch (dateError) {
+        console.warn("Invalid date format received:", date, dateError);
+      }
+    }
 
     const paperGroups = await QuestionPaper.aggregate([
       // 1. Match papers based on filters

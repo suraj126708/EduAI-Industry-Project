@@ -33,7 +33,9 @@ const SelectInput = ({
         error ? "border-red-500" : "border-gray-300"
       } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100`}
     >
-      <option value="">{placeholder || `Select ${label}...`}</option>
+      <option value="" hidden>
+                {placeholder || `Select ${label}...`}     {" "}
+      </option>
       {options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
@@ -193,7 +195,12 @@ const EvaluationSetupForm = () => {
 
   // === 6. Fetch Filtered Paper Groups (when filters change) ===
   useEffect(() => {
-    if (!selectedGrade || !selectedSubject || !selectedExamType) {
+    if (
+      !selectedGrade ||
+      !selectedSubject ||
+      !selectedExamType ||
+      !selectedDate
+    ) {
       setPaperGroupOptions([]);
       return;
     }
@@ -205,7 +212,8 @@ const EvaluationSetupForm = () => {
         const res = await teacherAPI.getFilteredPaperGroups(
           selectedGrade,
           selectedSubject,
-          selectedExamType
+          selectedExamType,
+          selectedDate
         );
         if (res.success) {
           setPaperGroupOptions(
@@ -226,7 +234,7 @@ const EvaluationSetupForm = () => {
       }
     };
     fetchPapers();
-  }, [selectedGrade, selectedSubject, selectedExamType]);
+  }, [selectedGrade, selectedSubject, selectedExamType, selectedDate]);
 
   // === 7. Handle Paper Group Change (No API call, logic is fine) ===
   const handlePaperGroupChange = (paperId) => {
@@ -262,6 +270,15 @@ const EvaluationSetupForm = () => {
       );
       return;
     }
+
+    const selectedPaperObject = paperSets.find(
+      (p) => p._id === questionPaperId
+    );
+    +console.log(
+      "Selected paper object for student",
+      studentId,
+      selectedPaperObject
+    );
 
     setUploadStatus((prev) => ({ ...prev, [studentId]: "loading" }));
 
@@ -385,7 +402,11 @@ const EvaluationSetupForm = () => {
             onChange={handlePaperGroupChange}
             options={paperGroupOptions}
             placeholder={
-              isLoadingPapers ? "Loading papers..." : "Select Paper..."
+              isLoadingPapers
+                ? "Loading papers..."
+                : paperGroupOptions.length === 0
+                ? "No papers found"
+                : "Select Paper..."
             }
             disabled={isLoadingPapers || !selectedExamType}
           />
@@ -435,7 +456,7 @@ const EvaluationSetupForm = () => {
                         {student.name}
                       </div>
                       <div className="text-xs text-gray-500">
-                        Roll: {student.rollNumber}
+                        Roll: {student.rollNo}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

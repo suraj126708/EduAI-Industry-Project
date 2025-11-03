@@ -600,10 +600,10 @@ export const teacherAPI = {
     }
   },
 
-  getFilteredPaperGroups: async (classGrade, subject, examType) => {
+  getFilteredPaperGroups: async (classGrade, subject, examType, date) => {
     try {
       const res = await api.get("/teachers/my-question-papers-grouped", {
-        params: { classGrade, subject, examType },
+        params: { classGrade, subject, examType, date },
       });
       return res.data; // Returns { success: true, data: [...] }
     } catch (err) {
