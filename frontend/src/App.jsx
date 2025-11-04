@@ -16,7 +16,7 @@ import QuestionPaperForm from "./Pages/QuestionPaperGeneration";
 import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
 import AnswerSheetUpload from "./Pages/AnswerSheetUpload";
 import PaperFormat from "./Pages/PaperFormat";
-import ReportGeneration from "./Pages/QuestionPaperReport";
+import ReportGeneration from "./Pages/Report";
 import MyPapers from "./Pages/MyPapers";
 
 // Admin imports
@@ -69,7 +69,7 @@ function App() {
               element={<ProtectedRoute>{<QuestionPaperForm />}</ProtectedRoute>}
             />
             <Route
-              path="/reports"
+              path="/reports/:id"
               element={<ProtectedRoute>{<ReportGeneration />}</ProtectedRoute>}
             />
             <Route

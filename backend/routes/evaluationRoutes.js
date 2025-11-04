@@ -1,5 +1,8 @@
 import express from "express";
-import { uploadAnswerSheetForEvaluation } from "../controllers/evaluationController.js"; // We will create this controller next
+import {
+  uploadAnswerSheetForEvaluation,
+  getEvaluationReport,
+} from "../controllers/evaluationController.js"; // We will create this controller next
 import {
   authenticateFirebaseToken,
   authorize,
@@ -9,13 +12,19 @@ import { uploadAnswerSheet } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
-// Route to handle answer sheet upload
 router.post(
   "/upload",
   authenticateFirebaseToken,
   authorize("teacher", "principal"),
   uploadAnswerSheet.single("answerSheet"), // "answerSheet" must match the FormData key
   uploadAnswerSheetForEvaluation
+);
+
+router.get(
+  "/:id",
+  authenticateFirebaseToken,
+  authorize("teacher", "principal"),
+  getEvaluationReport
 );
 
 export default router;

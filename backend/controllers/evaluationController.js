@@ -7,7 +7,7 @@ import axios from "axios";
 import FormData from "form-data";
 
 // Get the AI service URL from your teacherController (move this to a central config later)
-const deplyed_url = "https://suraj6708-eduai.hf.space/";
+const deplyed_url = "http://127.0.0.1:8000/";
 
 // @desc    Upload an answer sheet for evaluation
 // @route   POST /api/evaluations/upload
@@ -44,12 +44,10 @@ export const uploadAnswerSheetForEvaluation = async (req, res) => {
 
     if (!student || !paper) {
       if (answerSheetUrl) await fs.promises.unlink(answerSheetUrl);
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Student or Question Paper not found.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Student or Question Paper not found.",
+      });
     }
 
     if (
@@ -103,11 +101,11 @@ export const uploadAnswerSheetForEvaluation = async (req, res) => {
 
     // a) Append the Question Paper JSON object
     //    We send the 'paper' sub-document, as requested
-    form.append("question_paper", JSON.stringify(paper.paper));
+    form.append("question_paper_str", JSON.stringify(paper.paper));
 
     // b) Append the Answer Sheet File Stream
     const fileStream = fs.createReadStream(answerSheetUrl);
-    form.append("answer_sheet", fileStream, {
+    form.append("file", fileStream, {
       filename: path.basename(answerSheetUrl),
       contentType: req.file.mimetype,
     });
@@ -118,7 +116,7 @@ export const uploadAnswerSheetForEvaluation = async (req, res) => {
     // Make the POST request to the AI service
     // (Assuming the endpoint is named 'evaluate_answer_sheet/')
     const aiResponse = await axios.post(
-      deplyed_url + "evaluate_answer_sheet/",
+      deplyed_url + "evaluate_answer_paper/",
       form,
       {
         headers: { ...form.getHeaders() },
@@ -126,23 +124,23 @@ export const uploadAnswerSheetForEvaluation = async (req, res) => {
       }
     );
 
-    // 6. Process AI Response
-    if (aiResponse.status !== 200 || !aiResponse.data.success) {
-      // AI failed
+    const aiData = aiResponse.data; // Get the root of the AI response
+    if (!aiData.sections || aiData.obtainedMarks === undefined) {
       throw new Error(
-        aiResponse.data.message || "AI service failed to evaluate."
+        "AI response format is incorrect. Missing sections, obtainedMarks, or totalMarks."
       );
     }
 
-    // AI Succeeded
-    const results = aiResponse.data.results; // Assuming this is the structure
-
     evaluation.status = "completed";
-    evaluation.evaluationResults = results.evaluationDetails; // e.g., marks per question
-    evaluation.totalMarksObtained = results.totalMarksObtained;
+    evaluation.evaluationResults = {
+      set: aiData.set,
+      totalMarks: aiData.totalMarks, // This is the paper's total marks
+      sections: aiData.sections,
+    };
+
+    evaluation.totalMarksObtained = aiData.obtainedMarks; // This is the student's score
     await evaluation.save();
 
-    // 7. Send final success response to frontend
     res.status(201).json({
       success: true,
       message: "Answer sheet uploaded and evaluated successfully.",
@@ -166,6 +164,31 @@ export const uploadAnswerSheetForEvaluation = async (req, res) => {
       success: false,
       message: error.message || "Failed to upload answer sheet.",
       error: error.message,
+    });
+  }
+};
+
+// @desc    Get a single evaluation report
+// @route   GET /api/evaluations/:id
+// @access  Private (Teacher/Student)
+export const getEvaluationReport = async (req, res) => {
+  try {
+    const evaluation = await Evaluation.findById(req.params.id)
+      .populate("studentId", "name rollNumber classGrade division") // Get student info
+      .populate("questionPaperId", "subject examType paper"); // Get paper info
+
+    if (!evaluation) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Evaluation not found." });
+    } // Optional: Check if req.user has access to this report // (e.g., is the teacher or the student)
+
+    res.status(200).json({ success: true, data: evaluation });
+  } catch (error) {
+    console.error("Get Report Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve evaluation report.",
     });
   }
 };
