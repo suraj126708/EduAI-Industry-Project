@@ -174,7 +174,7 @@ export const uploadAnswerSheetForEvaluation = async (req, res) => {
 export const getEvaluationReport = async (req, res) => {
   try {
     const evaluation = await Evaluation.findById(req.params.id)
-      .populate("studentId", "name rollNumber classGrade division") // Get student info
+      .populate("studentId", "name rollNo class div") // Get student info
       .populate("questionPaperId", "subject examType paper"); // Get paper info
 
     if (!evaluation) {
@@ -189,6 +189,65 @@ export const getEvaluationReport = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to retrieve evaluation report.",
+    });
+  }
+};
+
+// @desc    Get all evaluations for a specific class/division
+// @route   GET /api/evaluations/class-status
+// @access  Private (Teacher)
+export const getEvaluationsByClass = async (req, res) => {
+  try {
+    const { classGrade, division } = req.query;
+    const schoolId = req.user.schoolId;
+
+    if (!classGrade) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid class grade." });
+    }
+
+    // 1. Find all students in that class/division
+    const students = await Student.find({
+      class: classGrade, // <--- THE FIX: Use 'class' to match your DB
+      div: division,
+      schoolId,
+    }).select("_id");
+
+    if (students.length === 0) {
+      console.log("No students found in getEvaluationsByClass for:", {
+        class: classGrade, // Use 'class' for logging
+        division,
+      });
+      return res.status(200).json({ success: true, data: {} }); // Return empty OBJECT
+    }
+
+    const studentIds = students.map((s) => s._id);
+
+    // 2. Find all 'completed' evaluations for those students
+    const evaluations = await Evaluation.find({
+      studentId: { $in: studentIds },
+      status: "completed",
+    }).select(
+      "studentId questionPaperId totalMarksObtained evaluationResults _id"
+    );
+
+    // 3. Convert to a map for easier frontend lookup { studentId: [eval1, eval2] }
+    const evalMap = evaluations.reduce((acc, evaluation) => {
+      const sId = evaluation.studentId.toString();
+      if (!acc[sId]) {
+        acc[sId] = [];
+      }
+      acc[sId].push(evaluation);
+      return acc;
+    }, {});
+
+    res.status(200).json({ success: true, data: evalMap });
+  } catch (error) {
+    console.error("Get Class Evals Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve evaluations.",
     });
   }
 };

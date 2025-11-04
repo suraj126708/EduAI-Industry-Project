@@ -157,35 +157,27 @@ const DetailedQuestionAnalysis = ({ sections }) => {
   }
 
   return (
-    <div style={{ ...cardStyle, ...{ padding: 0 } }}>
-      {" "}
-      {/* Use cardStyle but remove padding */}     {" "}
-      <h2 style={{ ...cardTitle, ...{ padding: "16px 20px 0" } }}>
+    <div style={{ ...cardStyle, padding: 0 }}>
+      {/* Use cardStyle but remove padding */}
+      <h2 style={{ ...cardTitle, padding: "16px 20px 0" }}>
         🔍 Detailed Question Analysis
       </h2>
-           {" "}
       {sections.map((section, sIdx) => (
         <div key={sIdx} style={{ marginBottom: "16px" }}>
-                   {" "}
           <h3 style={sectionTitleStyle}>
-                        Section: {section.sectionTitle.replace("_", " ")}       
-             {" "}
+            Section: {section.sectionTitle.replace("_", " ")}
           </h3>
-                   {" "}
           {section.questions.map((q, qIdx) => {
             const isCorrect = q.awarded > 0;
             const markColor = isCorrect ? "#22c55e" : "#ef4444";
 
             return (
               <div key={qIdx} style={questionBoxStyle}>
-                                {/* Question Header */}               {" "}
+                {/* Question Header */}
                 <div style={questionHeaderStyle}>
-                                   {" "}
                   <span>
-                                        <strong>Q{q.questionNo}.</strong>{" "}
-                    {q.question}                 {" "}
+                    <strong>Q{q.questionNo}.</strong> {q.question}
                   </span>
-                                   {" "}
                   <span
                     style={{
                       ...markStyle,
@@ -193,45 +185,33 @@ const DetailedQuestionAnalysis = ({ sections }) => {
                       borderColor: markColor,
                     }}
                   >
-                                        {q.awarded} / {q.marks}                 {" "}
+                    {q.awarded} / {q.marks}
                   </span>
-                                 {" "}
                 </div>
-                                {/* Answers */}               {" "}
+
+                {/* Answers */}
                 <div style={answerBoxStyle}>
-                                   {" "}
                   <div style={{ flex: 1 }}>
-                                       {" "}
-                    <div style={answerLabelStyle(false)}>Your Answer:</div>     
-                                 {" "}
-                    <p style={answerTextStyle}>{q.studentAnswer}</p>           
-                         {" "}
+                    <div style={answerLabelStyle(false)}>Your Answer:</div>
+                    <p style={answerTextStyle}>{q.studentAnswer}</p>
                   </div>
-                                   {" "}
                   <div style={{ flex: 1 }}>
-                                       {" "}
-                    <div style={answerLabelStyle(true)}>Correct Answer:</div>   
-                                   {" "}
-                    <p style={answerTextStyle}>{q.correctAnswer}</p>           
-                         {" "}
+                    <div style={answerLabelStyle(true)}>Correct Answer:</div>
+                    <p style={answerTextStyle}>{q.correctAnswer}</p>
                   </div>
-                                 {" "}
                 </div>
-                                {/* Remarks */}               {" "}
+
+                {/* Remarks */}
                 {q.remarks && (
                   <div style={remarksBoxStyle}>
-                                        <strong>Remark:</strong> {q.remarks}   
-                                 {" "}
+                    <strong>Remark:</strong> {q.remarks}
                   </div>
                 )}
-                             {" "}
               </div>
             );
           })}
-                 {" "}
         </div>
       ))}
-         {" "}
     </div>
   );
 };
@@ -282,9 +262,13 @@ export default function ExamReport() {
     // 1. Basic Info
     const student = studentId;
     const subject = questionPaperId.subject;
+    const examDate = new Date(evaluation.createdAt);
+    const formattedDate = `${examDate.getDate()}/${
+      examDate.getMonth() + 1
+    }/${examDate.getFullYear()}`;
     const examDetails = {
       title: questionPaperId.examType,
-      date: new Date(evaluation.createdAt).toLocaleDateString(),
+      date: formattedDate,
       duration: questionPaperId.paper.duration || "N/A",
       totalMarks: evaluationResults.totalMarks,
     };
@@ -339,8 +323,7 @@ export default function ExamReport() {
   if (loading) {
     return (
       <div style={{ ...modalOverlay, background: "rgba(255,255,255,0.8)" }}>
-                <Loader2 className="animate-spin" size={48} color="#1d4ed8" /> 
-           {" "}
+        <Loader2 className="animate-spin" size={48} color="#1d4ed8" />
       </div>
     );
   }
@@ -348,13 +331,11 @@ export default function ExamReport() {
   if (error) {
     return (
       <div style={modalOverlay}>
-               {" "}
         <div style={modalContent}>
-                    <AlertCircle color="red" size={40} />         {" "}
-          <h3 style={{ color: "#ef4444", fontWeight: "600" }}>Error</h3>       
-            <p>{error}</p>       {" "}
+          <AlertCircle color="red" size={40} />
+          <h3 style={{ color: "#ef4444", fontWeight: "600" }}>Error</h3>
+          <p>{error}</p>
         </div>
-             {" "}
       </div>
     );
   }
@@ -387,19 +368,14 @@ export default function ExamReport() {
         boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
       }}
     >
-           {" "}
       <header style={{ textAlign: "center", marginBottom: 32 }}>
-               {" "}
         <h1 style={{ fontSize: "1.8rem", fontWeight: "700", color: "#1d4ed8" }}>
-                    📘 Subject Report: {subject}       {" "}
+          📘 Subject Report: {subject}
         </h1>
-               {" "}
-        <p style={{ color: "#475569" }}>
-                    {examDetails.title}       {" "}
-        </p>
-             {" "}
+        <p style={{ color: "#475569" }}>{examDetails.title}</p>
       </header>
-            {/* Exam & Student Info */}     {" "}
+
+      {/* Exam & Student Info */}
       <section
         style={{
           display: "flex",
@@ -409,32 +385,78 @@ export default function ExamReport() {
           gap: "16px",
         }}
       >
-               {" "}
         <div style={cardStyle}>
-                    <h2 style={cardTitle}>🧾 Exam Details</h2>         {" "}
-          <p>Exam: {examDetails.title}</p>         {" "}
-          <p>Date: {examDetails.date}</p>         {" "}
-          <p>Duration: {examDetails.duration}</p>         {" "}
-          <p>Total Marks: {examDetails.totalMarks}</p>       {" "}
-        </div>
-               {" "}
-        <div style={cardStyle}>
-                    <h2 style={cardTitle}>👩‍🎓 Student Info</h2>         {" "}
-          <p>Name: {student.name}</p>         {" "}
+          <h2 style={cardTitle}>🧾 Exam Details</h2>
           <p>
-            Class: {student.classGrade}-{student.division}
+            Exam:{" "}
+            <strong>
+              <em>{examDetails.title}</em>
+            </strong>
           </p>
-                    <p>Roll No: {student.rollNumber}</p>       {" "}
+          <p>
+            Result Date:{" "}
+            <strong>
+              <em>{examDetails.date}</em>
+            </strong>
+          </p>
+          <p>
+            Duration:{" "}
+            <strong>
+              <em>{examDetails.duration}</em>
+            </strong>
+          </p>
+          <p>
+            Total Marks:{" "}
+            <strong>
+              <em>{examDetails.totalMarks}</em>
+            </strong>
+          </p>
         </div>
-             {" "}
+        <div style={cardStyle}>
+          <h2 style={cardTitle}>👩‍🎓 Student Info</h2>
+          <p>
+            Name:{" "}
+            <strong>
+              <em>{student.name}</em>
+            </strong>
+          </p>
+          <p>
+            Class:{" "}
+            <strong>
+              <em>
+                {student.class} {student.div}
+              </em>
+            </strong>
+          </p>
+          <p>
+            Roll No:{" "}
+            <strong>
+              <em>{student.rollNo}</em>
+            </strong>
+          </p>
+          <p>
+            Subject:{" "}
+            <strong>
+              <em>{subject}</em>
+            </strong>
+          </p>
+          <p>
+            Marks Obtained:{" "}
+            <strong>
+              <em>{performance.obtainedMarks}</em>
+            </strong>
+          </p>
+        </div>
       </section>
+
       {/* --- !!! NEW DETAILED ANALYSIS SECTION !!! --- */}
       <section>
         <DetailedQuestionAnalysis sections={sections} />
       </section>
-            {/* Performance & Visualization */}     {" "}
+
+      {/* Performance & Visualization */}
       <section style={cardStyle}>
-                <h2 style={cardTitle}>📊 Performance Summary</h2>       {" "}
+        <h2 style={cardTitle}>📊 Performance Summary</h2>
         <div
           style={{
             display: "grid",
@@ -443,35 +465,27 @@ export default function ExamReport() {
             marginBottom: "20px",
           }}
         >
-                   {" "}
           <div style={statBox}>
-                        <div style={statLabel}>Marks Obtained</div>           {" "}
+            <div style={statLabel}>Marks Obtained</div>
             <div style={statValue}>
               {performance.obtainedMarks}/{examDetails.totalMarks}
             </div>
-                     {" "}
           </div>
-                   {" "}
           <div style={statBox}>
-                        <div style={statLabel}>Percentage</div>           {" "}
-            <div style={statValue}>{performance.percentage}%</div>         {" "}
+            <div style={statLabel}>Percentage</div>
+            <div style={statValue}>{performance.percentage}%</div>
           </div>
-                   {" "}
           <div style={statBox}>
-                        <div style={statLabel}>Grade</div>           {" "}
-            <div style={statValue}>{performance.grade}</div>         {" "}
+            <div style={statLabel}>Grade</div>
+            <div style={statValue}>{performance.grade}</div>
           </div>
-                 {" "}
         </div>
-               {" "}
         <div style={{ margin: "20px 0" }}>
-                   {" "}
           <div
             style={{ fontSize: "0.98rem", marginBottom: 8, fontWeight: "600" }}
           >
             Overall Performance
           </div>
-                   {" "}
           <div
             style={{
               background: "#e5e7eb",
@@ -481,7 +495,6 @@ export default function ExamReport() {
               position: "relative",
             }}
           >
-                       {" "}
             <div
               style={{
                 background:
@@ -496,10 +509,8 @@ export default function ExamReport() {
                 transition: "width 0.8s ease-out",
               }}
             />
-                       {" "}
             <span
               style={{
-                // ... (progress bar text style)
                 position: "absolute",
                 left: "50%",
                 top: 0,
@@ -510,33 +521,27 @@ export default function ExamReport() {
                 lineHeight: "28px",
               }}
             >
-                          s   {performance.percentage}%            {" "}
+              {performance.percentage}%
             </span>
-                     {" "}
           </div>
-                 {" "}
         </div>
-             {" "}
       </section>
-            {/* Section-wise Performance (Renamed from Chapter) */}     {" "}
+
+      {/* Section-wise Performance (Renamed from Chapter) */}
       <section style={cardStyle}>
-                <h2 style={cardTitle}>📚 Section-wise Analysis</h2>       {" "}
+        <h2 style={cardTitle}>📚 Section-wise Analysis</h2>
         <ResponsiveContainer width="100%" height={280}>
-                   {" "}
           <BarChart
             data={sectionPerformanceData} // Use dynamic data
             margin={{ top: 20, right: 30, left: 0, bottom: 60 }}
           >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                       {" "}
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis
               dataKey="name" // Use section name
               tick={{ fontSize: 11 }}
               interval={0}
               textAnchor="end"
-              CH
             />
-                       {" "}
             <YAxis
               domain={[0, 100]}
               label={{
@@ -546,14 +551,12 @@ export default function ExamReport() {
                 style: { fontSize: 12 },
               }}
             />
-                       {" "}
             <Tooltip
               contentStyle={{
                 background: "#fff",
                 border: "1px solid #e2e8f0",
                 borderRadius: "8px",
               }}
-              // ... (tooltip formatter)
               cursor={{ fill: "rgba(99, 102, 241, 0.1)" }}
               formatter={(value, name) => [
                 value,
@@ -561,30 +564,25 @@ export default function ExamReport() {
               ]}
               labelFormatter={(label) => label}
             />
-                       {" "}
             <Bar
               dataKey="percentage" // Chart the percentage
               fill="#6366f1"
               radius={[8, 8, 0, 0]}
             />
-                     {" "}
           </BarChart>
-          E      {" "}
         </ResponsiveContainer>
-             {" "}
       </section>
-            {/* Section-wise Breakdown (Progress Bars) */}     {" "}
+
+      {/* Section-wise Breakdown (Progress Bars) */}
       <section style={cardStyle}>
-                <h2 style={cardTitle}>📝 Section-wise Breakdown</h2>       {" "}
+        <h2 style={cardTitle}>📝 Section-wise Breakdown</h2>
         <div style={{ marginBottom: 20 }}>
-                   {" "}
           {sectionPerformanceData.map(
             (
               section,
               idx // Use dynamic data
             ) => (
               <div key={idx} style={{ marginBottom: 16 }}>
-                             {" "}
                 <div
                   style={{
                     display: "flex",
@@ -593,17 +591,13 @@ export default function ExamReport() {
                     fontSize: "0.95rem",
                   }}
                 >
-                                 {" "}
                   <span>
                     <strong>{section.name}</strong>
                   </span>
-                                 {" "}
                   <span>
                     {section.value}/{section.max} ({section.percentage}%)
                   </span>
-                               {" "}
                 </div>
-                             {" "}
                 <div
                   style={{
                     background: "#e5e7eb",
@@ -612,7 +606,6 @@ export default function ExamReport() {
                     width: "100%",
                   }}
                 >
-                                 {" "}
                   <div
                     style={{
                       background: COLORS[idx % COLORS.length], // Use dynamic color
@@ -620,24 +613,20 @@ export default function ExamReport() {
                       height: "100%",
                       borderRadius: 6,
                       transition: "width 0.6s ease-out",
-                      i,
+                      // --- THIS IS WHERE THE ERROR WAS ---
                     }}
                   />
-                               {" "}
                 </div>
-                           {" "}
               </div>
             )
           )}
-                 {" "}
         </div>
-             {" "}
       </section>
-            {/ * TODO: The "Insights" section can be the next feature.*/}     {" "}
-      {
-        / *You can create another AI prompt that takes the JSON evaluation as input and *generates* these text-based strengths, weaknesses, and action plans.*/
-      }
-           {" "}
+
+      {/* TODO: The "Insights" section can be the next feature.
+          You can create another AI prompt that takes the JSON evaluation as input and *generates* these text-based strengths, weaknesses, and action plans.
+      */}
+
       <footer
         style={{
           textAlign: "center",
@@ -646,9 +635,8 @@ export default function ExamReport() {
           marginTop: 32,
         }}
       >
-                Generated by <strong>EDUAI</strong>     {" "}
+        Generated by <strong>EDUAI</strong>
       </footer>
-         {" "}
     </div>
   );
 }

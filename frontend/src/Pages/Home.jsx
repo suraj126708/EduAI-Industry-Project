@@ -63,7 +63,7 @@ const Home = () => {
       {
         title: "Reports",
         icon: <IoNewspaperOutline className="text-purple-500" />,
-        route: "/reports",
+        route: "/reports/:id",
       },
       {
         title: "Question Paper Format",

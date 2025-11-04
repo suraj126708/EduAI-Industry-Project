@@ -625,6 +625,34 @@ export const evaluationAPI = {
       throw err;
     }
   },
+
+  getReportById: async (id) => {
+    try {
+      const res = await api.get(`/evaluation/${id}`);
+      return res.data; // Returns { success: true, data: {...} }
+    } catch (err) {
+      console.error(
+        "Error fetching report:",
+        err.response?.data || err.message
+      );
+      return err.response?.data || { success: false, message: err.message };
+    }
+  },
+
+  getEvaluationsByClass: async (classGrade, division) => {
+    try {
+      const res = await api.get(
+        `/evaluation/class/status?classGrade=${classGrade}&division=${division}`
+      );
+      return res.data; // Returns { success: true, data: { studentId: [...] } }
+    } catch (err) {
+      console.error(
+        "Error fetching class evaluations:",
+        err.response?.data || err.message
+      );
+      return err.response?.data || { success: false, message: err.message };
+    }
+  },
 };
 
 export default api;

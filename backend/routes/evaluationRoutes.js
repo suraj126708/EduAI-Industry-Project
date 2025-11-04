@@ -2,6 +2,7 @@ import express from "express";
 import {
   uploadAnswerSheetForEvaluation,
   getEvaluationReport,
+  getEvaluationsByClass,
 } from "../controllers/evaluationController.js"; // We will create this controller next
 import {
   authenticateFirebaseToken,
@@ -18,6 +19,13 @@ router.post(
   authorize("teacher", "principal"),
   uploadAnswerSheet.single("answerSheet"), // "answerSheet" must match the FormData key
   uploadAnswerSheetForEvaluation
+);
+
+router.get(
+  "/class/status",
+  authenticateFirebaseToken,
+  authorize("teacher", "principal"),
+  getEvaluationsByClass
 );
 
 router.get(
