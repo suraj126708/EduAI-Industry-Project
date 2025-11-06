@@ -21,8 +21,6 @@ import {
   ModalCloseButton,
 } from "../components";
 
-//const classOptions = ["Class 10"];
-//const subjectOptions = ["History", "Geography", "Science"];
 const examTypeOptions = ["Unit Test", "Midterm", "Final"];
 
 // Default topics - will be replaced by dynamic data from API
@@ -153,6 +151,66 @@ export default function MinimalQuestionPaperForm() {
   const dropdownRefs = useRef({});
   const [showNoBooksModal, setShowNoBooksModal] = useState(false);
 
+  const getSubjectTopics = useCallback(() => {
+    // If we have dynamic topics, create a simplified structure
+    if (dynamicTopics.length > 0) {
+      const allTopics = {};
+
+      // Create topic structure from dynamic topics
+      dynamicTopics.forEach((topic) => {
+        allTopics[topic.value] = []; // No subtopics for now, just main topics
+      });
+
+      // If no main topics are selected, return all topics
+      if (selectedMainTopics.length === 0) {
+        return allTopics;
+      }
+
+      // Filter topics based on selected main topics (chapters)
+      const filteredTopics = {};
+      Object.entries(allTopics).forEach(([unit, topics]) => {
+        // If this unit (chapter) is selected in main topics, include it
+        if (selectedMainTopics.includes(unit)) {
+          filteredTopics[unit] = topics;
+        }
+      });
+
+      return filteredTopics;
+    }
+
+    // Fallback to static topics for backward compatibility
+    const allTopics = {}; // Removed reference to undefined 'availableTopics'
+
+    // If no main topics are selected, return all topics
+    if (selectedMainTopics.length === 0) {
+      return allTopics;
+    }
+
+    // Filter topics based on selected main topics (chapters)
+    const filteredTopics = {};
+    Object.entries(allTopics).forEach(([unit, topics]) => {
+      // If this unit (chapter) is selected in main topics, include all its subtopics
+      if (selectedMainTopics.includes(unit)) {
+        filteredTopics[unit] = topics;
+      }
+    });
+
+    return filteredTopics;
+  }, [selectedMainTopics, dynamicTopics]);
+
+  const getAllMainTopicsForSubject = useCallback(() => {
+    // Use dynamic topics if available, otherwise fallback to default
+    if (dynamicTopics.length > 0) {
+      return dynamicTopics;
+    }
+
+    // Fallback to default topics
+    return defaultMainTopics.map((topic) => ({
+      topic,
+      value: topic,
+    }));
+  }, [dynamicTopics]);
+
   // Function to fetch chapters from API
   const fetchChapters = useCallback(async (subject, classId) => {
     if (!subject || !classId) return;
@@ -226,6 +284,17 @@ export default function MinimalQuestionPaperForm() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [openDropdowns]);
+
+  useEffect(() => {
+    const allAvailableTopicValues = Object.keys(getSubjectTopics());
+
+    setQuestions((prevQuestions) =>
+      prevQuestions.map((q) => ({
+        ...q,
+        units: allAvailableTopicValues,
+      }))
+    );
+  }, [selectedMainTopics, getSubjectTopics]);
 
   // Clear errors when form values change
   useEffect(() => {
@@ -362,11 +431,12 @@ export default function MinimalQuestionPaperForm() {
   }, []);
 
   const addQuestion = useCallback(() => {
+    const allAvailableTopicValues = Object.keys(getSubjectTopics());
     setQuestions((prev) => [
       ...prev,
       {
         type: "",
-        units: [],
+        units: allAvailableTopicValues,
         // topics deprecated
         topics: [],
         difficulty: "medium",
@@ -375,7 +445,7 @@ export default function MinimalQuestionPaperForm() {
         subtopicsInput: "",
       },
     ]);
-  }, []);
+  }, [getSubjectTopics]);
 
   const removeQuestion = useCallback(
     (index) => {
@@ -452,66 +522,6 @@ export default function MinimalQuestionPaperForm() {
       [questionIndex]: !prev[questionIndex],
     }));
   };
-
-  const getSubjectTopics = useCallback(() => {
-    // If we have dynamic topics, create a simplified structure
-    if (dynamicTopics.length > 0) {
-      const allTopics = {};
-
-      // Create topic structure from dynamic topics
-      dynamicTopics.forEach((topic) => {
-        allTopics[topic.value] = []; // No subtopics for now, just main topics
-      });
-
-      // If no main topics are selected, return all topics
-      if (selectedMainTopics.length === 0) {
-        return allTopics;
-      }
-
-      // Filter topics based on selected main topics (chapters)
-      const filteredTopics = {};
-      Object.entries(allTopics).forEach(([unit, topics]) => {
-        // If this unit (chapter) is selected in main topics, include it
-        if (selectedMainTopics.includes(unit)) {
-          filteredTopics[unit] = topics;
-        }
-      });
-
-      return filteredTopics;
-    }
-
-    // Fallback to static topics for backward compatibility
-    const allTopics = {}; // Removed reference to undefined 'availableTopics'
-
-    // If no main topics are selected, return all topics
-    if (selectedMainTopics.length === 0) {
-      return allTopics;
-    }
-
-    // Filter topics based on selected main topics (chapters)
-    const filteredTopics = {};
-    Object.entries(allTopics).forEach(([unit, topics]) => {
-      // If this unit (chapter) is selected in main topics, include all its subtopics
-      if (selectedMainTopics.includes(unit)) {
-        filteredTopics[unit] = topics;
-      }
-    });
-
-    return filteredTopics;
-  }, [selectedMainTopics, dynamicTopics]);
-
-  const getAllMainTopicsForSubject = useCallback(() => {
-    // Use dynamic topics if available, otherwise fallback to default
-    if (dynamicTopics.length > 0) {
-      return dynamicTopics;
-    }
-
-    // Fallback to default topics
-    return defaultMainTopics.map((topic) => ({
-      topic,
-      value: topic,
-    }));
-  }, [dynamicTopics]);
 
   const handleMainTopicToggle = useCallback(
     (topicValue) => {

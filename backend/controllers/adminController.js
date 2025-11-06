@@ -608,7 +608,7 @@ export const updateTeacherRole = async (req, res) => {
       });
     }
 
-    if (req.user.role !== "superadmin") {
+    if (req.user.role !== "principal") {
       return res.status(403).json({
         success: false,
         message: "Forbidden: You do not have permission to change user roles.",

@@ -110,7 +110,7 @@ export async function fetchTeacherProfile() {
   if (!user) throw new Error("User not authenticated");
   const idToken = await user.getIdToken();
 
-  const response = await api.get(`${local_api}auth/profile`, {
+  const response = await api.get(`auth/profile`, {
     headers: {
       Authorization: `Bearer ${idToken}`,
     },
@@ -238,7 +238,7 @@ export const bookAPI = {
 
       // This correctly calls the TEACHER route: /api/teachers/assignments
       const response = await api.get(
-        `${local_api}teachers/assignments?${params.toString()}`
+        `teachers/assignments?${params.toString()}`
       );
 
       // Note: This returns the full axios response object.
@@ -603,7 +603,7 @@ export const teacherAPI = {
   getFilteredPaperGroups: async (classGrade, subject, examType, date) => {
     try {
       const res = await api.get("/teachers/my-question-papers-grouped", {
-        params: { classGrade, subject, examType, date },
+        params: { classGrade, subject },
       });
       return res.data; // Returns { success: true, data: [...] }
     } catch (err) {

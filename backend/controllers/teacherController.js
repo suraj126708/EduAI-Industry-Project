@@ -35,8 +35,8 @@ import FormData from "form-data";
  */
 
 const local_url = "http://localhost:8000/";
-const deplyed_url = "https://joshiaryan-eduai-ai-deployment.hf.space/";
-// const deplyed_url = "http://127.0.0.1:8000/";
+//const deplyed_url = "https://joshiaryan-eduai-ai-deployment.hf.space/";
+const deplyed_url = "http://127.0.0.1:8000/";
 
 export const getAllTeachers = async (req, res) => {
   try {
@@ -1092,7 +1092,8 @@ export const getStudentsByClass = async (req, res) => {
 // @access  Private (Teacher)
 export const getFilteredQuestionPaperGroups = async (req, res) => {
   try {
-    const { classGrade, subject, examType, date } = req.query;
+    // --- MODIFIED: Removed examType and date ---
+    const { classGrade, subject } = req.query;
     const teacherId = req.user._id;
 
     if (!classGrade || !subject) {
@@ -1108,31 +1109,14 @@ export const getFilteredQuestionPaperGroups = async (req, res) => {
       classGrade: classGrade,
       subject: subject,
     };
-
-    if (examType) matchFilter.examType = examType;
-
-    if (date) {
-      try {
-        const startDate = new Date(date);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 1);
-
-        matchFilter.createdAt = {
-          $gte: startDate,
-          $lt: endDate,
-        };
-      } catch (dateError) {
-        console.warn("Invalid date format received:", date, dateError);
-      }
-    }
+    // --- MODIFIED: Removed examType and date filters ---
 
     const paperGroups = await QuestionPaper.aggregate([
       // 1. Match papers based on filters
       { $match: matchFilter },
       // 2. Sort by creation date (newest first)
       { $sort: { createdAt: -1 } },
-      // 3. Add a field for grouping by timestamp (rounded to the minute)
+      // 3. Add a field for grouping
       {
         $addFields: {
           roundedCreatedAt: {
@@ -1169,8 +1153,8 @@ export const getFilteredQuestionPaperGroups = async (req, res) => {
               {
                 sets: "$sets",
                 papers: "$papers",
-                _id: "$firstDoc._id", // Use paper's ID as the group's "viewable" ID
-                // Create a user-friendly title for the dropdown
+                _id: "$firstDoc._id",
+                // Create a user-friendly title
                 groupTitle: {
                   $concat: [
                     "$firstDoc.subject",

@@ -6,8 +6,8 @@ import path from "path";
 import axios from "axios";
 import FormData from "form-data";
 
-// Get the AI service URL from your teacherController (move this to a central config later)
 const deplyed_url = "http://127.0.0.1:8000/";
+//const deplyed_url = "https://joshiaryan-eduai-ai-deployment.hf.space/";
 
 // @desc    Upload an answer sheet for evaluation
 // @route   POST /api/evaluations/upload
