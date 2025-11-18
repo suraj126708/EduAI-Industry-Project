@@ -106,6 +106,18 @@ const PaperView = ({ paperData, calculateTotalMarks }) => (
                       </td>
                       <td className="question-cell border border-gray-400 px-3 py-3">
                         <div className="text-gray-800">{question.question}</div>
+
+                        {/* --- NEW IMAGE RENDERING LOGIC --- */}
+                        {question.imageUrl && (
+                          <div className="my-3 flex justify-start">
+                            <img
+                              src={question.imageUrl}
+                              alt={`Diagram for Q${question.questionNo}`}
+                              className="max-h-48 max-w-full object-contain border border-gray-200 rounded p-1"
+                            />
+                          </div>
+                        )}
+
                         {Array.isArray(question.options) &&
                           question.options.length > 0 && (
                             <div className="options mt-2 text-sm text-gray-700">
@@ -272,6 +284,60 @@ const EditView = ({
                 placeholder="Enter question text"
               />
 
+              {/* --- NEW IMAGE INPUT FIELDS --- */}
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-100 p-2 rounded">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Question Type
+                  </label>
+                  <select
+                    value={question.questionType || "text"}
+                    onChange={(e) =>
+                      updateQuestion(
+                        sectionIndex,
+                        questionIndex,
+                        "questionType",
+                        e.target.value
+                      )
+                    }
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                  >
+                    <option value="text">Text Only</option>
+                    <option value="image">Image/Diagram</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Image URL
+                  </label>
+                  <input
+                    type="text"
+                    value={question.imageUrl || ""}
+                    onChange={(e) =>
+                      updateQuestion(
+                        sectionIndex,
+                        questionIndex,
+                        "imageUrl",
+                        e.target.value
+                      )
+                    }
+                    placeholder="https://..."
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                  />
+                </div>
+                {/* Preview in Edit Mode */}
+                {question.imageUrl && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-gray-500 mb-1">Preview:</p>
+                    <img
+                      src={question.imageUrl}
+                      alt="Preview"
+                      className="h-32 object-contain bg-white border"
+                    />
+                  </div>
+                )}
+              </div>
+
               {Array.isArray(question.options) &&
                 question.options.length > 0 && (
                   <div className="mt-2">
@@ -400,6 +466,9 @@ function ExamPaperGenerator() {
           question: safeString(q?.question),
           marks: safeNumber(q?.marks, 1),
           options: safeArray(q?.options).map(safeString).filter(Boolean),
+
+          questionType: safeString(q?.questionType || q?.type, "text"),
+          imageUrl: safeString(q?.imageUrl || q?.image || q?.diagramUrl || ""),
         })),
       })),
 
@@ -696,9 +765,23 @@ function ExamPaperGenerator() {
             .question-no { text-align: center; vertical-align: top; width: 50px; }
             .options { margin-top: 8px; font-size: 14px; }
             .footer { text-align: center; font-size: 12px; color: #6b7280; margin-top: 30px; border-top: 1px solid #d1d5db; padding-top: 15px; }
+            .question-cell img {
+              max-height: 200px; /* Matches the approx height of max-h-48 */
+              max-width: 100%;   /* Prevents overflow */
+              width: auto;       /* Maintains aspect ratio */
+              height: auto;      /* Maintains aspect ratio */
+              object-fit: contain;
+              display: block;
+              margin-top: 10px;
+              margin-bottom: 10px;
+              border: 1px solid #e5e7eb; /* Optional: Light gray border like screen view */
+              padding: 4px;
+              border-radius: 4px;
+            }
             @media print {
               body { margin: 0; }
               .no-print { display: none; }
+              * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             }
           </style>
         </head>
@@ -712,7 +795,7 @@ function ExamPaperGenerator() {
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
-    }, 250);
+    }, 500);
   };
 
   const downloadDOCX = () => {
@@ -878,12 +961,16 @@ function ExamPaperGenerator() {
                           </div>
                         `
                             : "";
+
+                        const imageHtml = question.imageUrl
+                          ? `<br/><img src="${question.imageUrl}" width="200" height="auto" style="max-width: 300px; height: auto; display: block; margin: 10px 0;" /><br/>`
+                          : "";
                         return `
                     <tr>
                       <td class="question-no">${question.questionNo}</td>
                       <td class="question-cell">
                         ${question.question}
-                        ${optsHtml}
+                        ${imageHtml}  ${optsHtml}
                       </td>
                       <td class="marks-cell">${question.marks}</td>
                     </tr>`;

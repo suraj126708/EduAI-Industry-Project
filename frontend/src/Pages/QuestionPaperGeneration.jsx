@@ -221,6 +221,7 @@ export default function MinimalQuestionPaperForm() {
         params: {
           subject: subject,
           classId: classId,
+          _cacheBust: Date.now(),
         },
       });
 

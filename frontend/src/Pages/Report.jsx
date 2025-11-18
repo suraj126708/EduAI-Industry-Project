@@ -151,6 +151,17 @@ const remarksBoxStyle = {
   lineHeight: "1.6",
 };
 
+const questionImageStyle = {
+  maxWidth: "100%",
+  maxHeight: "300px", // Limit height so it doesn't take up the whole page
+  marginTop: "12px",
+  borderRadius: "8px",
+  border: "1px solid #cbd5e1",
+  padding: "4px",
+  backgroundColor: "#fff",
+  display: "block", // Ensures it respects margins
+};
+
 const DetailedQuestionAnalysis = ({ sections }) => {
   if (!sections || sections.length === 0) {
     return <p>No detailed analysis available.</p>;
@@ -174,15 +185,37 @@ const DetailedQuestionAnalysis = ({ sections }) => {
             return (
               <div key={qIdx} style={questionBoxStyle}>
                 {/* Question Header */}
-                <div style={questionHeaderStyle}>
-                  <span>
-                    <strong>Q{q.questionNo}.</strong> {q.question}
-                  </span>
+                <div
+                  style={{ ...questionHeaderStyle, alignItems: "flex-start" }}
+                >
+                  {/* CHANGED: Added 'alignItems: flex-start' so marks stay at the top 
+                      even if the question + image is tall 
+                  */}
+
+                  <div style={{ flex: 1, paddingRight: "16px" }}>
+                    {/* Question Text */}
+                    <div style={{ fontSize: "1rem", color: "#334155" }}>
+                      <strong>Q{q.questionNo}.</strong> {q.question}
+                    </div>
+
+                    {/* --- NEW: RENDER IMAGE IF EXISTS --- */}
+                    {q.imageUrl && (
+                      <img
+                        src={q.imageUrl}
+                        alt={`Question ${q.questionNo} reference`}
+                        style={questionImageStyle}
+                      />
+                    )}
+                    {/* ----------------------------------- */}
+                  </div>
+
+                  {/* Marks Badge */}
                   <span
                     style={{
                       ...markStyle,
                       color: markColor,
                       borderColor: markColor,
+                      marginTop: "4px", // Align slightly with text
                     }}
                   >
                     {q.awarded} / {q.marks}
@@ -452,175 +485,6 @@ export default function ExamReport() {
       {/* --- !!! NEW DETAILED ANALYSIS SECTION !!! --- */}
       <section>
         <DetailedQuestionAnalysis sections={sections} />
-      </section>
-
-      {/* Performance & Visualization */}
-      <section style={cardStyle}>
-        <h2 style={cardTitle}>📊 Performance Summary</h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: "12px",
-            marginBottom: "20px",
-          }}
-        >
-          <div style={statBox}>
-            <div style={statLabel}>Marks Obtained</div>
-            <div style={statValue}>
-              {performance.obtainedMarks}/{examDetails.totalMarks}
-            </div>
-          </div>
-          <div style={statBox}>
-            <div style={statLabel}>Percentage</div>
-            <div style={statValue}>{performance.percentage}%</div>
-          </div>
-          <div style={statBox}>
-            <div style={statLabel}>Grade</div>
-            <div style={statValue}>{performance.grade}</div>
-          </div>
-        </div>
-        <div style={{ margin: "20px 0" }}>
-          <div
-            style={{ fontSize: "0.98rem", marginBottom: 8, fontWeight: "600" }}
-          >
-            Overall Performance
-          </div>
-          <div
-            style={{
-              background: "#e5e7eb",
-              borderRadius: 8,
-              height: 28,
-              width: "100%",
-              position: "relative",
-            }}
-          >
-            <div
-              style={{
-                background:
-                  performance.percentage >= 75
-                    ? "#22c55e"
-                    : performance.percentage >= 60
-                    ? "#eab308"
-                    : "#ef4444",
-                width: `${performance.percentage}%`,
-                height: "100%",
-                borderRadius: 8,
-                transition: "width 0.8s ease-out",
-              }}
-            />
-            <span
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: 0,
-                transform: "translateX(-50%)",
-                color: "#1e293b",
-                fontWeight: 700,
-                fontSize: "0.95rem",
-                lineHeight: "28px",
-              }}
-            >
-              {performance.percentage}%
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* Section-wise Performance (Renamed from Chapter) */}
-      <section style={cardStyle}>
-        <h2 style={cardTitle}>📚 Section-wise Analysis</h2>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart
-            data={sectionPerformanceData} // Use dynamic data
-            margin={{ top: 20, right: 30, left: 0, bottom: 60 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis
-              dataKey="name" // Use section name
-              tick={{ fontSize: 11 }}
-              interval={0}
-              textAnchor="end"
-            />
-            <YAxis
-              domain={[0, 100]}
-              label={{
-                value: "Score (%)",
-                angle: -90,
-                position: "insideLeft",
-                style: { fontSize: 12 },
-              }}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "#fff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "8px",
-              }}
-              cursor={{ fill: "rgba(99, 102, 241, 0.1)" }}
-              formatter={(value, name) => [
-                value,
-                name === "percentage" ? "Score" : name,
-              ]}
-              labelFormatter={(label) => label}
-            />
-            <Bar
-              dataKey="percentage" // Chart the percentage
-              fill="#6366f1"
-              radius={[8, 8, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </section>
-
-      {/* Section-wise Breakdown (Progress Bars) */}
-      <section style={cardStyle}>
-        <h2 style={cardTitle}>📝 Section-wise Breakdown</h2>
-        <div style={{ marginBottom: 20 }}>
-          {sectionPerformanceData.map(
-            (
-              section,
-              idx // Use dynamic data
-            ) => (
-              <div key={idx} style={{ marginBottom: 16 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: 4,
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  <span>
-                    <strong>{section.name}</strong>
-                  </span>
-                  <span>
-                    {section.value}/{section.max} ({section.percentage}%)
-                  </span>
-                </div>
-                <div
-                  style={{
-                    background: "#e5e7eb",
-                    borderRadius: 6,
-                    height: 20,
-                    width: "100%",
-                  }}
-                >
-                  <div
-                    style={{
-                      background: COLORS[idx % COLORS.length], // Use dynamic color
-                      width: `${section.percentage}%`,
-                      height: "100%",
-                      borderRadius: 6,
-                      transition: "width 0.6s ease-out",
-                      // --- THIS IS WHERE THE ERROR WAS ---
-                    }}
-                  />
-                </div>
-              </div>
-            )
-          )}
-        </div>
       </section>
 
       {/* TODO: The "Insights" section can be the next feature.
