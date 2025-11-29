@@ -653,6 +653,17 @@ export const evaluationAPI = {
       return err.response?.data || { success: false, message: err.message };
     }
   },
+
+  generateSemesterReport: async (payload) => {
+    try {
+      // payload = { studentId, startDate, endDate }
+      const res = await api.post("/evaluation/semester", payload);
+      return res.data;
+    } catch (err) {
+      console.error("Report generation error:", err);
+      return err.response?.data || { success: false, message: err.message };
+    }
+  },
 };
 
 export default api;

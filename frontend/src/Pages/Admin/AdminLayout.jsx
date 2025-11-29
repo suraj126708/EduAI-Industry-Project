@@ -13,8 +13,8 @@ import {
 } from "react-icons/fa";
 
 const navItems = [
-  //{ name: "Dashboard", path: "/admin/dashboard", icon: <FaTachometerAlt /> },
-  //{ name: "Schools", path: "/admin/schools", icon: <FaSchool /> },
+  // { name: "Dashboard", path: "/admin/dashboard", icon: <FaTachometerAlt /> },
+  // { name: "Schools", path: "/admin/schools", icon: <FaSchool /> },
   { name: "Classes", path: "/admin/classes", icon: <FaGraduationCap /> },
   { name: "Subjects", path: "/admin/subjects", icon: <FaBook /> },
   { name: "Teachers", path: "/admin/teachers", icon: <FaUsers /> },
@@ -30,8 +30,9 @@ const navItems = [
 ];
 
 const AdminLayout = () => (
-  <div className="flex min-h-screen bg-gradient-to-r from-indigo-50 via-white to-indigo-100">
-    <aside className="w-64 bg-white border-r shadow-sm flex flex-col py-8 px-4">
+  // 1. Changed min-h-screen to h-screen and added overflow-hidden
+  <div className="fixed top-16 left-0 right-0 bottom-0 flex overflow-hidden bg-gradient-to-r from-indigo-50 via-white to-indigo-100">
+    <aside className="w-64 bg-white border-r shadow-sm flex flex-col py-8 px-4 h-full">
       <span className="text-xl font-bold text-indigo-700 mb-8 tracking-tight">
         Admin Panel
       </span>
@@ -55,7 +56,9 @@ const AdminLayout = () => (
         ))}
       </nav>
     </aside>
-    <main className="flex-1 p-10">
+
+    {/* 2. Added overflow-y-auto here so only this section scrolls */}
+    <main className="flex-1 p-10 overflow-y-auto">
       <Outlet />
     </main>
   </div>

@@ -31,6 +31,7 @@ import Classes from "./Pages/Admin/Classes";
 import Subjects from "./Pages/Admin/Subjects";
 import TeacherAssignments from "./Pages/Admin/TeacherAssignments";
 import Books from "./Pages/Admin/Books";
+import SemesterReport from "./Pages/Admin/SemesterReport";
 
 // --- Superadmin Only Imports ---
 import SuperAdminLayout from "./Pages/SuperAdmin/SuperAdminLayout"; // We'll create this layout
@@ -96,6 +97,7 @@ function App() {
               <Route path="students" element={<AdminStudents />} />
               <Route path="papers" element={<AdminPapers />} />
               <Route path="stats" element={<AdminResults />} />
+              <Route path="semester-report" element={<SemesterReport />} />
             </Route>
 
             {/* Redirect root to /home */}
