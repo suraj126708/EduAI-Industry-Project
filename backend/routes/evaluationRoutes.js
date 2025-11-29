@@ -3,6 +3,7 @@ import {
   uploadAnswerSheetForEvaluation,
   getEvaluationReport,
   getEvaluationsByClass,
+  generateSemesterReport,
 } from "../controllers/evaluationController.js"; // We will create this controller next
 import {
   authenticateFirebaseToken,
@@ -33,6 +34,13 @@ router.get(
   authenticateFirebaseToken,
   authorize("teacher", "principal"),
   getEvaluationReport
+);
+
+router.post(
+  "/semester",
+  authenticateFirebaseToken,
+  authorize("teacher", "principal"),
+  generateSemesterReport
 );
 
 export default router;

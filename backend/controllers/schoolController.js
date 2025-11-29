@@ -44,7 +44,8 @@ export const registerSchool = async (req, res) => {
         "School registration submitted. Waiting for superadmin approval.",
     });
   } catch (error) {
-    // ...error handling
+    console.error("Error registering school:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -70,6 +71,7 @@ export const verifySchool = async (req, res) => {
       message: `${school.name} has been verified successfully.`,
     });
   } catch (error) {
-    // ...error handling
+    console.error("Error verifying school:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
