@@ -431,7 +431,7 @@ const SemesterReportCard = ({ studentData, onClose }) => {
             </div>
 
             <div>
-              <span className="block font-bold text-sm text-indigo-900 mb-1 flex items-center gap-2">
+              <span className="font-bold text-sm text-indigo-900 mb-1 flex items-center gap-2">
                 Principal's Remark:
                 <span className="text-[10px] font-normal text-gray-400 uppercase print:hidden">
                   (Click to edit)
