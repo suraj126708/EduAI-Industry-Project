@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { adminService, evaluationAPI } from "../../utils/api";
-import SemesterReportCard from "./SemesterReport";
 import {
   FaUsers,
   FaUpload,
@@ -16,7 +15,6 @@ import {
   FileText,
   School,
   TrendingUp,
-  BookOpen,
   CheckCircle,
   AlertTriangle,
   ChevronRight,
@@ -37,11 +35,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// --- Report Modal Component ---
+// --- Report Modal Component (Kept same as provided) ---
 const ReportModal = ({ reportData, onClose }) => {
   if (!reportData) return null;
 
-  // Helper charts
   const renderPerformanceTrend = (data) => {
     if (!data || data.length === 0)
       return (
@@ -66,38 +63,6 @@ const ReportModal = ({ reportData, onClose }) => {
             activeDot={{ r: 8 }}
           />
         </LineChart>
-      </ResponsiveContainer>
-    );
-  };
-
-  const renderSubjectStrength = (data) => {
-    if (!data || data.length === 0)
-      return (
-        <p className="text-gray-500 text-center py-10">
-          No subject data available.
-        </p>
-      );
-
-    return (
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} layout="vertical" margin={{ left: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-          <XAxis type="number" domain={[0, 100]} hide />
-          <YAxis
-            dataKey="subject"
-            type="category"
-            width={100}
-            tick={{ fontSize: 12, fontWeight: 600 }}
-          />
-          <Tooltip cursor={{ fill: "transparent" }} />
-          <Bar
-            dataKey="averageScore"
-            fill="#10B981"
-            radius={[0, 4, 4, 0]}
-            barSize={20}
-            name="Avg Score (%)"
-          />
-        </BarChart>
       </ResponsiveContainer>
     );
   };
@@ -300,9 +265,7 @@ const SelectInput = ({
       disabled={disabled}
       {...props}
     >
-      <option value="">
-        {label.includes("Division") ? "All Divisions" : "Select Class"}
-      </option>
+      <option value="">Select Class</option>
       {options.map((opt, idx) => (
         <option key={`${opt.value}-${idx}`} value={opt.value}>
           {opt.label}
@@ -327,6 +290,7 @@ function Students() {
 
   // State for data
   const [students, setStudents] = useState([]);
+  const [allClassesData, setAllClassesData] = useState([]); // Store raw class data
   const [classOptions, setClassOptions] = useState([]);
   const [divisionOptions, setDivisionOptions] = useState([]);
 
@@ -350,19 +314,14 @@ function Students() {
         const res = await adminService.getClasses();
         if (res.data.success) {
           const classes = res.data.data;
-          // IMPORTANT: Mapping 'grade' to label/value as per your DB schema fix
+          setAllClassesData(classes); // Save raw data for dynamic filtering
+
+          // Extract unique Grades
           const uniqueGrades = [...new Set(classes.map((c) => c.grade))];
           setClassOptions(
             uniqueGrades
               .sort((a, b) => a - b)
               .map((g) => ({ value: g, label: `Class ${g}` }))
-          );
-          // Assuming division is part of the class object in your DB
-          const allDivs = [...new Set(classes.map((c) => c.division))].sort();
-          // Fallback if divisions aren't in the class object, hardcode or fetch separately
-          const finalDivs = allDivs.length > 0 ? allDivs : ["A", "B", "C", "D"];
-          setDivisionOptions(
-            finalDivs.map((d) => ({ value: d, label: `Division ${d}` }))
           );
         }
       } catch (err) {
@@ -373,6 +332,30 @@ function Students() {
     };
     fetchClasses();
   }, []);
+
+  // Dynamic Division Filter Logic
+  useEffect(() => {
+    // Reset division selection when class changes
+    setSelectedDivision("");
+
+    if (!selectedClass) {
+      setDivisionOptions([]);
+      return;
+    }
+
+    // Filter raw data to find divisions matching the selected grade
+    const availableClasses = allClassesData.filter(
+      (c) => c.grade.toString() === selectedClass.toString()
+    );
+
+    const uniqueDivisions = [
+      ...new Set(availableClasses.map((c) => c.division)),
+    ].sort();
+
+    setDivisionOptions(
+      uniqueDivisions.map((d) => ({ value: d, label: `Division ${d}` }))
+    );
+  }, [selectedClass, allClassesData]);
 
   // Fetch Students
   const handleFetchStudents = async () => {
@@ -434,14 +417,12 @@ function Students() {
     }
   };
 
-  // Handler for Excel file upload (enabled)
   const handleExcelUpload = async (e) => {
     setError("");
     setSuccessMessage("");
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
     if (
       ![
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -458,13 +439,11 @@ function Students() {
 
     setUploading(true);
     try {
-      // Assuming adminService.uploadStudentExcel is the correct API method
       const res = await adminService.uploadStudentExcel(formData);
       if (res.success) {
         setSuccessMessage(
           `Upload successful! ${res.data?.successCount || 0} students added.`
         );
-        // Refresh the student list if we are currently viewing a class
         if (selectedClass) {
           handleFetchStudents();
         }
@@ -475,7 +454,7 @@ function Students() {
       setError(error.message || "Upload failed.");
     } finally {
       setUploading(false);
-      e.target.value = null; // Reset file input
+      e.target.value = null;
     }
   };
 
@@ -625,7 +604,7 @@ function Students() {
           </div>
           <div className="md:col-span-3">
             <SelectInput
-              label="Select Division (Optional)"
+              label="Select Division"
               value={selectedDivision}
               onChange={setSelectedDivision}
               options={divisionOptions}
@@ -715,11 +694,13 @@ function Students() {
                   <th className="px-6 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                     Name
                   </th>
-                  {/* Class column removed as requested */}
                   <th className="px-6 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                     Parent Contact
                   </th>
-                  {/* Dynamic Action Column */}
+                  {/* Added Parent Email Column */}
+                  <th className="px-6 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Parent Email
+                  </th>
                   {isReportMode && (
                     <th className="px-6 py-3.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
                       Actions
@@ -746,6 +727,16 @@ function Students() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {stu.parentContact ? (
                         stu.parentContact
+                      ) : (
+                        <span className="text-gray-400 italic text-xs">
+                          Not Provided
+                        </span>
+                      )}
+                    </td>
+                    {/* Added Parent Email Data */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {stu.parentEmail ? (
+                        stu.parentEmail
                       ) : (
                         <span className="text-gray-400 italic text-xs">
                           Not Provided

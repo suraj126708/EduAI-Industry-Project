@@ -5,8 +5,8 @@ import {
   FaTrash,
   FaUserPlus,
   FaSearch,
-  FaFilter,
-  FaDownload,
+  FaTimes,
+  FaChalkboardTeacher,
 } from "react-icons/fa";
 
 const AdminUsers = () => {
@@ -18,6 +18,7 @@ const AdminUsers = () => {
   const [success, setSuccess] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+
   const [filters, setFilters] = useState({
     search: "",
     role: "",
@@ -33,9 +34,19 @@ const AdminUsers = () => {
     schoolId: "",
   });
 
+  // --- Auto-dismiss Alerts ---
+  useEffect(() => {
+    if (success || error) {
+      const timer = setTimeout(() => {
+        setSuccess("");
+        setError("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, error]);
+
   useEffect(() => {
     fetchUsers();
-    // Only super admins need the full list of schools
     if (userProfile?.role === "superadmin") {
       fetchSchools();
     }
@@ -47,7 +58,6 @@ const AdminUsers = () => {
       const result = await adminService.getUsers(filters);
       if (result.success) {
         setUsers(result.data.teachers || []);
-        console.log(result.data.teachers);
       } else {
         setError(result.error);
       }
@@ -61,12 +71,9 @@ const AdminUsers = () => {
   const fetchSchools = async () => {
     try {
       const result = await adminService.getSchools();
-      const schoolsArray = result.data?.data; // Access the nested array
-
+      const schoolsArray = result.data?.data;
       if (result.success && Array.isArray(schoolsArray)) {
         setSchools(schoolsArray);
-      } else {
-        console.error("Failed to fetch schools:", result.error);
       }
     } catch (err) {
       console.error("Failed to fetch schools:", err);
@@ -75,73 +82,50 @@ const AdminUsers = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
-    // ✨ Your requested feature: Sync email to password
     setFormData((prev) => {
       const newFormData = { ...prev, [name]: value };
-
-      // If in CREATE mode (no editingUser) AND changing the email field:
+      // Sync password with email only during creation
       if (!editingUser && name === "email") {
-        newFormData.password = value; // Set password to match email
+        newFormData.password = value;
       }
-
       return newFormData;
     });
   };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setSuccess("");
 
     try {
       let result;
       if (editingUser) {
-        // --- UPDATE LOGIC ---
-        // Don't send password on update
         const { password, ...updateData } = formData;
         result = await adminService.updateUser(editingUser._id, updateData);
       } else {
-        // --- CREATE LOGIC ---
-        // 'formData' will contain the defaults for role and status
         result = await adminService.createUser(formData);
       }
 
       if (result.success) {
-        const action = editingUser ? "updated" : "created";
-        setSuccess(`User ${action} successfully!`);
-        closeForm(); // Use the renamed close function
-        fetchUsers(); // Refresh the list
+        setSuccess(editingUser ? "Teacher updated!" : "Teacher created!");
+        closeForm();
+        fetchUsers();
       } else {
-        // Handle backend validation errors (e.g., "auth/weak-password")
-        setError(
-          result.message ||
-            result.error ||
-            `Failed to ${editingUser ? "update" : "create"} user.`
-        );
+        setError(result.message || result.error || "Operation failed.");
       }
     } catch (err) {
-      // Handle network errors or other exceptions
-      setError(`An error occurred while saving the user: ${err.message}`);
+      setError(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  //New function to open the modal in "Create" mode
   const handleShowCreateForm = () => {
-    setEditingUser(null); // Ensure we are NOT in edit mode
-
-    // Set default schoolId for principals
+    setEditingUser(null);
     const defaultSchoolId =
       userProfile?.role === "principal" ? userProfile.schoolId?._id || "" : "";
 
@@ -149,8 +133,8 @@ const AdminUsers = () => {
       name: "",
       email: "",
       password: "",
-      role: "teacher", // Default role (hidden on create)
-      status: "active", // Default status (hidden on create)
+      role: "teacher",
+      status: "active",
       schoolId: defaultSchoolId,
     });
     setShowForm(true);
@@ -158,7 +142,6 @@ const AdminUsers = () => {
 
   const handleEdit = (user) => {
     setEditingUser(user);
-
     let schoolIdToSet = user.schoolId?._id || "";
     if (userProfile?.role === "principal" && !user.schoolId) {
       schoolIdToSet = userProfile.schoolId?._id;
@@ -170,7 +153,7 @@ const AdminUsers = () => {
       role: user.role || "teacher",
       status: user.status || "active",
       schoolId: schoolIdToSet,
-      password: "", // Clear password, it's not needed for edit
+      password: "",
     });
     setShowForm(true);
   };
@@ -195,130 +178,104 @@ const AdminUsers = () => {
     try {
       const result = await adminService.updateUserStatus(userId, newStatus);
       if (result.success) {
-        setSuccess("User status updated successfully!");
-        fetchUsers();
+        setSuccess("Status updated");
+        fetchUsers(); // Refresh to ensure UI stays synced
       } else {
         setError(result.error);
       }
     } catch (err) {
-      setError("Failed to update user status");
+      setError("Failed to update status");
     }
   };
 
-  const handleExport = async () => {
-    try {
-      const result = await adminService.exportUsers(filters);
-      if (result.success) {
-        // Create and download CSV
-        const csvData = result.data.teachers
-          .map(
-            (user) =>
-              `${user.email},${user.name || ""},${user.role},${user.status}`
-          )
-          .join("\n");
-        const csvContent = "Email,Name,Role,Status\n" + csvData;
-        const blob = new Blob([csvContent], { type: "text/csv" });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "teachers-export.csv";
-        a.click();
-        window.URL.revokeObjectURL(url);
-      } else {
-        setError(result.error);
-      }
-    } catch (err) {
-      setError("Failed to export users");
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "inactive":
-        return "bg-gray-100 text-gray-800";
-      case "suspended":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getRoleColor = (role) => {
-    switch (role) {
-      case "superadmin":
-        return "bg-purple-100 text-purple-800";
-      case "principal":
-        return "bg-blue-100 text-blue-800";
-      case "teacher":
-        return "bg-indigo-100 text-indigo-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  // Renamed and fixed to reset password
   const closeForm = () => {
     setShowForm(false);
     setEditingUser(null);
     setFormData({
       name: "",
       email: "",
-      password: "", // Reset password
+      password: "",
       role: "teacher",
       status: "active",
       schoolId: "",
     });
   };
 
+  // --- Helper to get badge colors ---
+  const getRoleBadge = (role) => {
+    const styles = {
+      superadmin: "bg-purple-100 text-purple-700 border-purple-200",
+      principal: "bg-blue-100 text-blue-700 border-blue-200",
+      teacher: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    };
+    return styles[role] || "bg-gray-100 text-gray-700";
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-800 ring-green-600/20";
+      case "inactive":
+        return "bg-gray-100 text-gray-800 ring-gray-500/10";
+      case "suspended":
+        return "bg-red-50 text-red-700 ring-red-600/10";
+      default:
+        return "bg-gray-50 text-gray-600";
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-          <FaUserPlus className="mr-2 text-indigo-600" />
-          {userProfile?.role === "principal"
-            ? `${
-                userProfile.schoolId?.name || "My School"
-              } - Teacher Management`
-            : "Teacher Management"}
-        </h2>
-        <div className="flex gap-2">
-          {/* "Add Teacher" Button */}
-          <button
-            onClick={handleShowCreateForm}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center"
-          >
-            <FaUserPlus className="mr-2" />
-            Add Teacher
-          </button>
-          <button
-            onClick={handleExport}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"
-          >
-            <FaDownload className="mr-2" />
-            Export
-          </button>
+    <div className="max-w-7xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+      {/* --- Header Section --- */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          {/* Displays School Name directly as the main title */}
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+            {userProfile?.schoolId?.name || "School Administration"}
+          </h1>
+          <p className="text-gray-500 mt-1 text-lg flex items-center">
+            <FaChalkboardTeacher className="mr-2" /> Teacher Directory
+          </p>
         </div>
+
+        <button
+          onClick={handleShowCreateForm}
+          className={`px-5 py-2.5 rounded-lg font-medium flex items-center transition-all shadow-sm ${
+            showForm
+              ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md"
+          }`}
+        >
+          {showForm ? (
+            <>
+              <FaTimes className="mr-2" /> Cancel
+            </>
+          ) : (
+            <>
+              <FaUserPlus className="mr-2" /> Add Teacher
+            </>
+          )}
+        </button>
       </div>
 
+      {/* --- Notifications --- */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6 animate-fade-in">
           {error}
         </div>
       )}
-
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded mb-6 animate-fade-in">
           {success}
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-gray-50 p-4 rounded-lg mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+      {/* --- Filters Bar --- */}
+      <div className="bg-gray-50 p-5 rounded-xl mb-8 border border-gray-100">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          {/* Search - Spans 5 columns */}
+          <div className="md:col-span-5">
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Search
             </label>
             <div className="relative">
@@ -328,21 +285,22 @@ const AdminUsers = () => {
                 name="search"
                 value={filters.search}
                 onChange={handleFilterChange}
-                placeholder="Search by name or email..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Find by name or email..."
+                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          {/* Role Filter - Spans 3 columns */}
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Role
             </label>
             <select
               name="role"
               value={filters.role}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">All Roles</option>
               <option value="teacher">Teacher</option>
@@ -351,15 +309,16 @@ const AdminUsers = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          {/* Status Filter - Spans 3 columns */}
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Status
             </label>
             <select
               name="status"
               value={filters.status}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">All Statuses</option>
               <option value="active">Active</option>
@@ -368,28 +327,31 @@ const AdminUsers = () => {
             </select>
           </div>
 
-          <div className="flex items-end">
+          {/* Clear Button - Spans 1 column */}
+          <div className="md:col-span-1 flex items-end">
             <button
               onClick={() => setFilters({ search: "", role: "", status: "" })}
-              className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+              className="w-full py-2 bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-800 transition-colors text-sm font-medium"
+              title="Clear Filters"
             >
-              Clear Filters
+              Clear
             </button>
           </div>
         </div>
       </div>
 
-      {/* Create / Edit Form */}
+      {/* --- Create / Edit Form --- */}
       {showForm && (
-        <div className="bg-gray-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-semibold mb-4">
-            {editingUser ? "Edit Teacher" : "Create New Teacher"}
+        <div className="bg-white p-8 rounded-xl border border-indigo-100 shadow-lg mb-8 animate-slide-down relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-indigo-600"></div>
+          <h3 className="text-xl font-bold text-gray-800 mb-6">
+            {editingUser ? "Edit Teacher Details" : "Onboard New Teacher"}
           </h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name *
+                  Full Name
                 </label>
                 <input
                   type="text"
@@ -397,15 +359,13 @@ const AdminUsers = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  // --- CHANGE: Name is now editable ---
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
-              {/* --- NEW: Email Field --- */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email *
+                  Email Address
                 </label>
                 <input
                   type="email"
@@ -413,46 +373,45 @@ const AdminUsers = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  // --- CHANGE: Email is READ-ONLY on edit ---
                   readOnly={!!editingUser}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
-                    editingUser ? "bg-gray-100" : "" // Visual cue
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg ${
+                    editingUser
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : "focus:ring-2 focus:ring-indigo-500"
                   }`}
                 />
               </div>
 
-              {/* Password field ONLY shows for NEW users */}
               {!editingUser && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Password *
+                    Password
                   </label>
                   <input
-                    type="text" // Use "text" so user can see the email sync
+                    type="text"
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Defaults to email. Must be at least 6 characters.
+                    Initially set to match email address.
                   </p>
                 </div>
               )}
 
-              {/* School dropdown is only for super admins */}
               {userProfile?.role === "superadmin" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    School *
+                    Assign School
                   </label>
                   <select
                     name="schoolId"
                     value={formData.schoolId}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Select School</option>
                     {schools.map((school) => (
@@ -464,7 +423,6 @@ const AdminUsers = () => {
                 </div>
               )}
 
-              {/* --- CHANGE: Role and Status only show on EDIT --- */}
               {editingUser && (
                 <>
                   <div>
@@ -475,7 +433,7 @@ const AdminUsers = () => {
                       name="role"
                       value={formData.role}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="teacher">Teacher</option>
                       <option value="principal">Principal</option>
@@ -483,13 +441,13 @@ const AdminUsers = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status
+                      Account Status
                     </label>
                     <select
                       name="status"
                       value={formData.status}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -500,146 +458,156 @@ const AdminUsers = () => {
               )}
             </div>
 
-            <div className="flex gap-4 pt-2">
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={closeForm}
+                className="px-6 py-2 rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium transition-colors"
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                className="px-6 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-medium shadow-md transition-all disabled:opacity-50"
               >
                 {loading
                   ? "Saving..."
                   : editingUser
-                  ? "Update Teacher"
-                  : "Create Teacher"}
-              </button>
-              <button
-                type="button"
-                onClick={closeForm} // Use the renamed function
-                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
-              >
-                Cancel
+                  ? "Update User"
+                  : "Create User"}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Teachers List Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800">Teachers List</h3>
-        </div>
-        <div className="p-6">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-              <p className="mt-2 text-gray-500">Loading teachers...</p>
+      {/* --- Table Section --- */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-500 font-medium">Loading records...</p>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-16 px-4">
+            <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+              <FaChalkboardTeacher className="text-4xl text-gray-300" />
             </div>
-          ) : users.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <FaUserPlus className="mx-auto text-4xl mb-4 text-gray-300" />
-              <p>
-                No teachers found. Use the "Add Teacher" button to create one.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Teacher
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      School
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+            <h3 className="text-lg font-bold text-gray-800">
+              No teachers found
+            </h3>
+            <p className="text-gray-500 mt-1 max-w-sm mx-auto">
+              No records matched your filters. Try adjusting your search or add
+              a new teacher.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Teacher Name
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {users.map((user) => (
+                  <tr
+                    key={user._id}
+                    className="hover:bg-indigo-50/30 transition-colors group"
+                  >
+                    {/* Name Column (No Email) */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center border border-indigo-200 text-indigo-700 font-bold text-sm shadow-sm">
+                            {user.name
+                              ? user.name.charAt(0).toUpperCase()
+                              : "U"}
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {user.name || "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Separate Email Column */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-600 font-medium">
+                        {user.email}
+                      </span>
+                    </td>
+
+                    {/* Role Column */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-3 py-1 text-xs font-bold rounded-full border ${getRoleBadge(
+                          user.role
+                        )}`}
+                      >
+                        {user.role}
+                      </span>
+                    </td>
+
+                    {/* Status Dropdown */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select
+                        value={user.status}
+                        onChange={(e) =>
+                          handleStatusChange(user._id, e.target.value)
+                        }
+                        className={`text-xs font-bold rounded-full px-3 py-1 border-0 ring-1 focus:ring-2 cursor-pointer outline-none appearance-none ${getStatusColor(
+                          user.status
+                        )}`}
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                      </select>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={() => handleEdit(user)}
+                          className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
+                          title="Edit"
+                        >
+                          <FaEdit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user._id)}
+                          className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                          title="Delete"
+                        >
+                          <FaTrash size={16} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                              <span className="text-sm font-medium text-indigo-600">
-                                {user.name
-                                  ? user.name.charAt(0).toUpperCase()
-                                  : user.email.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.name || "N/A"}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {user.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {user.schoolId?.name || "No School Assigned"}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(
-                            user.role
-                          )}`}
-                        >
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={user.status}
-                          onChange={(e) =>
-                            handleStatusChange(user._id, e.target.value)
-                          }
-                          className={`text-xs font-semibold rounded-full px-2 py-1 border-0 ${getStatusColor(
-                            user.status
-                          )}`}
-                        >
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
-                          <option value="suspended">Suspended</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            <FaEdit />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(user._id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

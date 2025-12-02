@@ -570,12 +570,18 @@ export const adminService = {
   },
   getStudents: async (grade, division, rollNumber) => {
     try {
-      const params = { grade };
-      if (division) params.division = division;
-      if (rollNumber) params.rollNumber = rollNumber;
+      // 🔴 FIX: Map frontend args to the specific backend query params
+      const params = {
+        class: grade, // Frontend 'grade'  -> Backend 'class'
+        div: division, // Frontend 'division' -> Backend 'div'
+      };
 
-      // This calls GET /api/teachers/students-by-class
-      const response = await api.get("/teachers/students-by-class", { params });
+      if (rollNumber) {
+        params.rollNumber = rollNumber;
+      }
+
+      // This calls GET /api/admin/students?class=10&div=A
+      const response = await api.get("/admin/students", { params });
       return response.data; // { success, data: [...] }
     } catch (error) {
       console.error("Error fetching students:", error);

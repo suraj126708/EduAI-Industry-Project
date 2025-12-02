@@ -1,37 +1,50 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import Unauthorized from "../../components/Unauthorized";
-import { bookAPI } from "../../utils/api";
 import {
   FaPlus,
   FaEdit,
   FaTrash,
   FaUserTie,
   FaChalkboardTeacher,
+  FaSearch,
+  FaTimes,
+  FaFilter,
 } from "react-icons/fa";
 
 const TeacherAssignments = () => {
   const { adminService, isPrincipal } = useAuth();
+
+  // Data States
   const [assignments, setAssignments] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
+
+  // UI States
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
+  // Form States
   const [formData, setFormData] = useState({
     teacherId: "",
     classId: "",
     subjectId: "",
   });
 
+  // Helper states for the "Split" dropdowns
   const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [selectedGrade, setSelectedGrade] = useState(""); // For the Grade dropdown
+  const [selectedDivision, setSelectedDivision] = useState(""); // For the Division dropdown
+
+  // Filtered lists based on selection
   const [filteredClasses, setFilteredClasses] = useState([]);
   const [filteredSubjects, setFilteredSubjects] = useState([]);
 
-  // Fetch data on component mount
+  // --- Initial Fetch ---
   useEffect(() => {
     fetchAssignments();
     fetchTeachers();
@@ -39,28 +52,32 @@ const TeacherAssignments = () => {
     fetchSubjects();
   }, []);
 
+  // --- Notification Timeout ---
+  useEffect(() => {
+    if (success || error) {
+      const timer = setTimeout(() => {
+        setSuccess("");
+        setError("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, error]);
+
+  // --- API Calls ---
   const fetchAssignments = async () => {
     try {
       const result = await adminService.getTeacherAssignmentsforAdmin();
-      console.log("Teacher Assignment: ", result);
-      const assignmentsArray = Array.isArray(result)
+      // Handle various response structures safely
+      const data = Array.isArray(result)
         ? result
-        : Array.isArray(result?.data)
-        ? result.data
-        : Array.isArray(result?.assignments)
-        ? result.assignments
-        : Array.isArray(result?.data?.data)
+        : result?.data?.data
         ? result.data.data
+        : result?.data
+        ? result.data
         : [];
-
-      if (Array.isArray(assignmentsArray)) {
-        setAssignments(assignmentsArray);
-      } else {
-        console.error("Failed to fetch assignments:", result);
-        setError("Failed to fetch assignments: Data not an array");
-      }
+      setAssignments(data);
     } catch (err) {
-      console.error("Fetch assignments error:", err);
+      console.error(err);
       setError("Failed to fetch assignments");
     }
   };
@@ -68,156 +85,98 @@ const TeacherAssignments = () => {
   const fetchTeachers = async () => {
     try {
       const result = await adminService.getUsers({ role: "teacher" });
-      const teachersArray = result.data?.teachers; // This path was correct
-
-      if (Array.isArray(teachersArray)) {
-        setTeachers(teachersArray);
-      } else {
-        console.error("Failed to fetch teachers:", result.error);
-      }
+      setTeachers(result.data?.teachers || []);
     } catch (err) {
-      console.error("Failed to fetch teachers:", err);
+      console.error(err);
     }
   };
 
   const fetchClasses = async () => {
     try {
       const result = await adminService.getClasses();
-      const classesArray = result.data?.classes || result.data?.data;
-
-      if (Array.isArray(classesArray)) {
-        setClasses(classesArray);
-      } else {
-        console.error("Failed to fetch classes:", result.error);
-      }
+      setClasses(result.data?.classes || result.data?.data || []);
     } catch (err) {
-      console.error("Failed to fetch classes:", err);
+      console.error(err);
     }
   };
 
   const fetchSubjects = async () => {
     try {
       const result = await adminService.getSubjects();
-      const subjectsArray = result.data?.subjects || result.data?.data; // Correct path
-
-      if (Array.isArray(subjectsArray)) {
-        setSubjects(subjectsArray);
-      } else {
-        console.error("Failed to fetch subjects:", result.error);
-      }
+      setSubjects(result.data?.subjects || result.data?.data || []);
     } catch (err) {
-      console.error("Failed to fetch subjects:", err);
+      console.error(err);
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  // --- Form Logic ---
 
-    if (name === "teacherId") {
-      // Find the selected teacher
-      const teacher = teachers.find((t) => t._id === value);
-      setSelectedTeacher(teacher);
+  // 1. Handle Teacher Selection
+  const handleTeacherChange = (e) => {
+    const tId = e.target.value;
+    const teacher = teachers.find((t) => t._id === tId);
 
-      // Filter classes and subjects by teacher's school
-      if (teacher && teacher.schoolId) {
-        const teacherSchoolId = teacher.schoolId._id || teacher.schoolId;
-        const filteredClassesBySchool = Array.isArray(classes)
-          ? classes.filter(
-              (c) => (c.schoolId?._id || c.schoolId) === teacherSchoolId
-            )
-          : [];
-        const filteredSubjectsBySchool = Array.isArray(subjects)
-          ? subjects.filter(
-              (s) => (s.schoolId?._id || s.schoolId) === teacherSchoolId
-            )
-          : [];
+    setSelectedTeacher(teacher);
+    setFormData((prev) => ({
+      ...prev,
+      teacherId: tId,
+      classId: "",
+      subjectId: "",
+    }));
 
-        setFilteredClasses(filteredClassesBySchool);
-        setFilteredSubjects(filteredSubjectsBySchool);
-        console.log(
-          "[Assignments] Selected teacher:",
-          teacher?._id,
-          "school:",
-          teacherSchoolId
-        );
-        console.log(
-          "[Assignments] Filtered classes count:",
-          filteredClassesBySchool.length
-        );
-        console.log(
-          "[Assignments] Filtered subjects count:",
-          filteredSubjectsBySchool.length
-        );
-      } else {
-        setFilteredClasses([]);
-        setFilteredSubjects([]);
-      }
+    // Reset secondary dropdowns
+    setSelectedGrade("");
+    setSelectedDivision("");
 
-      // Reset class and subject when teacher changes
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-        classId: "",
-        subjectId: "",
-      }));
+    if (teacher && teacher.schoolId) {
+      const sId = teacher.schoolId._id || teacher.schoolId;
+
+      // Filter available options by School
+      const validClasses = classes.filter(
+        (c) => (c.schoolId?._id || c.schoolId) === sId
+      );
+      const validSubjects = subjects.filter(
+        (s) => (s.schoolId?._id || s.schoolId) === sId
+      );
+
+      setFilteredClasses(validClasses);
+      setFilteredSubjects(validSubjects);
     } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      setFilteredClasses([]);
+      setFilteredSubjects([]);
+    }
+  };
+
+  // 2. Handle Grade Selection (Step 1 of Class)
+  const handleGradeChange = (e) => {
+    const grade = e.target.value;
+    setSelectedGrade(grade);
+    setSelectedDivision(""); // Reset division when grade changes
+    setFormData((prev) => ({ ...prev, classId: "" })); // Reset actual class ID
+  };
+
+  // 3. Handle Division Selection (Step 2 of Class)
+  const handleDivisionChange = (e) => {
+    const division = e.target.value;
+    setSelectedDivision(division);
+
+    // Find the actual Class ID based on Grade + Division
+    const actualClass = filteredClasses.find(
+      (c) => c.grade == selectedGrade && c.division === division
+    );
+
+    if (actualClass) {
+      setFormData((prev) => ({ ...prev, classId: actualClass._id }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setSuccess("");
-
     try {
-      // Client-side validation: ensure all belong to same school
-      const teacherSchoolId =
-        selectedTeacher?.schoolId?._id || selectedTeacher?.schoolId || null;
-      const selectedClass = (
-        Array.isArray(filteredClasses) ? filteredClasses : classes
-      ).find((c) => c._id === formData.classId);
-      const selectedSubject = (
-        Array.isArray(filteredSubjects) ? filteredSubjects : subjects
-      ).find((s) => s._id === formData.subjectId);
-      const classSchoolId =
-        selectedClass?.schoolId?._id || selectedClass?.schoolId || null;
-      const subjectSchoolId =
-        selectedSubject?.schoolId?._id || selectedSubject?.schoolId || null;
-
-      console.log("[Assignments] teacherSchoolId:", teacherSchoolId);
-      console.log(
-        "[Assignments] classId:",
-        formData.classId,
-        "classSchoolId:",
-        classSchoolId
-      );
-      console.log(
-        "[Assignments] subjectId:",
-        formData.subjectId,
-        "subjectSchoolId:",
-        subjectSchoolId
-      );
-
-      if (!teacherSchoolId || !classSchoolId || !subjectSchoolId) {
-        setError(
-          "Teacher, class, and subject must be associated with a school"
-        );
-        setLoading(false);
-        return;
-      }
-
-      if (
-        teacherSchoolId !== classSchoolId ||
-        teacherSchoolId !== subjectSchoolId
-      ) {
-        setError(
-          "Selected teacher, class, and subject must belong to the same school"
-        );
+      // Validation check
+      if (!formData.classId) {
+        setError("Please select a valid Grade and Division.");
         setLoading(false);
         return;
       }
@@ -225,286 +184,357 @@ const TeacherAssignments = () => {
       const result = await adminService.assignTeacher(formData);
       if (result.success) {
         setSuccess("Teacher assigned successfully!");
-        setFormData({
-          teacherId: "",
-          classId: "",
-          subjectId: "",
-        });
-        setSelectedTeacher(null);
-        setFilteredClasses([]);
-        setFilteredSubjects([]);
+        // Reset Form
         setShowCreateForm(false);
-        // Refresh assignments list
+        setFormData({ teacherId: "", classId: "", subjectId: "" });
+        setSelectedTeacher(null);
+        setSelectedGrade("");
+        setSelectedDivision("");
         fetchAssignments();
       } else {
         setError(result.error || "Failed to assign teacher");
       }
     } catch (err) {
-      const backendMsg =
-        err.response?.data?.error || err.response?.data?.message || err.message;
-      console.error("[Assignments] Backend error:", err.response?.data || err);
-      setError(backendMsg || "Failed to assign teacher");
+      setError(err.response?.data?.error || "Failed to assign teacher");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (assignmentId) => {
-    if (window.confirm("Are you sure you want to remove this assignment?")) {
+  const handleDelete = async (id) => {
+    if (window.confirm("Remove this assignment?")) {
       try {
-        const result = await adminService.removeAssignment(assignmentId);
-        if (result.success) {
-          setSuccess("Assignment removed successfully!");
-          setAssignments(
-            assignments.filter((assignment) => assignment._id !== assignmentId)
-          );
+        const res = await adminService.removeAssignment(id);
+        if (res.success) {
+          setSuccess("Removed successfully");
+          setAssignments((prev) => prev.filter((a) => a._id !== id));
         } else {
-          setError(result.error);
+          setError(res.error);
         }
       } catch (err) {
-        setError("Failed to remove assignment");
+        setError("Failed to remove");
       }
     }
   };
 
-  // These functions are no longer needed since the backend returns transformed data
-  // with readable names already included
+  // --- Data Processing for UI ---
 
-  // Route guard: principals only
-  if (!isPrincipal?.()) {
-    return <Unauthorized />;
-  }
+  // 1. Unique Grades for Dropdown
+  const availableGrades = useMemo(() => {
+    const grades = filteredClasses.map((c) => c.grade);
+    return [...new Set(grades)].sort((a, b) => a - b);
+  }, [filteredClasses]);
 
-  const canSubmit = !!(
-    selectedTeacher &&
-    formData.classId &&
-    formData.subjectId &&
-    !loading
-  );
+  // 2. Unique Divisions for selected Grade
+  const availableDivisions = useMemo(() => {
+    if (!selectedGrade) return [];
+    return filteredClasses
+      .filter((c) => c.grade == selectedGrade)
+      .map((c) => c.division)
+      .sort();
+  }, [filteredClasses, selectedGrade]);
+
+  // 3. Grouping Logic for Table
+  const groupedAssignments = useMemo(() => {
+    // A. Filter first
+    const filtered = assignments.filter((item) => {
+      const q = searchQuery.toLowerCase();
+      return (
+        item.teacherName?.toLowerCase().includes(q) ||
+        item.className?.toLowerCase().includes(q) ||
+        item.subjectName?.toLowerCase().includes(q)
+      );
+    });
+
+    // B. Group by "className" (e.g., "Grade 10 - Division A")
+    const groups = {};
+    filtered.forEach((item) => {
+      if (!groups[item.className]) {
+        groups[item.className] = [];
+      }
+      groups[item.className].push(item);
+    });
+
+    // C. Convert to array and Sort keys (Grade 9 before Grade 10)
+    return Object.keys(groups)
+      .sort((a, b) => {
+        // Extract numbers to sort "Grade 2" before "Grade 10"
+        const numA = parseInt(a.replace(/\D/g, "")) || 0;
+        const numB = parseInt(b.replace(/\D/g, "")) || 0;
+        if (numA === numB) return a.localeCompare(b);
+        return numA - numB;
+      })
+      .map((key) => ({
+        className: key,
+        items: groups[key],
+      }));
+  }, [assignments, searchQuery]);
+
+  if (!isPrincipal?.()) return <Unauthorized />;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-          <FaChalkboardTeacher className="mr-2 text-indigo-600" />
-          Teacher Assignments
-        </h2>
+    <div className="max-w-7xl mx-auto p-6 bg-white rounded-xl shadow-lg border border-gray-100">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+            <FaChalkboardTeacher className="mr-3 text-indigo-600 text-3xl" />
+            Teacher Assignments
+          </h2>
+          <p className="text-gray-500 text-sm mt-1 ml-10">
+            Manage subject allocations for classes
+          </p>
+        </div>
+
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center"
+          className={`px-5 py-2.5 rounded-lg font-medium flex items-center transition-all ${
+            showCreateForm
+              ? "bg-gray-100 text-gray-600"
+              : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+          }`}
         >
-          <FaPlus className="mr-2" />
-          Assign Teacher
+          {showCreateForm ? (
+            <>
+              <FaTimes className="mr-2" /> Cancel
+            </>
+          ) : (
+            <>
+              <FaPlus className="mr-2" /> New Assignment
+            </>
+          )}
         </button>
       </div>
 
+      {/* Notifications */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6">
           {error}
         </div>
       )}
-
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded mb-6">
           {success}
         </div>
       )}
 
+      {/* Search Bar */}
+      {!showCreateForm && (
+        <div className="mb-6 relative">
+          <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by teacher, class, or subject..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+          />
+        </div>
+      )}
+
+      {/* Create Form */}
       {showCreateForm && (
-        <div className="bg-gray-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Assign Teacher to Class & Subject
+        <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100 mb-8 animate-fade-in">
+          <h3 className="text-lg font-bold text-indigo-900 mb-6 flex items-center">
+            <FaPlus className="mr-2 text-sm" /> Assign Teacher
           </h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Teacher *
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {/* 1. Teacher */}
+              <div className="md:col-span-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select Teacher
                 </label>
                 <select
                   name="teacherId"
                   value={formData.teacherId}
-                  onChange={handleInputChange}
+                  onChange={handleTeacherChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
                 >
-                  <option value="">Select Teacher</option>
-                  {teachers.map((teacher) => (
-                    <option key={teacher._id} value={teacher._id}>
-                      {teacher.name} ({teacher.email})
+                  <option value="">-- Choose Teacher --</option>
+                  {teachers.map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Class *
+              {/* 2. Class/Grade (Split) */}
+              <div className="md:col-span-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select Grade
                 </label>
                 <select
-                  name="classId"
-                  value={formData.classId}
-                  onChange={handleInputChange}
-                  required
+                  value={selectedGrade}
+                  onChange={handleGradeChange}
                   disabled={!selectedTeacher}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white disabled:bg-gray-100 disabled:text-gray-400"
                 >
-                  <option value="">
-                    {selectedTeacher ? "Select Class" : "Select Teacher First"}
-                  </option>
-                  {filteredClasses.map((cls) => (
-                    <option key={cls._id} value={cls._id}>
-                      Grade {cls.grade} - Division {cls.division}
+                  <option value="">-- Grade --</option>
+                  {availableGrades.map((g) => (
+                    <option key={g} value={g}>
+                      Class {g}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Subject *
+              {/* 3. Division (Split) */}
+              <div className="md:col-span-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select Division
+                </label>
+                <select
+                  value={selectedDivision}
+                  onChange={handleDivisionChange}
+                  disabled={!selectedGrade}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  <option value="">-- Div --</option>
+                  {availableDivisions.map((d) => (
+                    <option key={d} value={d}>
+                      Division {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 4. Subject */}
+              <div className="md:col-span-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select Subject
                 </label>
                 <select
                   name="subjectId"
                   value={formData.subjectId}
-                  onChange={handleInputChange}
-                  required
+                  onChange={(e) =>
+                    setFormData({ ...formData, subjectId: e.target.value })
+                  }
                   disabled={!selectedTeacher}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white disabled:bg-gray-100 disabled:text-gray-400"
                 >
-                  <option value="">
-                    {selectedTeacher
-                      ? "Select Subject"
-                      : "Select Teacher First"}
-                  </option>
-                  {filteredSubjects.map((subject) => (
-                    <option key={subject._id} value={subject._id}>
-                      {subject.subjectId} - {subject.name}
+                  <option value="">-- Subject --</option>
+                  {filteredSubjects.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.name} ({s.subjectId})
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex justify-end pt-4 border-t border-indigo-100">
               <button
                 type="submit"
-                disabled={!canSubmit}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                disabled={loading || !formData.classId || !formData.subjectId}
+                className="bg-indigo-600 text-white px-8 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium shadow-sm"
               >
-                {loading ? "Assigning..." : "Assign Teacher"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateForm(false);
-                  setFormData({
-                    teacherId: "",
-                    classId: "",
-                    subjectId: "",
-                  });
-                  setSelectedTeacher(null);
-                  setFilteredClasses([]);
-                  setFilteredSubjects([]);
-                }}
-                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
-              >
-                Cancel
+                {loading ? "Assigning..." : "Confirm Assignment"}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800">
-            Current Assignments
-          </h3>
-        </div>
-        <div className="p-6">
-          {assignments.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <FaUserTie className="mx-auto text-4xl mb-4 text-gray-300" />
-              <p>
-                No teacher assignments found. Create your first assignment to
-                get started.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Teacher
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Class
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Subject
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Subject Code
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {assignments.map((assignment) => (
-                    <tr key={assignment._id} className="hover:bg-gray-50">
+      {/* Table Section */}
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        {groupedAssignments.length === 0 ? (
+          <div className="text-center py-16 bg-gray-50">
+            <FaUserTie className="mx-auto text-4xl text-gray-300 mb-3" />
+            <p className="text-gray-500">
+              No assignments found matching your criteria.
+            </p>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/4">
+                  Class & Division
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/4">
+                  Subject
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  Assigned Teacher
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {groupedAssignments.map((group, groupIdx) => (
+                <React.Fragment key={group.className}>
+                  {group.items.map((assignment, itemIdx) => (
+                    <tr
+                      key={assignment._id}
+                      className={`hover:bg-opacity-75 transition-colors ${
+                        groupIdx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      }`}
+                    >
+                      {/* Only render the Class Name cell for the first item in the group */}
+                      {itemIdx === 0 && (
+                        <td
+                          rowSpan={group.items.length}
+                          className={`px-6 py-4 whitespace-nowrap align-top border-r border-gray-100 ${
+                            groupIdx % 2 === 0
+                              ? "bg-indigo-50/30"
+                              : "bg-gray-100/50"
+                          }`}
+                        >
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-indigo-100 text-indigo-800">
+                            {group.className}
+                          </span>
+                        </td>
+                      )}
+
+                      {/* Subject Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-gray-800">
+                            {assignment.subjectName}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Code: {assignment.subjectCode}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Teacher Column */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex-shrink-0 h-8 w-8">
-                            <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                              <FaUserTie className="h-4 w-4 text-indigo-600" />
-                            </div>
+                          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3">
+                            <FaUserTie size={14} />
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {assignment.teacherName}
-                            </div>
-                          </div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {assignment.teacherName}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                          {assignment.className}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {assignment.subjectName}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                          {assignment.subjectCode}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button className="text-indigo-600 hover:text-indigo-900">
-                            <FaEdit />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(assignment._id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
+
+                      {/* Action Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleDelete(assignment._id)}
+                          className="text-gray-400 hover:text-red-600 transition-colors p-2 rounded-full hover:bg-red-50"
+                          title="Remove Assignment"
+                        >
+                          <FaTrash />
+                        </button>
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
