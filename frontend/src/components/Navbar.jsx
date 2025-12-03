@@ -64,8 +64,20 @@ const Navbar = () => {
                 >
                   Upload
                 </NavLink>
+
                 <NavLink
-                  to="/reports"
+                  to="/question-paper-generation"
+                  className={({ isActive }) =>
+                    `${navLinkBase} ${
+                      isActive ? activeLinkClass : inactiveLinkClass
+                    }`
+                  }
+                >
+                  Generate Paper
+                </NavLink>
+
+                <NavLink
+                  to="/answer-sheet-upload"
                   className={({ isActive }) =>
                     `${navLinkBase} ${
                       isActive
@@ -76,6 +88,7 @@ const Navbar = () => {
                 >
                   Reports
                 </NavLink>
+
                 {isAnyAdmin() && (
                   <NavLink
                     to="/admin"

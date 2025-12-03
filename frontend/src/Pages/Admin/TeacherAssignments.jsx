@@ -3,13 +3,13 @@ import { useAuth } from "../../contexts/AuthContext";
 import Unauthorized from "../../components/Unauthorized";
 import {
   FaPlus,
-  FaEdit,
   FaTrash,
   FaUserTie,
   FaChalkboardTeacher,
   FaSearch,
   FaTimes,
-  FaFilter,
+  FaChevronDown,
+  FaCrown,
 } from "react-icons/fa";
 
 const TeacherAssignments = () => {
@@ -28,6 +28,9 @@ const TeacherAssignments = () => {
   const [success, setSuccess] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Custom Dropdown State
+  const [isTeacherDropdownOpen, setIsTeacherDropdownOpen] = useState(false);
+
   // Form States
   const [formData, setFormData] = useState({
     teacherId: "",
@@ -37,8 +40,8 @@ const TeacherAssignments = () => {
 
   // Helper states for the "Split" dropdowns
   const [selectedTeacher, setSelectedTeacher] = useState(null);
-  const [selectedGrade, setSelectedGrade] = useState(""); // For the Grade dropdown
-  const [selectedDivision, setSelectedDivision] = useState(""); // For the Division dropdown
+  const [selectedGrade, setSelectedGrade] = useState("");
+  const [selectedDivision, setSelectedDivision] = useState("");
 
   // Filtered lists based on selection
   const [filteredClasses, setFilteredClasses] = useState([]);
@@ -67,7 +70,6 @@ const TeacherAssignments = () => {
   const fetchAssignments = async () => {
     try {
       const result = await adminService.getTeacherAssignmentsforAdmin();
-      // Handle various response structures safely
       const data = Array.isArray(result)
         ? result
         : result?.data?.data
@@ -109,12 +111,26 @@ const TeacherAssignments = () => {
     }
   };
 
+  // --- Logic: Sort Teachers (Principal Top) ---
+  const sortedTeachers = useMemo(() => {
+    return [...teachers].sort((a, b) => {
+      if (a.role === "principal" && b.role !== "principal") return -1;
+      if (a.role !== "principal" && b.role === "principal") return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [teachers]);
+
+  // --- Logic: Helper to check if a teacher ID belongs to a principal ---
+  // We use the 'teachers' list which contains the role info
+  const getTeacherRole = (teacherId) => {
+    const teacher = teachers.find((t) => t._id === teacherId);
+    return teacher?.role || "teacher";
+  };
+
   // --- Form Logic ---
 
-  // 1. Handle Teacher Selection
-  const handleTeacherChange = (e) => {
-    const tId = e.target.value;
-    const teacher = teachers.find((t) => t._id === tId);
+  const handleCustomTeacherSelect = (teacher) => {
+    const tId = teacher._id;
 
     setSelectedTeacher(teacher);
     setFormData((prev) => ({
@@ -124,47 +140,39 @@ const TeacherAssignments = () => {
       subjectId: "",
     }));
 
-    // Reset secondary dropdowns
     setSelectedGrade("");
     setSelectedDivision("");
 
     if (teacher && teacher.schoolId) {
       const sId = teacher.schoolId._id || teacher.schoolId;
-
-      // Filter available options by School
       const validClasses = classes.filter(
         (c) => (c.schoolId?._id || c.schoolId) === sId
       );
       const validSubjects = subjects.filter(
         (s) => (s.schoolId?._id || s.schoolId) === sId
       );
-
       setFilteredClasses(validClasses);
       setFilteredSubjects(validSubjects);
     } else {
       setFilteredClasses([]);
       setFilteredSubjects([]);
     }
+    setIsTeacherDropdownOpen(false);
   };
 
-  // 2. Handle Grade Selection (Step 1 of Class)
   const handleGradeChange = (e) => {
     const grade = e.target.value;
     setSelectedGrade(grade);
-    setSelectedDivision(""); // Reset division when grade changes
-    setFormData((prev) => ({ ...prev, classId: "" })); // Reset actual class ID
+    setSelectedDivision("");
+    setFormData((prev) => ({ ...prev, classId: "" }));
   };
 
-  // 3. Handle Division Selection (Step 2 of Class)
   const handleDivisionChange = (e) => {
     const division = e.target.value;
     setSelectedDivision(division);
-
-    // Find the actual Class ID based on Grade + Division
     const actualClass = filteredClasses.find(
       (c) => c.grade == selectedGrade && c.division === division
     );
-
     if (actualClass) {
       setFormData((prev) => ({ ...prev, classId: actualClass._id }));
     }
@@ -174,17 +182,14 @@ const TeacherAssignments = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Validation check
       if (!formData.classId) {
         setError("Please select a valid Grade and Division.");
         setLoading(false);
         return;
       }
-
       const result = await adminService.assignTeacher(formData);
       if (result.success) {
         setSuccess("Teacher assigned successfully!");
-        // Reset Form
         setShowCreateForm(false);
         setFormData({ teacherId: "", classId: "", subjectId: "" });
         setSelectedTeacher(null);
@@ -219,13 +224,11 @@ const TeacherAssignments = () => {
 
   // --- Data Processing for UI ---
 
-  // 1. Unique Grades for Dropdown
   const availableGrades = useMemo(() => {
     const grades = filteredClasses.map((c) => c.grade);
     return [...new Set(grades)].sort((a, b) => a - b);
   }, [filteredClasses]);
 
-  // 2. Unique Divisions for selected Grade
   const availableDivisions = useMemo(() => {
     if (!selectedGrade) return [];
     return filteredClasses
@@ -234,9 +237,7 @@ const TeacherAssignments = () => {
       .sort();
   }, [filteredClasses, selectedGrade]);
 
-  // 3. Grouping Logic for Table
   const groupedAssignments = useMemo(() => {
-    // A. Filter first
     const filtered = assignments.filter((item) => {
       const q = searchQuery.toLowerCase();
       return (
@@ -246,7 +247,6 @@ const TeacherAssignments = () => {
       );
     });
 
-    // B. Group by "className" (e.g., "Grade 10 - Division A")
     const groups = {};
     filtered.forEach((item) => {
       if (!groups[item.className]) {
@@ -255,10 +255,8 @@ const TeacherAssignments = () => {
       groups[item.className].push(item);
     });
 
-    // C. Convert to array and Sort keys (Grade 9 before Grade 10)
     return Object.keys(groups)
       .sort((a, b) => {
-        // Extract numbers to sort "Grade 2" before "Grade 10"
         const numA = parseInt(a.replace(/\D/g, "")) || 0;
         const numB = parseInt(b.replace(/\D/g, "")) || 0;
         if (numA === numB) return a.localeCompare(b);
@@ -340,28 +338,105 @@ const TeacherAssignments = () => {
           </h3>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* 1. Teacher */}
-              <div className="md:col-span-1">
+              {/* 1. Teacher (Custom Dropdown) */}
+              <div className="md:col-span-1 relative">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Select Teacher
                 </label>
-                <select
+
+                <div
+                  onClick={() =>
+                    setIsTeacherDropdownOpen(!isTeacherDropdownOpen)
+                  }
+                  className={`w-full px-4 py-2 border rounded-lg flex justify-between items-center cursor-pointer bg-white transition-all ${
+                    isTeacherDropdownOpen
+                      ? "border-indigo-500 ring-2 ring-indigo-100"
+                      : "border-gray-300 hover:border-indigo-400"
+                  }`}
+                >
+                  <span
+                    className={`truncate ${
+                      selectedTeacher ? "text-gray-900" : "text-gray-500"
+                    }`}
+                  >
+                    {selectedTeacher ? (
+                      <div className="flex items-center gap-2">
+                        {selectedTeacher.role === "principal" ? (
+                          <FaCrown className="text-amber-500" size={14} />
+                        ) : (
+                          <FaUserTie className="text-gray-400" size={14} />
+                        )}
+                        {selectedTeacher.name}
+                      </div>
+                    ) : (
+                      "-- Choose Teacher --"
+                    )}
+                  </span>
+                  <FaChevronDown
+                    className={`text-gray-400 text-xs flex-shrink-0 transition-transform ${
+                      isTeacherDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </div>
+
+                {isTeacherDropdownOpen && (
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-fade-in-down">
+                    {sortedTeachers.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                        No teachers found
+                      </div>
+                    ) : (
+                      sortedTeachers.map((t) => (
+                        <div
+                          key={t._id}
+                          onClick={() => handleCustomTeacherSelect(t)}
+                          className={`px-4 py-2.5 text-sm cursor-pointer transition-colors flex items-center justify-between group ${
+                            selectedTeacher?._id === t._id
+                              ? "bg-indigo-50 text-indigo-700 font-medium"
+                              : "text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div
+                              className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                t.role === "principal"
+                                  ? "bg-amber-100 text-amber-600"
+                                  : "bg-gray-100 text-gray-500 group-hover:bg-white group-hover:text-indigo-500"
+                              }`}
+                            >
+                              {t.role === "principal" ? (
+                                <FaCrown size={12} />
+                              ) : (
+                                <FaUserTie size={12} />
+                              )}
+                            </div>
+                            <div className="flex flex-col truncate">
+                              <span className="truncate">{t.name}</span>
+                              <span className="text-xs text-gray-400 truncate">
+                                {t.email}
+                              </span>
+                            </div>
+                          </div>
+                          {t.role === "principal" && (
+                            <span className="flex-shrink-0 ml-2 text-[10px] uppercase tracking-wider font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
+                              Principal
+                            </span>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                <input
+                  type="hidden"
                   name="teacherId"
                   value={formData.teacherId}
-                  onChange={handleTeacherChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
-                >
-                  <option value="">-- Choose Teacher --</option>
-                  {teachers.map((t) => (
-                    <option key={t._id} value={t._id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
-              {/* 2. Class/Grade (Split) */}
+              {/* 2. Class/Grade */}
               <div className="md:col-span-1">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Select Grade
@@ -382,7 +457,7 @@ const TeacherAssignments = () => {
                 </select>
               </div>
 
-              {/* 3. Division (Split) */}
+              {/* 3. Division */}
               <div className="md:col-span-1">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Select Division
@@ -471,65 +546,91 @@ const TeacherAssignments = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {groupedAssignments.map((group, groupIdx) => (
                 <React.Fragment key={group.className}>
-                  {group.items.map((assignment, itemIdx) => (
-                    <tr
-                      key={assignment._id}
-                      className={`hover:bg-opacity-75 transition-colors ${
-                        groupIdx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      }`}
-                    >
-                      {/* Only render the Class Name cell for the first item in the group */}
-                      {itemIdx === 0 && (
-                        <td
-                          rowSpan={group.items.length}
-                          className={`px-6 py-4 whitespace-nowrap align-top border-r border-gray-100 ${
-                            groupIdx % 2 === 0
-                              ? "bg-indigo-50/30"
-                              : "bg-gray-100/50"
-                          }`}
-                        >
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-indigo-100 text-indigo-800">
-                            {group.className}
-                          </span>
-                        </td>
-                      )}
+                  {group.items.map((assignment, itemIdx) => {
+                    // Check principal status for table rendering
+                    const isPrincipalAssigned =
+                      getTeacherRole(assignment.teacherId) === "principal";
 
-                      {/* Subject Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-gray-800">
-                            {assignment.subjectName}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            Code: {assignment.subjectCode}
-                          </span>
-                        </div>
-                      </td>
+                    return (
+                      <tr
+                        key={assignment._id}
+                        className={`hover:bg-opacity-75 transition-colors ${
+                          groupIdx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                        }`}
+                      >
+                        {itemIdx === 0 && (
+                          <td
+                            rowSpan={group.items.length}
+                            className={`px-6 py-4 whitespace-nowrap align-top border-r border-gray-100 ${
+                              groupIdx % 2 === 0
+                                ? "bg-indigo-50/30"
+                                : "bg-gray-100/50"
+                            }`}
+                          >
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-indigo-100 text-indigo-800">
+                              {group.className}
+                            </span>
+                          </td>
+                        )}
 
-                      {/* Teacher Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3">
-                            <FaUserTie size={14} />
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-gray-800">
+                              {assignment.subjectName}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Code: {assignment.subjectCode}
+                            </span>
                           </div>
-                          <span className="text-sm font-medium text-gray-900">
-                            {assignment.teacherName}
-                          </span>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Action Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleDelete(assignment._id)}
-                          className="text-gray-400 hover:text-red-600 transition-colors p-2 rounded-full hover:bg-red-50"
-                          title="Remove Assignment"
-                        >
-                          <FaTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        {/* HIGHLIGHTED TEACHER COLUMN */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div
+                              className={`h-8 w-8 rounded-full flex items-center justify-center mr-3 ${
+                                isPrincipalAssigned
+                                  ? "bg-amber-100 text-amber-600"
+                                  : "bg-green-100 text-green-600"
+                              }`}
+                            >
+                              {isPrincipalAssigned ? (
+                                <FaCrown size={14} />
+                              ) : (
+                                <FaUserTie size={14} />
+                              )}
+                            </div>
+                            <div className="flex flex-col">
+                              <span
+                                className={`text-sm font-medium ${
+                                  isPrincipalAssigned
+                                    ? "text-gray-900"
+                                    : "text-gray-900"
+                                }`}
+                              >
+                                {assignment.teacherName}
+                              </span>
+                              {isPrincipalAssigned && (
+                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full w-fit mt-0.5 border border-amber-100">
+                                  PRINCIPAL
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleDelete(assignment._id)}
+                            className="text-gray-400 hover:text-red-600 transition-colors p-2 rounded-full hover:bg-red-50"
+                            title="Remove Assignment"
+                          >
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </React.Fragment>
               ))}
             </tbody>

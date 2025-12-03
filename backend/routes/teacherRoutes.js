@@ -78,28 +78,28 @@ router.get(
 router.get(
   "/fetch-books-metadata",
   authenticateFirebaseToken,
-  authorize("teacher"),
+  authorize("teacher", "principal"),
   getBooksByClassAndSubject
 );
 
 router.get(
   "/chapters",
   authenticateFirebaseToken,
-  authorize("teacher", "admin"),
+  authorize("teacher", "principal"),
   getChaptersBySubjectAndClass
 );
 
 router.get(
   "/my-books",
   authenticateFirebaseToken,
-  authorize("teacher"),
+  authorize("teacher", "principal"),
   getMyUploadedBooks
 );
 
 router.get(
   "/my-question-papers",
   authenticateFirebaseToken,
-  authorize("teacher"),
+  authorize("teacher", "principal"),
   getMyQuestionPapers
 );
 
@@ -113,7 +113,7 @@ router.get(
 router.get(
   "/my-question-papers-grouped",
   authenticateFirebaseToken,
-  authorize("teacher"),
+  authorize("teacher", "principal"),
   getFilteredQuestionPaperGroups
 );
 
@@ -122,7 +122,7 @@ router.get(
 router.delete(
   "/books/:bookId",
   authenticateFirebaseToken,
-  authorize("teacher", "admin"),
+  authorize("teacher", "principal"),
   deleteTeacherBook
 );
 

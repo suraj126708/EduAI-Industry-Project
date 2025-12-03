@@ -15,6 +15,18 @@ const Login = () => {
   const { signIn, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
+  // --- Helper: Centralized Redirection Logic ---
+  const handleRoleRedirect = (role) => {
+    if (role === "principal") {
+      navigate("/admin/dashboard", { replace: true });
+    } else if (role === "superadmin") {
+      navigate("/superadmin/dashboard", { replace: true });
+    } else {
+      // Default for teachers and students
+      navigate("/home", { replace: true });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -23,7 +35,10 @@ const Login = () => {
     try {
       const result = await signIn(email, password);
       if (result.success) {
-        navigate("/home");
+        // Redirect based on the user role returned from the login result
+        const userRole =
+          result.data?.user?.role || result.user?.role || "teacher";
+        handleRoleRedirect(userRole);
       } else {
         setError(result.error);
       }
@@ -41,7 +56,10 @@ const Login = () => {
     try {
       const result = await signInWithGoogle();
       if (result.success) {
-        navigate("/home");
+        // Redirect based on the user role returned from the Google login result
+        const userRole =
+          result.data?.user?.role || result.user?.role || "teacher";
+        handleRoleRedirect(userRole);
       } else {
         setError(result.error);
       }

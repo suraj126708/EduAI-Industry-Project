@@ -96,7 +96,7 @@ export const getTeacherById = async (req, res) => {
   try {
     const teacher = await User.findOne({
       _id: req.params.id,
-      role: "teacher",
+      role: { $in: ["teacher", "principal"] },
     }).populate("schoolId", "name address contact");
 
     if (!teacher) {
@@ -561,7 +561,9 @@ export const getTeacherAssignments = async (req, res) => {
     }
 
     // Find the teacher by schoolId and/or email
-    const teacherQuery = { role: "teacher" };
+    const teacherQuery = {
+      role: { $in: ["teacher", "principal"] },
+    };
     if (schoolId) teacherQuery.schoolId = schoolId;
     if (email) teacherQuery.email = email;
 

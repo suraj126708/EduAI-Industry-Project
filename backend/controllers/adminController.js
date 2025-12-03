@@ -45,7 +45,7 @@ export const getAdminDashboard = async (req, res) => {
       ...queryFilter,
     });
     const activeTeachers = await User.countDocuments({
-      role: "teacher",
+      role: { $in: ["teacher", "principal"] },
       status: "active",
       ...queryFilter,
     });
@@ -68,7 +68,7 @@ export const getAdminDashboard = async (req, res) => {
     const totalClasses = await Class.countDocuments(queryFilter);
     const totalSubjects = await Subject.countDocuments(queryFilter); // --- Recent Activity (with filter applied) ---
     // Assuming you have a Student model with schoolId
-    // const totalStudents = await Student.countDocuments(queryFilter);
+    const totalStudents = await Student.countDocuments(queryFilter);
 
     const recentTeachers = await User.find({ role: "teacher", ...queryFilter })
       .sort({ createdAt: -1 })
@@ -126,6 +126,7 @@ export const getAdminDashboard = async (req, res) => {
           totalSchools,
           totalClasses,
           totalSubjects,
+          totalStudents,
           teachersThisMonth,
           teachersLastMonth,
           growthRate,
@@ -243,7 +244,9 @@ export const getAllTeachers = async (req, res) => {
     const skip = (page - 1) * limit;
 
     // Build filter query for users with role teacher
-    const filter = { role: "teacher" };
+    const filter = {
+      role: { $in: ["teacher", "principal"] },
+    };
 
     if (req.user.role === "principal") {
       filter.schoolId = { $in: [req.user.schoolId, null] };
@@ -461,7 +464,7 @@ export const getTeacherById = async (req, res) => {
     }
     const user = await User.findOne({
       _id: req.params.id,
-      role: "teacher",
+      role: { $in: ["teacher", "principal"] },
     }).populate("schoolId", "name address contact");
 
     if (!user) {

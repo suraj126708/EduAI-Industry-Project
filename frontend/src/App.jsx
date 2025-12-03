@@ -38,6 +38,36 @@ import SuperAdminLayout from "./Pages/SuperAdmin/SuperAdminLayout"; // We'll cre
 import SuperAdminDashboard from "./Pages/SuperAdmin/Dashboard"; // The verification dashboard
 import SchoolsSuperAdmin from "./Pages/SuperAdmin/Schools_SuperAdmin"; // The school management page is now superadmin-only
 
+import { useAuth } from "./contexts/AuthContext";
+const RootRedirect = () => {
+  const { user, userProfile, loading } = useAuth();
+
+  // 1. If authentication state is still loading, show nothing (or a spinner) to prevent premature redirects
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
+  // 2. If not logged in, redirect to Login
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // 3. If logged in, redirect based on Role
+  if (userProfile?.role === "principal") {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  if (userProfile?.role === "superadmin") {
+    return <Navigate to="/superadmin/dashboard" replace />;
+  }
+
+  // 4. Default for Teachers/Students
+  return <Navigate to="/home" replace />;
+};
+
 function App() {
   return (
     <Router>
@@ -45,6 +75,7 @@ function App() {
         <div className="App">
           <Navbar />
           <Routes>
+            <Route path="/" element={<RootRedirect />} />
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

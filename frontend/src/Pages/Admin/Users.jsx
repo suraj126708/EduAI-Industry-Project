@@ -57,7 +57,22 @@ const AdminUsers = () => {
     try {
       const result = await adminService.getUsers(filters);
       if (result.success) {
-        setUsers(result.data.teachers || []);
+        const fetchedUsers = result.data.teachers || [];
+
+        // --- SORTING LOGIC START ---
+        // This sorts the array so 'principal' roles always come first
+        const sortedUsers = fetchedUsers.sort((a, b) => {
+          if (a.role === "principal" && b.role !== "principal") {
+            return -1; // a comes first
+          }
+          if (a.role !== "principal" && b.role === "principal") {
+            return 1; // b comes first
+          }
+          return 0; // Keep original order for others
+        });
+        // --- SORTING LOGIC END ---
+
+        setUsers(sortedUsers);
       } else {
         setError(result.error);
       }

@@ -335,7 +335,7 @@ export const schoolService = {
 
 // --- NEW ADMIN DASHBOARD API FUNCTION ---
 export const adminService = {
-  getDashboardStats: async () => {
+  getDashboard: async () => {
     try {
       const response = await api.get("/admin/dashboard");
       return response.data;
