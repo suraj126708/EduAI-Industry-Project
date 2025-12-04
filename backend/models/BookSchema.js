@@ -48,6 +48,12 @@ const BookSchema = new mongoose.Schema(
       trim: true,
     },
 
+    uniqueName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     processedStatus: {
       type: String,
       enum: ["pending", "processed", "failed"],
@@ -92,7 +98,10 @@ BookSchema.index({ title: 1 });
 BookSchema.index({ author: 1 });
 BookSchema.index({ year: 1 });
 BookSchema.index({ createdAt: -1 });
-BookSchema.index({ classId: 1, title: 1, schoolId: 1 }, { unique: true });
+BookSchema.index(
+  { classId: 1, title: 1, schoolId: 1, uploadedBy: 1 },
+  { unique: true }
+);
 
 // Instance methods
 BookSchema.methods.getSchool = function () {
@@ -152,8 +161,15 @@ BookSchema.statics.findPendingBooks = function () {
   return this.find({ processedStatus: "pending" });
 };
 
-BookSchema.statics.getChaptersBySubjectAndClass = function (subject, classId) {
+BookSchema.statics.getChaptersBySubjectAndClass = function (
+  schoolId,
+  teacherId,
+  subject,
+  classId
+) {
   return this.find({
+    schoolId: schoolId,
+    uploadedBy: teacherId,
     $or: [
       { subject: { $regex: subject, $options: "i" } },
       { title: { $regex: subject, $options: "i" } },

@@ -9,8 +9,9 @@ import axios from "axios";
 import FormData from "form-data";
 import moment from "moment";
 
-const deplyed_url = "http://127.0.0.1:8000/";
+//const deplyed_url = "http://127.0.0.1:8000/";
 //const deplyed_url = "https://joshiaryan-eduai-ai-deployment.hf.space/";
+const deplyed_url = "https://suraj6708-question-gen-api.hf.space/";
 
 // @desc    Upload an answer sheet for evaluation
 // @route   POST /api/evaluations/upload

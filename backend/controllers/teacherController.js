@@ -22,7 +22,7 @@ import path from "path";
 import fs from "fs";
 import axios from "axios";
 import FormData from "form-data";
-
+import mongoose from "mongoose";
 /**
  * Get all teachers (Admin only)
  * @desc    Retrieve all teachers with pagination and filtering
@@ -36,7 +36,9 @@ import FormData from "form-data";
 
 const local_url = "http://localhost:8000/";
 //const deplyed_url = "https://joshiaryan-eduai-ai-deployment.hf.space/";
-const deplyed_url = "http://127.0.0.1:8000/";
+//const deplyed_url = "http://127.0.0.1:8000/";
+const deplyed_url = "https://suraj6708-question-gen-api.hf.space/";
+//const deplyed_url = "http://10.20.29.221:8000/";
 
 export const getAllTeachers = async (req, res) => {
   try {
@@ -193,6 +195,9 @@ export const getChaptersBySubjectAndClass = async (req, res) => {
   try {
     const { subject, classId } = req.query;
 
+    const teacherId = req.user._id;
+    const schoolId = req.user.schoolId;
+
     if (!subject || !classId) {
       return res.status(400).json({
         success: false,
@@ -212,6 +217,8 @@ export const getChaptersBySubjectAndClass = async (req, res) => {
 
     // Get all books for the subject and class with chapters
     const books = await Book.getChaptersBySubjectAndClass(
+      schoolId,
+      teacherId,
       subject,
       classDoc._id
     );
@@ -300,7 +307,7 @@ export const teacherUploadBook = async (req, res) => {
 
     const teacher = await User.findOne({
       firebaseUid: teacherId,
-      role: "teacher",
+      //role: "teacher",
     });
     if (!teacher) {
       await fs.promises.unlink(req.file.path);
@@ -321,6 +328,7 @@ export const teacherUploadBook = async (req, res) => {
       classId: classDoc._id,
       title: title,
       schoolId: schoolId,
+      uploadedBy: teacher._id,
     });
 
     if (duplicateBook) {
@@ -336,6 +344,12 @@ export const teacherUploadBook = async (req, res) => {
           "A book already exists for this class and subject in your school",
       });
     }
+    const bookId = new mongoose.Types.ObjectId();
+    const sanitizedTitle = title
+      .trim()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_]/g, "");
+    const uniquePdfName = `${sanitizedTitle}_${bookId}.pdf`; // Result example: "Physics_Concept_Vol1_654321098765432109876543.pdf"
 
     let processingResult;
     try {
@@ -345,11 +359,11 @@ export const teacherUploadBook = async (req, res) => {
         const subjectData = {
           class: classId,
           subject: subject,
-          pdf_name: `${title}_${classId}_${subject}.pdf`,
+          pdf_name: uniquePdfName,
         };
         form.append("subject_data", JSON.stringify(subjectData));
         form.append(fieldName, fileStream, {
-          filename: path.basename(tempFilePath),
+          filename: path.basename(uniquePdfName),
           contentType: "application/pdf",
         });
 
@@ -378,6 +392,7 @@ export const teacherUploadBook = async (req, res) => {
     if (status === "success" && Number.isFinite(chunks) && chunks > 0) {
       // SUCCESS: Processing worked, now we create the database record.
       const book = new Book({
+        _id: bookId,
         schoolId,
         classId: classDoc._id,
         uploadedBy: teacher._id,
@@ -388,6 +403,7 @@ export const teacherUploadBook = async (req, res) => {
         fileUrl: tempFilePath,
         processedStatus: "processed",
         noOfChunks: chunks,
+        uniqueName: uniquePdfName,
         chapters: chapters && Array.isArray(chapters) ? chapters : [],
       });
       await book.save();
