@@ -28,6 +28,9 @@ const StatusBadge = ({ status }) => {
   const config = {
     pending: { label: "Pending", classes: "bg-gray-100 text-gray-700" },
     uploading: { label: "Uploading", classes: "bg-blue-100 text-blue-700" },
+    process: { label: "Processing", classes: "bg-purple-100 text-purple-700" },
+    analyze: { label: "Analyzing", classes: "bg-indigo-100 text-indigo-700" },
+    complete: { label: "Finalizing", classes: "bg-teal-100 text-teal-700" },
     processed: { label: "Processed", classes: "bg-green-100 text-green-700" },
     error: { label: "Error", classes: "bg-red-100 text-red-700" },
     duplicate: { label: "Duplicate", classes: "bg-yellow-100 text-yellow-700" },
@@ -280,6 +283,9 @@ const ExamPlatformUpload = () => {
               class: selectedClassValue, // Set the selected class value (e.g., "7")
               subject: "", // Reset subject selection
               filteredSubjects: filteredSubs, // Update the subjects available for this row
+              status: "pending", // Reset status
+              error: null, // Reset error
+              progress: 0, // Reset progress
             }
           : r
       )
@@ -294,7 +300,17 @@ const ExamPlatformUpload = () => {
     } else {
       // For any other field (like subject, file, etc.), update directly
       setDocumentRows((rows) =>
-        rows.map((r) => (r.id === id ? { ...r, [key]: value } : r))
+        rows.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                [key]: value,
+                ...(key === "subject" && r.status === "error"
+                  ? { status: "pending", error: null, progress: 0 }
+                  : {}),
+              }
+            : r
+        )
       );
     }
   };
@@ -334,10 +350,22 @@ const ExamPlatformUpload = () => {
           ]
     );
   };
+  // Helper to reset a row to pending state so it can be re-uploaded
+  const resetRow = (id) => {
+    setDocumentRows((rows) =>
+      rows.map((r) =>
+        r.id === id ? { ...r, status: "pending", error: null, progress: 0 } : r
+      )
+    );
+  };
 
   const handleFileSelect = (id, files) => {
     const file = files && files[0];
     if (!file) return;
+
+    // Reset status to pending immediately when a new file is chosen
+    resetRow(id);
+
     if (!file.type.includes("pdf")) {
       updateRow(id, "error", "Invalid file type. Please select a PDF.");
       return;
@@ -375,7 +403,6 @@ const ExamPlatformUpload = () => {
         (s) => s.value === row.subject
       );
 
-      // Basic check if objects were found (should normally be true if selection happened)
       if (!selectedClassObj || !selectedSubjectObj) {
         console.error(
           "Could not find selected class/subject object for row:",
@@ -391,11 +418,10 @@ const ExamPlatformUpload = () => {
       }
 
       formData.append("pdf", row.file);
-      // Send the data the backend expects (check your teacherUploadBook controller)
-      formData.append("classId", String(selectedClassObj.grade)); // Send the grade number as string
-      formData.append("subject", selectedSubjectObj.name); // Send the subject name
+      formData.append("classId", String(selectedClassObj.grade));
+      formData.append("subject", selectedSubjectObj.name);
       formData.append("schoolId", schoolId);
-      formData.append("title", selectedSubjectObj.label); // Use subject label as title
+      formData.append("title", selectedSubjectObj.label);
       formData.append("author", "System");
       formData.append("year", new Date().getFullYear());
 
@@ -403,48 +429,48 @@ const ExamPlatformUpload = () => {
       if (currentUser) {
         formData.append("teacherId", currentUser.uid);
       }
-
-      // --- FIX: Declare apiResult here, outside the try block ---
       let apiResult;
+      let simulationInterval = null;
+      let currentSimulatedProgress = 0;
+
+      simulationInterval = setInterval(() => {
+        currentSimulatedProgress += 1;
+        if (currentSimulatedProgress > 95) currentSimulatedProgress = 95;
+
+        let stepStatus = "uploading";
+
+        if (currentSimulatedProgress <= 10) {
+          setCurrentStep("upload");
+          stepStatus = "uploading";
+        } else if (currentSimulatedProgress <= 40) {
+          setCurrentStep("process");
+          stepStatus = "process";
+        } else if (currentSimulatedProgress <= 80) {
+          setCurrentStep("analyze");
+          stepStatus = "analyze";
+        } else {
+          setCurrentStep("complete");
+          stepStatus = "complete";
+        }
+        updateRow(row.id, "progress", currentSimulatedProgress);
+        updateRow(row.id, "status", stepStatus);
+        setLoaderProgress(currentSimulatedProgress);
+      }, 800);
 
       try {
-        const baseProgress = (index / validRows.length) * 100;
-        setCurrentFileName(row.file.name);
-        setLoaderProgress(baseProgress);
+        apiResult = await bookAPI.uploadBook(formData);
+        if (simulationInterval) clearInterval(simulationInterval);
 
-        // --- FIX: Simplified to a single try block. The API call is now here. ---
-        apiResult = await bookAPI.uploadBook(formData, {
-          onUploadProgress: (e) => {
-            const progress = Math.round((e.loaded * 100) / e.total);
-            updateRow(row.id, "progress", progress);
-            setLoaderProgress(baseProgress + progress * 0.8);
-          },
-        });
-        console.log("API Result from uploadBook:", apiResult);
-
-        // --- This part only runs on SUCCESS ---
-        const stepProgression = async () => {
-          setCurrentStep("process");
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          setCurrentStep("analyze");
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          setCurrentStep("complete");
-        };
-        await stepProgression();
+        updateRow(row.id, "status", "processed");
+        updateRow(row.id, "progress", 100);
+        setLoaderProgress(100);
+        setCurrentStep("complete");
 
         const returnedBook = apiResult?.data;
         const processedStatus = returnedBook?.processedStatus || "pending";
         const chunks = returnedBook?.noOfChunks ?? null;
 
         if (processedStatus === "processed") {
-          updateRow(
-            row.id,
-            "status",
-            processedStatus === "processed" ? "processed" : "pending"
-          );
-          updateRow(row.id, "progress", 100);
-          setLoaderProgress(((index + 1) / validRows.length) * 100);
-
           return {
             success: true,
             filename: row.file.name,
@@ -452,50 +478,41 @@ const ExamPlatformUpload = () => {
             status: processedStatus,
           };
         } else {
-          // Treat "failed" status (including 0 chunks) as a UI error
-          const errorMessage = `Processing failed. The book content could not be extracted.`;
-          updateRow(row.id, "status", "error");
-          updateRow(row.id, "error", errorMessage);
-          return {
-            success: false,
-            error: errorMessage,
-            filename: row.file.name,
-          };
+          throw new Error("Processing failed. Content could not be extracted.");
         }
       } catch (err) {
-        console.error("Upload error:", err);
+        if (simulationInterval) clearInterval(simulationInterval);
 
-        // Prioritize the specific message from the backend API response
+        console.error("Upload error:", err);
         const errorMessage =
           err.response?.data?.message ||
           err.message ||
           "An unknown error occurred.";
 
         updateRow(row.id, "status", "error");
-        updateRow(row.id, "error", errorMessage); // <-- Use the new variable here
+        updateRow(row.id, "error", errorMessage);
+
         return {
           success: false,
           filename: row.file.name,
-          error: errorMessage, // <-- And also here
+          error: errorMessage,
         };
       }
     });
 
     const results = await Promise.all(promises);
 
-    // Filter out the duplicate notifications from the final summary if you want
     const finalResults = results.filter(
       (res) => res.error !== "Duplicate entry. User was notified."
     );
     setUploadResults(finalResults);
-
     setIsUploading(false);
 
     setTimeout(() => {
       setShowLoader(false);
       setCurrentStep("upload");
       setCurrentFileName("");
-    }, 1000);
+    }, 1500);
   };
 
   const fetchBooksMetadata = async () => {
@@ -729,9 +746,18 @@ const ExamPlatformUpload = () => {
                                     </div>
                                   )}
                                   {row.error && (
-                                    <p className="text-xs text-red-600 flex items-center gap-1">
-                                      <AlertCircle size={14} /> {row.error}
-                                    </p>
+                                    <div className="flex flex-col items-start gap-1">
+                                      <p className="text-xs text-red-600 flex items-center gap-1">
+                                        <AlertCircle size={14} /> {row.error}
+                                      </p>
+                                      {/* NEW RETRY BUTTON */}
+                                      <button
+                                        onClick={() => resetRow(row.id)}
+                                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 underline decoration-blue-300 hover:decoration-blue-800 underline-offset-2 flex items-center gap-1"
+                                      >
+                                        <Zap size={12} /> Retry Upload
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                                 <button
