@@ -249,6 +249,22 @@ export const bookAPI = {
       throw error;
     }
   },
+  getChapters: async (subject, classId) => {
+    try {
+      // Adjust the URL prefix ('/books') if your router is mounted differently (e.g., '/teacher')
+      const response = await api.get(`teachers/chapters`, {
+        params: {
+          subject: subject,
+          classId: classId,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching chapters:", error);
+      // Return a safe fallback object so the UI doesn't crash
+      return { success: false, message: error.message };
+    }
+  },
 };
 
 // Question paper API functions

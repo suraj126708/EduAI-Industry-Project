@@ -157,7 +157,7 @@ const PaperSelectionModal = ({
                 paperGroups.map((group) => (
                   <tr key={group._id}>
                     <td className="px-4 py-3 whitespace-nowrap text-sm">
-                      {new Date(group.createdAt).toLocaleDateString()}
+                      {new Date(group.createdAt).toLocaleDateString("en-GB")}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm">
                       {group.examType}

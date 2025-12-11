@@ -9,9 +9,9 @@ import axios from "axios";
 import FormData from "form-data";
 import moment from "moment";
 
-//const deplyed_url = "http://127.0.0.1:8000/";
+const deplyed_url = "http://127.0.0.1:8000/";
 //const deplyed_url = "https://joshiaryan-eduai-ai-deployment.hf.space/";
-const deplyed_url = "https://suraj6708-question-gen-api.hf.space/";
+//const deplyed_url = "https://suraj6708-question-gen-api.hf.space/";
 
 // @desc    Upload an answer sheet for evaluation
 // @route   POST /api/evaluations/upload
@@ -140,6 +140,7 @@ export const uploadAnswerSheetForEvaluation = async (req, res) => {
       set: aiData.set,
       totalMarks: aiData.totalMarks, // This is the paper's total marks
       sections: aiData.sections,
+      chapter_summary: aiData.chapter_summary,
     };
 
     evaluation.totalMarksObtained = aiData.obtainedMarks; // This is the student's score
