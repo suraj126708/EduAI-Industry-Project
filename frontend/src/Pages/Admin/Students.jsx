@@ -1,251 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { adminService, evaluationAPI } from "../../utils/api";
+import { useNavigate } from "react-router-dom"; // ✅ Import useNavigate
 import {
   FaUsers,
   FaUpload,
   FaSearch,
   FaSpinner,
   FaFileAlt,
-  FaTimes,
-  FaDownload,
   FaChartLine,
+  FaEye, // Icon for View
 } from "react-icons/fa";
 import {
   AlertCircle,
   FileText,
-  School,
-  TrendingUp,
   CheckCircle,
-  AlertTriangle,
+  TrendingUp,
   ChevronRight,
-  User,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 
-// --- Report Modal Component (Kept same as provided) ---
-const ReportModal = ({ reportData, onClose }) => {
-  if (!reportData) return null;
-
-  const renderPerformanceTrend = (data) => {
-    if (!data || data.length === 0)
-      return (
-        <p className="text-gray-500 text-center py-10">
-          No trend data available.
-        </p>
-      );
-
-    return (
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey="examName" tick={{ fontSize: 12 }} />
-          <YAxis domain={[0, 100]} />
-          <Tooltip />
-          <Legend />
-          <Line
-            type="monotone"
-            dataKey="percentage"
-            stroke="#4F46E5"
-            strokeWidth={3}
-            activeDot={{ r: 8 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    );
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in-95 duration-200">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
-        >
-          <FaTimes size={24} />
-        </button>
-
-        <div className="p-8">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-8 border-b pb-6">
-            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
-              <School size={32} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {reportData.schoolInfo?.name || "School Name"}
-              </h2>
-              <p className="text-gray-500">Semester Progress Report</p>
-            </div>
-            <div className="ml-auto text-right">
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-2 bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition-colors shadow-sm"
-              >
-                <FaDownload /> Download PDF
-              </button>
-            </div>
-          </div>
-
-          {/* Student Info */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-4 bg-gray-50 rounded-lg border mb-8">
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">
-                Student
-              </span>
-              <p className="font-semibold text-gray-900">
-                {reportData.studentInfo.name}
-              </p>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">
-                Roll No
-              </span>
-              <p className="font-semibold text-gray-900">
-                {reportData.studentInfo.rollNo}
-              </p>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">
-                Class
-              </span>
-              <p className="font-semibold text-gray-900">
-                {reportData.studentInfo.class} -{" "}
-                {reportData.studentInfo.division}
-              </p>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">
-                Overall Grade
-              </span>
-              <p className="font-bold text-indigo-600 text-lg">
-                {reportData.aiAnalysis.overall_grade}
-              </p>
-            </div>
-          </div>
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div className="border p-4 rounded-lg bg-white shadow-sm">
-              <h4 className="font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                <TrendingUp size={18} className="text-indigo-600" /> Performance
-                Trend
-              </h4>
-              {renderPerformanceTrend(reportData.aiAnalysis.trend_data)}
-            </div>
-            <div className="border p-4 rounded-lg bg-white shadow-sm">
-              <h4 className="font-semibold mb-4 flex items-center gap-2 text-gray-800">
-                <FileText size={18} className="text-indigo-600" /> AI Analysis
-              </h4>
-              <div className="space-y-4 text-sm text-gray-600">
-                <div>
-                  <strong className="text-green-600 flex items-center gap-1 mb-1">
-                    <CheckCircle size={14} /> Strengths:
-                  </strong>
-                  <ul className="list-disc pl-5 space-y-1">
-                    {reportData.aiAnalysis.strengths.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <strong className="text-orange-600 flex items-center gap-1 mb-1">
-                    <AlertTriangle size={14} /> Areas to Improve:
-                  </strong>
-                  <ul className="list-disc pl-5 space-y-1">
-                    {reportData.aiAnalysis.weaknesses.map((w, i) => (
-                      <li key={i}>{w}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Raw History Table */}
-          <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
-            <div className="px-4 py-3 bg-gray-50 border-b">
-              <h3 className="font-bold text-gray-800">Exam History</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                      Exam
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                      Subject
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">
-                      Score
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">
-                      %
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {reportData.rawHistory.map((exam) => (
-                    <tr key={exam.examId} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-900">
-                        {new Date(exam.date).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {exam.examType}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {exam.subject}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-900">
-                        {exam.obtainedMarks} / {exam.totalMarks}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            exam.obtainedMarks / exam.totalMarks >= 0.75
-                              ? "bg-green-100 text-green-800"
-                              : exam.obtainedMarks / exam.totalMarks >= 0.5
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {(
-                            (exam.obtainedMarks / exam.totalMarks) *
-                            100
-                          ).toFixed(1)}
-                          %
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Main Component ---
-
+// Helper Component for Select Inputs
 const SelectInput = ({
   label,
   value,
@@ -265,7 +40,7 @@ const SelectInput = ({
       disabled={disabled}
       {...props}
     >
-      <option value="">Select Class</option>
+      <option value="">Select Option</option>
       {options.map((opt, idx) => (
         <option key={`${opt.value}-${idx}`} value={opt.value}>
           {opt.label}
@@ -276,37 +51,47 @@ const SelectInput = ({
 );
 
 function Students() {
-  // State for filters
+  const navigate = useNavigate(); // ✅ Initialize hook
+
+  // --- Filter State ---
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("");
   const [searchRollNo, setSearchRollNo] = useState("");
 
-  // Report Mode State
+  // --- Report Mode State ---
   const [isReportMode, setIsReportMode] = useState(false);
-  const [startDate, setStartDate] = useState(
-    new Date(new Date().getFullYear(), 0, 1)
-  ); // Jan 1st
-  const [endDate, setEndDate] = useState(new Date());
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date(new Date().getFullYear(), 0, 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }); // Jan 1st
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999); // Set to end of today
+    return d;
+  });
 
-  // State for data
+  // ✅ Store existing report IDs (Map: studentId -> reportId)
+  const [existingReports, setExistingReports] = useState({});
+
+  // --- Data State ---
   const [students, setStudents] = useState([]);
-  const [allClassesData, setAllClassesData] = useState([]); // Store raw class data
+  const [allClassesData, setAllClassesData] = useState([]);
   const [classOptions, setClassOptions] = useState([]);
   const [divisionOptions, setDivisionOptions] = useState([]);
 
-  // State for UI feedback
+  // --- UI State ---
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [uploading, setUploading] = useState(false);
-
-  // Generating Report State
-  const [generatingForId, setGeneratingForId] = useState(null); // ID of student being processed
-  const [viewReportData, setViewReportData] = useState(null); // Data for modal
+  const [generatingForId, setGeneratingForId] = useState(null);
 
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Fetch classes
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
+  const [reportSemester, setReportSemester] = useState("Semester 1");
+  // 1. Fetch Classes on Mount
   useEffect(() => {
     const fetchClasses = async () => {
       setIsLoadingClasses(true);
@@ -314,9 +99,8 @@ function Students() {
         const res = await adminService.getClasses();
         if (res.data.success) {
           const classes = res.data.data;
-          setAllClassesData(classes); // Save raw data for dynamic filtering
+          setAllClassesData(classes);
 
-          // Extract unique Grades
           const uniqueGrades = [...new Set(classes.map((c) => c.grade))];
           setClassOptions(
             uniqueGrades
@@ -333,21 +117,16 @@ function Students() {
     fetchClasses();
   }, []);
 
-  // Dynamic Division Filter Logic
+  // 2. Dynamic Division Options
   useEffect(() => {
-    // Reset division selection when class changes
     setSelectedDivision("");
-
     if (!selectedClass) {
       setDivisionOptions([]);
       return;
     }
-
-    // Filter raw data to find divisions matching the selected grade
     const availableClasses = allClassesData.filter(
       (c) => c.grade.toString() === selectedClass.toString()
     );
-
     const uniqueDivisions = [
       ...new Set(availableClasses.map((c) => c.division)),
     ].sort();
@@ -357,7 +136,37 @@ function Students() {
     );
   }, [selectedClass, allClassesData]);
 
-  // Fetch Students
+  const getPayloadDates = () => {
+    return {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    };
+  };
+
+  // 3. ✅ Helper: Check Report Status for Loaded Students
+  const checkReportsStatus = async (studentList) => {
+    if (!isReportMode || studentList.length === 0) return;
+
+    try {
+      const studentIds = studentList.map((s) => s._id);
+      // Use helper to get dates
+      const { startDate: s, endDate: e } = getPayloadDates();
+
+      const res = await evaluationAPI.checkReportStatus({
+        studentIds,
+        year: reportYear, // Send Year
+        semester: reportSemester,
+      });
+
+      if (res.success) {
+        setExistingReports(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to check report status", err);
+    }
+  };
+
+  // 4. Fetch Students Logic
   const handleFetchStudents = async () => {
     if (!selectedClass) {
       setError("Please select a class to fetch students.");
@@ -378,6 +187,10 @@ function Students() {
 
       if (res.success) {
         setStudents(res.data);
+        // ✅ Check reports immediately after fetching students if in report mode
+        if (isReportMode) {
+          await checkReportsStatus(res.data);
+        }
         if (res.data.length === 0) {
           setSuccessMessage("No students found matching these criteria.");
         }
@@ -392,20 +205,33 @@ function Students() {
     }
   };
 
-  // Generate Report Action
-  const handleGenerateReport = async (studentId) => {
+  // 5. ✅ Re-check reports when dates change OR when students list updates
+  useEffect(() => {
+    if (isReportMode && students.length > 0) {
+      checkReportsStatus(students);
+    }
+  }, [reportYear, reportSemester, isReportMode, students]);
+
+  // 6. ✅ Handle Generate or View Report
+  const handleGenerateOrViewReport = async (studentId) => {
+    if (existingReports[studentId]) {
+      window.open(`/semester-report/${existingReports[studentId]}`, "_blank");
+      return;
+    }
+
     setGeneratingForId(studentId);
     setError("");
 
     try {
       const res = await evaluationAPI.generateSemesterReport({
         studentId: studentId,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        year: reportYear, // Send Year
+        semester: reportSemester,
       });
 
-      if (res.success) {
-        setViewReportData(res.data);
+      if (res.success && res.reportId) {
+        setExistingReports((prev) => ({ ...prev, [studentId]: res.reportId }));
+        window.open(`/semester-report/${existingReports[studentId]}`, "_blank");
       } else {
         setError(res.message || "Failed to generate report.");
       }
@@ -417,6 +243,7 @@ function Students() {
     }
   };
 
+  // 7. Handle Excel Upload
   const handleExcelUpload = async (e) => {
     setError("");
     setSuccessMessage("");
@@ -444,9 +271,7 @@ function Students() {
         setSuccessMessage(
           `Upload successful! ${res.data?.successCount || 0} students added.`
         );
-        if (selectedClass) {
-          handleFetchStudents();
-        }
+        if (selectedClass) handleFetchStudents();
       } else {
         setError(res.message || "Upload failed.");
       }
@@ -460,14 +285,7 @@ function Students() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 bg-white rounded-lg shadow-lg relative min-h-screen">
-      {/* --- Modal for Report --- */}
-      {viewReportData && (
-        <ReportModal
-          reportData={viewReportData}
-          onClose={() => setViewReportData(null)}
-        />
-      )}
-
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center">
           <FaUsers className="mr-3 text-indigo-600" />
@@ -493,60 +311,74 @@ function Students() {
       </div>
 
       {error && (
-        <div className="flex items-center p-4 mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg shadow-sm animate-in fade-in slide-in-from-top-2">
+        <div className="flex items-center p-4 mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg shadow-sm">
           <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0" />
           <p className="font-medium">{error}</p>
         </div>
       )}
       {successMessage && (
-        <div className="flex items-center p-4 mb-6 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-r-lg shadow-sm animate-in fade-in slide-in-from-top-2">
+        <div className="flex items-center p-4 mb-6 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-r-lg shadow-sm">
           <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />
           <p className="font-medium">{successMessage}</p>
         </div>
       )}
 
-      {/* --- Report Mode Configuration Panel --- */}
+      {/* --- Report Mode Config --- */}
       {isReportMode && (
         <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl mb-8 border border-indigo-100 shadow-sm animate-in fade-in slide-in-from-top-4">
           <h3 className="text-indigo-800 font-bold mb-4 flex items-center gap-2 text-lg">
             <TrendingUp size={20} /> Configure Report Period
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Year Selector */}
             <div>
               <label className="block text-xs font-bold text-indigo-600 uppercase mb-2 tracking-wider">
-                Start Date
+                Academic Year
               </label>
-              <div className="relative">
-                <DatePicker
-                  selected={startDate}
-                  onChange={setStartDate}
-                  className="w-full pl-4 pr-4 py-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-700"
-                  wrapperClassName="w-full"
-                />
-              </div>
+              <select
+                value={reportYear}
+                onChange={(e) => setReportYear(e.target.value)}
+                className="w-full px-3 py-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-700 bg-white"
+              >
+                {[...Array(5)].map((_, i) => {
+                  const year = new Date().getFullYear() - i + 1; // 2026, 2025, 2024...
+                  return (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
+
+            {/* Semester Selector */}
             <div>
               <label className="block text-xs font-bold text-indigo-600 uppercase mb-2 tracking-wider">
-                End Date
+                Semester
               </label>
-              <div className="relative">
-                <DatePicker
-                  selected={endDate}
-                  onChange={setEndDate}
-                  className="w-full pl-4 pr-4 py-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-700"
-                  wrapperClassName="w-full"
-                />
-              </div>
+              <select
+                value={reportSemester}
+                onChange={(e) => setReportSemester(e.target.value)}
+                className="w-full px-3 py-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-700 bg-white"
+              >
+                <option value="Semester 1">Semester 1 (Jun - Dec)</option>
+                <option value="Semester 2">Semester 2 (Jan - May)</option>
+              </select>
             </div>
           </div>
+
           <p className="text-xs text-indigo-500 mt-4 flex items-center gap-1 font-medium">
             <AlertCircle size={12} />
-            Reports will include all evaluations conducted between these dates.
+            Reports will include evaluations from{" "}
+            {reportSemester === "Semester 1"
+              ? "June 1st to Dec 31st"
+              : "Jan 1st to May 31st"}{" "}
+            of {reportYear}.
           </p>
         </div>
       )}
 
-      {/* --- Upload Section (Enabled & Styled) --- */}
+      {/* --- Upload Section (Hidden in Report Mode) --- */}
       {!isReportMode && (
         <div className="bg-white p-6 rounded-xl mb-8 border border-gray-200 shadow-sm">
           <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
@@ -569,7 +401,6 @@ function Students() {
                     file:bg-indigo-50 file:text-indigo-700
                     hover:file:bg-indigo-100
                     cursor-pointer file:cursor-pointer
-                    disabled:opacity-50 disabled:cursor-not-allowed
                     border border-gray-300 rounded-lg p-1"
                 />
               </label>
@@ -624,7 +455,7 @@ function Students() {
                 value={searchRollNo}
                 onChange={(e) => setSearchRollNo(e.target.value)}
                 placeholder="Enter Roll Number..."
-                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:text-gray-400 transition-colors shadow-sm"
+                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 shadow-sm"
                 disabled={!selectedClass}
               />
             </div>
@@ -651,7 +482,7 @@ function Students() {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <User className="w-5 h-5 text-gray-500" />
+            <FaUsers className="w-5 h-5 text-gray-500" />
             Student List{" "}
             {students.length > 0 && (
               <span className="text-sm font-normal text-gray-500">
@@ -695,9 +526,8 @@ function Students() {
                     Name
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Parent Contact
+                    Contact
                   </th>
-                  {/* Added Parent Email Column */}
                   <th className="px-6 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                     Parent Email
                   </th>
@@ -709,65 +539,68 @@ function Students() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {students.map((stu) => (
-                  <tr
-                    key={stu._id}
-                    className={`transition-colors ${
-                      viewReportData?.studentInfo?.rollNo === stu.rollNo
-                        ? "bg-indigo-50"
-                        : "hover:bg-gray-50"
-                    }`}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {stu.rollNo}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
-                      {stu.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {stu.parentContact ? (
-                        stu.parentContact
-                      ) : (
-                        <span className="text-gray-400 italic text-xs">
-                          Not Provided
-                        </span>
-                      )}
-                    </td>
-                    {/* Added Parent Email Data */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {stu.parentEmail ? (
-                        stu.parentEmail
-                      ) : (
-                        <span className="text-gray-400 italic text-xs">
-                          Not Provided
-                        </span>
-                      )}
-                    </td>
+                {students.map((stu) => {
+                  // Check if this student already has a report ID in our map
+                  const reportId = existingReports[stu._id];
 
-                    {/* Report Generation Button */}
-                    {isReportMode && (
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <button
-                          onClick={() => handleGenerateReport(stu._id)}
-                          disabled={generatingForId === stu._id}
-                          className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 border border-indigo-200 px-4 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
-                        >
-                          {generatingForId === stu._id ? (
-                            <FaSpinner className="animate-spin" />
-                          ) : (
-                            <FileText size={14} />
-                          )}
-                          {generatingForId === stu._id
-                            ? "Generating..."
-                            : "Generate Report"}
-                          {!generatingForId && (
-                            <ChevronRight size={14} className="ml-1" />
-                          )}
-                        </button>
+                  return (
+                    <tr
+                      key={stu._id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {stu.rollNo}
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
+                        {stu.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {stu.parentContact || (
+                          <span className="italic text-gray-400">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {stu.parentEmail || (
+                          <span className="italic text-gray-400">N/A</span>
+                        )}
+                      </td>
+
+                      {isReportMode && (
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => handleGenerateOrViewReport(stu._id)}
+                            disabled={generatingForId === stu._id}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-2 transition-all shadow-sm
+                              ${
+                                reportId
+                                  ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 ring-1 ring-green-200"
+                                  : "bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100"
+                              } disabled:opacity-70 disabled:cursor-not-allowed`}
+                          >
+                            {generatingForId === stu._id ? (
+                              <>
+                                <FaSpinner className="animate-spin" />{" "}
+                                Processing...
+                              </>
+                            ) : reportId ? (
+                              <>
+                                <FaEye size={14} /> View Report
+                              </>
+                            ) : (
+                              <>
+                                <FileText size={14} /> Generate Report
+                              </>
+                            )}
+
+                            {!generatingForId && !reportId && (
+                              <ChevronRight size={14} className="ml-1" />
+                            )}
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

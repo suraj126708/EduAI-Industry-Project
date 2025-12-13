@@ -184,7 +184,7 @@ export const bookAPI = {
       if (!user) throw new Error("User not authenticated");
       const idToken = await user.getIdToken();
 
-      const response = await axios.get(`${local_api}books/${bookId}`, {
+      const response = await axios.get(`books/${bookId}`, {
         headers: {
           Authorization: `Bearer ${idToken}`,
         },
@@ -684,6 +684,28 @@ export const evaluationAPI = {
     } catch (err) {
       console.error("Report generation error:", err);
       return err.response?.data || { success: false, message: err.message };
+    }
+  },
+
+  getSemesterReportById: async (reportId) => {
+    try {
+      const res = await api.get(`/evaluation/semester-report/${reportId}`);
+      // Expected response: { success: true, data: { ...report object... } }
+      return res.data;
+    } catch (err) {
+      console.error("Fetch report error:", err);
+      return err.response?.data || { success: false, message: err.message };
+    }
+  },
+
+  checkReportStatus: async (payload) => {
+    try {
+      // payload = { studentIds: [], startDate, endDate }
+      const res = await api.post("/evaluation/semester/check-status", payload);
+      return res.data;
+    } catch (err) {
+      console.error("Check status error:", err);
+      return { success: false, data: {} };
     }
   },
 };

@@ -1,13 +1,6 @@
-import React, { useState } from "react";
-import {
-  X,
-  Printer,
-  Download,
-  Mail,
-  School,
-  AlertCircle,
-  TrendingUp,
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom"; // To get ID from URL
+import { evaluationAPI } from "../../utils/api"; // To fetch data
 import {
   BarChart,
   Bar,
@@ -17,460 +10,367 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
   LineChart,
   Line,
 } from "recharts";
+import {
+  Download,
+  Calendar,
+  User,
+  BookOpen,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 
-const SemesterReportCard = ({ studentData, onClose }) => {
-  // State for Principal's Remark (Editable)
-  const [principalRemark, setPrincipalRemark] = useState("");
+// Helper to color codes based on score
+const getScoreColor = (score) => {
+  if (score >= 75) return "text-green-600";
+  if (score >= 50) return "text-yellow-600";
+  return "text-red-600";
+};
 
-  // --- MOCK DATA (If real data isn't fully structured yet) ---
-  // In a real scenario, you would map 'studentData' props to this structure
-  const report = {
-    student: {
-      name: studentData?.studentInfo?.name || "Aarav Patel",
-      id: "2024-ST-098",
-      class: "10-A",
-      rollNo: studentData?.studentInfo?.rollNo || "14",
-      dob: "12-May-2008",
-      attendance: "95.5%",
-      house: "Blue",
-    },
-    academic: [
-      {
-        subject: "Mathematics",
-        unit: 18,
-        mid: 72,
-        total: 90,
-        grade: "A1",
-        avg: 78,
-        remark: "Excellent",
-      },
-      {
-        subject: "Physics",
-        unit: 16,
-        mid: 65,
-        total: 81,
-        grade: "A2",
-        avg: 70,
-        remark: "Good",
-      },
-      {
-        subject: "Chemistry",
-        unit: 19,
-        mid: 70,
-        total: 89,
-        grade: "A1",
-        avg: 75,
-        remark: "Outstanding",
-      },
-      {
-        subject: "English",
-        unit: 15,
-        mid: 60,
-        total: 75,
-        grade: "B1",
-        avg: 80,
-        remark: "Can improve",
-      },
-      {
-        subject: "Computer Sci",
-        unit: 20,
-        mid: 78,
-        total: 98,
-        grade: "A1",
-        avg: 85,
-        remark: "Exceptional",
-      },
-      {
-        subject: "Social Studies",
-        unit: 14,
-        mid: 55,
-        total: 69,
-        grade: "B2",
-        avg: 72,
-        remark: "Satisfactory",
-      },
-    ],
-    coScholastic: [
-      {
-        activity: "Work Education",
-        grade: "A",
-        indicator: "Actively participates in group projects.",
-      },
-      {
-        activity: "Art Education",
-        grade: "B",
-        indicator: "Good creativity; shows interest in sketching.",
-      },
-      {
-        activity: "Health & Physical Ed",
-        grade: "A",
-        indicator: "Captain of the Junior Football team.",
-      },
-      {
-        activity: "Discipline",
-        grade: "A",
-        indicator: "Respectful to teachers and peers.",
-      },
-    ],
-    charts: {
-      comparison: [
-        { subject: "Math", Student: 90, ClassAvg: 78 },
-        { subject: "Phy", Student: 81, ClassAvg: 70 },
-        { subject: "Chem", Student: 89, ClassAvg: 75 },
-        { subject: "Eng", Student: 75, ClassAvg: 80 },
-        { subject: "Comp", Student: 98, ClassAvg: 85 },
-      ],
-      trend: [
-        { exam: "Unit 1", score: 82 },
-        { exam: "Unit 2", score: 85 },
-        { exam: "Mid-Term", score: 88 },
-      ],
-    },
-  };
+const SemesterReport = () => {
+  const { id } = useParams(); // 1. Get ID from URL
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const handlePrint = () => {
-    window.print();
-  };
+  // 2. Fetch Data on Mount
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        const res = await evaluationAPI.getSemesterReportById(id);
+        if (res.success) {
+          setReportData(res.data);
+        } else {
+          setError(res.message || "Failed to load report");
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Error loading report data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) fetchReport();
+  }, [id]);
+
+  // 3. Loading & Error States
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mb-4" />
+        <p className="text-gray-600 font-medium">Generating Analytics...</p>
+      </div>
+    );
+  }
+
+  if (error || !reportData) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-red-100 text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-gray-800">Report Not Found</h3>
+          <p className="text-gray-500 mt-2">
+            {error || "The requested report could not be retrieved."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. Destructure Data (Mapping DB Model to UI)
+  // Note: Adjusting variable names to match your DB Schema
+  const { studentId: student, period, aiInsights, examHistory } = reportData;
+
+  // Prepare Data for Charts
+  const subjectData = aiInsights.subjectAnalysis;
+  const skillData = aiInsights.skillAnalysis;
+
+  // Trend Data for Line Chart
+  // We reverse array if needed so trend goes left-to-right chronologically
+  const trendData = [...examHistory].map((ev, index) => ({
+    name: ev.subject, // Or `Exam ${index+1}`
+    percentage: ev.percentage.toFixed(1),
+    date: new Date(ev.date).toLocaleDateString(),
+  }));
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex justify-center items-start z-50 overflow-y-auto pt-10 pb-10 print:p-0 print:bg-white print:static">
-      {/* --- Main Report Container (A4 Width) --- */}
-      <div className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-2xl rounded-xl overflow-hidden print:shadow-none print:w-full print:max-w-none">
-        {/* --- 1. Admin Actions (Hidden when printing) --- */}
-        <div className="bg-gray-100 p-4 border-b flex justify-between items-center print:hidden">
-          <div>
-            <h2 className="font-bold text-gray-800">Report Preview</h2>
-            <p className="text-xs text-gray-500">
-              Generated on {new Date().toLocaleDateString()}
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm hover:bg-gray-50 text-gray-700">
-              <Mail size={16} /> Email Parent
-            </button>
-            <button className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm hover:bg-gray-50 text-gray-700">
-              <Download size={16} /> Download
-            </button>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700"
-            >
-              <Printer size={16} /> Print Report
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-500 hover:text-gray-800"
-            >
-              <X size={24} />
-            </button>
+    <div className="bg-gray-50 min-h-screen p-8 font-sans print:bg-white print:p-0">
+      {/* Header Section */}
+      <div className="bg-white rounded-xl shadow-sm p-8 mb-8 border border-gray-100 flex justify-between items-start print:shadow-none print:border-b-2 print:border-gray-200">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            Student Semester Report
+          </h1>
+          <div className="flex gap-6 text-gray-600 mt-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <User className="w-5 h-5 text-indigo-600" />
+              <span className="font-medium">{student.name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-indigo-600" />
+              <span>
+                Class {student.class} - {student.division || "A"} (Roll:{" "}
+                {student.rollNo})
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-indigo-600" />
+              <span>
+                {new Date(period.startDate).toLocaleDateString()} -{" "}
+                {new Date(period.endDate).toLocaleDateString()}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* --- 2. The Actual Report Content --- */}
-        <div className="p-8 print:p-0">
-          {/* Header */}
-          <div className="text-center border-b-2 border-indigo-900 pb-6 mb-6">
-            <div className="flex items-center justify-center gap-4 mb-2">
-              <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700">
-                <School size={40} />
-              </div>
-              <div className="text-left">
-                <h1 className="text-3xl font-extrabold text-indigo-900 tracking-wide uppercase">
-                  Green Valley High School
-                </h1>
-                <p className="text-sm text-gray-600 tracking-widest uppercase">
-                  Excellence in Education
-                </p>
-                <p className="text-xs text-gray-500">
-                  123 Knowledge Park, Education City, Pune
-                </p>
-              </div>
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 mt-4 border-t border-gray-200 pt-2 inline-block">
-              SEMESTER PROGRESS REPORT: 2024-2025
-            </h2>
+        <div className="text-right">
+          <div className="text-sm text-gray-500 uppercase tracking-wider mb-1">
+            Overall Grade
           </div>
-
-          {/* Section A: Student Profile */}
-          <div className="mb-8 border border-gray-300 rounded-lg p-4 bg-gray-50/50">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 text-sm">
-              <div>
-                <span className="text-gray-500 block text-xs uppercase">
-                  Student Name
-                </span>
-                <span className="font-bold text-gray-900 text-base">
-                  {report.student.name}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block text-xs uppercase">
-                  Class / Section
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {report.student.class}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block text-xs uppercase">
-                  Roll No
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {report.student.rollNo}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block text-xs uppercase">
-                  Attendance
-                </span>
-                <span className="font-bold text-green-700">
-                  {report.student.attendance}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block text-xs uppercase">
-                  Student ID
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {report.student.id}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block text-xs uppercase">
-                  Date of Birth
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {report.student.dob}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block text-xs uppercase">
-                  House
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {report.student.house}
-                </span>
-              </div>
-            </div>
+          <div className="text-4xl font-extrabold text-indigo-600">
+            {aiInsights.overallGrade}
           </div>
+          <button
+            onClick={() => window.print()}
+            className="mt-4 flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition print:hidden shadow-sm text-sm font-medium"
+          >
+            <Download className="w-4 h-4" /> Download PDF
+          </button>
+        </div>
+      </div>
 
-          {/* Section B: Scholastic Areas */}
-          <div className="mb-8">
-            <h3 className="text-sm font-bold text-indigo-900 uppercase mb-2 border-b border-gray-300 pb-1">
-              Part A: Scholastic Performance
-            </h3>
-            <table className="w-full text-sm border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-indigo-50 text-indigo-900">
-                  <th className="border border-gray-300 px-3 py-2 text-left">
-                    Subject
-                  </th>
-                  <th className="border border-gray-300 px-2 py-2 text-center w-16">
-                    Unit (20)
-                  </th>
-                  <th className="border border-gray-300 px-2 py-2 text-center w-16">
-                    Mid (80)
-                  </th>
-                  <th className="border border-gray-300 px-2 py-2 text-center w-16 bg-indigo-100 font-bold">
-                    Total
-                  </th>
-                  <th className="border border-gray-300 px-2 py-2 text-center w-16">
-                    Grade
-                  </th>
-                  <th className="border border-gray-300 px-2 py-2 text-center w-20 text-xs text-gray-500">
-                    Class Avg
-                  </th>
-                  <th className="border border-gray-300 px-3 py-2 text-left">
-                    Remarks
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.academic.map((sub, index) => (
-                  <tr key={index} className="odd:bg-white even:bg-gray-50">
-                    <td className="border border-gray-300 px-3 py-2 font-medium">
-                      {sub.subject}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-2 text-center text-gray-600">
-                      {sub.unit}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-2 text-center text-gray-600">
-                      {sub.mid}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-2 text-center font-bold text-indigo-700 bg-indigo-50/50">
-                      {sub.total}
-                    </td>
-                    <td
-                      className={`border border-gray-300 px-2 py-2 text-center font-bold ${
-                        sub.grade.startsWith("A")
-                          ? "text-green-600"
-                          : sub.grade.startsWith("B")
-                          ? "text-blue-600"
-                          : "text-orange-600"
+      {/* Executive Summary */}
+      <div className="bg-white rounded-xl shadow-sm p-8 mb-8 border-l-4 border-indigo-600 print:shadow-none print:border print:border-gray-300">
+        <h2 className="text-xl font-bold text-gray-800 mb-3">
+          Executive Summary
+        </h2>
+        <p className="text-gray-700 leading-relaxed text-lg italic">
+          "{aiInsights.summary}"
+        </p>
+      </div>
+
+      {/* Analytical Dashboard (Charts) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 print:block print:space-y-8">
+        {/* Subject Proficiency (Bar Chart) */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 print:break-inside-avoid">
+          <h3 className="text-lg font-bold text-gray-800 mb-6">
+            Subject Proficiency
+          </h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={subjectData}
+                layout="vertical"
+                margin={{ left: 20, right: 20 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  horizontal={true}
+                  vertical={false}
+                />
+                <XAxis type="number" domain={[0, 100]} hide />
+                <YAxis
+                  dataKey="subject"
+                  type="category"
+                  width={100}
+                  tick={{ fontSize: 12, fontWeight: 500 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "none",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  }}
+                  formatter={(value) => [`${value}%`, "Score"]}
+                />
+                <Bar
+                  dataKey="score"
+                  fill="#4f46e5"
+                  radius={[0, 4, 4, 0]}
+                  barSize={24}
+                  name="Score"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Skill Analysis (Radar Chart) */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 print:break-inside-avoid">
+          <h3 className="text-lg font-bold text-gray-800 mb-6">
+            Skill Competency Analysis
+          </h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="75%" data={skillData}>
+                <PolarGrid stroke="#e5e7eb" />
+                <PolarAngleAxis
+                  dataKey="skill"
+                  tick={{ fill: "#4b5563", fontSize: 11, fontWeight: 600 }}
+                />
+                <PolarRadiusAxis
+                  angle={30}
+                  domain={[0, 100]}
+                  tick={false}
+                  axisLine={false}
+                />
+                <Radar
+                  name="Student"
+                  dataKey="score"
+                  stroke="#2563eb"
+                  strokeWidth={2}
+                  fill="#3b82f6"
+                  fillOpacity={0.5}
+                />
+                <Tooltip />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Subject Insights Table */}
+      <div className="bg-white rounded-xl shadow-sm p-8 mb-8 border border-gray-100 print:break-inside-avoid">
+        <h3 className="text-xl font-bold text-gray-800 mb-6">
+          Detailed Subject Insights
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50/50">
+                <th className="py-3 px-4 font-semibold text-gray-600 rounded-tl-lg">
+                  Subject
+                </th>
+                <th className="py-3 px-4 font-semibold text-gray-600">
+                  Performance
+                </th>
+                <th className="py-3 px-4 font-semibold text-gray-600">Level</th>
+                <th className="py-3 px-4 font-semibold text-gray-600 w-1/2 rounded-tr-lg">
+                  AI Insight
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {subjectData.map((sub, idx) => (
+                <tr
+                  key={idx}
+                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                >
+                  <td className="py-4 px-4 font-medium text-gray-800">
+                    {sub.subject}
+                  </td>
+                  <td
+                    className={`py-4 px-4 font-bold ${getScoreColor(
+                      sub.score
+                    )}`}
+                  >
+                    {sub.score}%
+                  </td>
+                  <td className="py-4 px-4">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold 
+                      ${
+                        sub.proficiency === "Advanced" ||
+                        sub.proficiency === "Expert"
+                          ? "bg-green-100 text-green-700"
+                          : sub.proficiency === "Intermediate"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {sub.grade}
-                    </td>
-                    <td className="border border-gray-300 px-2 py-2 text-center text-gray-400 text-xs">
-                      {sub.avg}
-                    </td>
-                    <td className="border border-gray-300 px-3 py-2 text-xs italic text-gray-600">
-                      {sub.remark}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Section C: Visual Analytics (Hidden on small prints if needed, but keeping for now) */}
-          <div className="mb-8 grid grid-cols-2 gap-6 print:grid-cols-2">
-            <div>
-              <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">
-                Subject Performance vs Class Avg
-              </h3>
-              <div className="h-48 w-full border border-gray-200 rounded p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={report.charts.comparison}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis
-                      dataKey="subject"
-                      tick={{ fontSize: 10 }}
-                      interval={0}
-                    />
-                    <YAxis hide />
-                    <Tooltip contentStyle={{ fontSize: "12px" }} />
-                    <Legend iconSize={8} wrapperStyle={{ fontSize: "10px" }} />
-                    <Bar
-                      dataKey="Student"
-                      fill="#4F46E5"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="ClassAvg"
-                      fill="#CBD5E1"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">
-                Semester Trajectory
-              </h3>
-              <div className="h-48 w-full border border-gray-200 rounded p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={report.charts.trend}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="exam" tick={{ fontSize: 10 }} />
-                    <YAxis domain={[0, 100]} hide />
-                    <Tooltip contentStyle={{ fontSize: "12px" }} />
-                    <Line
-                      type="monotone"
-                      dataKey="score"
-                      stroke="#10B981"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Section D: Co-Scholastic */}
-          <div className="mb-8">
-            <h3 className="text-sm font-bold text-indigo-900 uppercase mb-2 border-b border-gray-300 pb-1">
-              Part B: Co-Scholastic Areas
-            </h3>
-            <table className="w-full text-sm border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-300 px-3 py-2 text-left w-1/4">
-                    Activity
-                  </th>
-                  <th className="border border-gray-300 px-3 py-2 text-center w-16">
-                    Grade
-                  </th>
-                  <th className="border border-gray-300 px-3 py-2 text-left">
-                    Descriptive Indicators
-                  </th>
+                      {sub.proficiency}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-gray-600 text-sm leading-relaxed">
+                    {sub.insight}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {report.coScholastic.map((item, idx) => (
-                  <tr key={idx}>
-                    <td className="border border-gray-300 px-3 py-2 font-medium">
-                      {item.activity}
-                    </td>
-                    <td className="border border-gray-300 px-3 py-2 text-center font-bold">
-                      {item.grade}
-                    </td>
-                    <td className="border border-gray-300 px-3 py-2 text-gray-600 text-xs">
-                      {item.indicator}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Section E: Remarks & Signatures */}
-          <div className="border border-gray-300 rounded-lg p-4 bg-gray-50 mb-12">
-            <div className="mb-4">
-              <span className="block font-bold text-sm text-indigo-900 mb-1">
-                Class Teacher's Remark:
-              </span>
-              <p className="text-sm text-gray-700 italic border-b border-dashed border-gray-300 pb-2">
-                "Aarav is a bright student but needs to focus more on language
-                subjects to improve his overall aggregate."
-              </p>
-            </div>
-
-            <div>
-              <span className="font-bold text-sm text-indigo-900 mb-1 flex items-center gap-2">
-                Principal's Remark:
-                <span className="text-[10px] font-normal text-gray-400 uppercase print:hidden">
-                  (Click to edit)
-                </span>
-              </span>
-              <textarea
-                className="w-full bg-transparent text-sm text-gray-800 italic resize-none outline-none border-b border-dashed border-gray-300 focus:border-indigo-500 focus:bg-white transition-colors p-1"
-                rows={2}
-                placeholder="Enter principal's note here..."
-                value={principalRemark}
-                onChange={(e) => setPrincipalRemark(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Signatures */}
-          <div className="grid grid-cols-3 gap-8 mt-16 pt-8">
-            <div className="text-center">
-              <div className="border-t-2 border-gray-400 w-2/3 mx-auto mb-2"></div>
-              <p className="font-bold text-sm text-gray-700">Class Teacher</p>
-            </div>
-            <div className="text-center">
-              <div className="border-t-2 border-gray-400 w-2/3 mx-auto mb-2"></div>
-              <p className="font-bold text-sm text-gray-700">
-                Parent / Guardian
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="border-t-2 border-gray-400 w-2/3 mx-auto mb-2"></div>
-              <p className="font-bold text-sm text-gray-700">Principal</p>
-              <div className="mt-2 w-16 h-16 mx-auto border border-gray-200 rounded-full flex items-center justify-center text-[10px] text-gray-400">
-                School Seal
-              </div>
-            </div>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
+      </div>
+
+      {/* Performance Trend (Line Chart) */}
+      <div className="bg-white rounded-xl shadow-sm p-8 mb-8 border border-gray-100 print:break-inside-avoid">
+        <h3 className="text-xl font-bold text-gray-800 mb-6">
+          Performance Trajectory
+        </h3>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trendData}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="#f0f0f0"
+              />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+              <YAxis domain={[0, 100]} stroke="#9ca3af" />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="percentage"
+                stroke="#ec4899"
+                strokeWidth={3}
+                dot={{ r: 4, fill: "#ec4899" }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Recommendations & Highlights */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:block print:space-y-8">
+        <div className="bg-green-50 rounded-xl p-8 border border-green-100 print:break-inside-avoid">
+          <h3 className="text-lg font-bold text-green-800 mb-4 flex items-center gap-2">
+            🌟 Key Highlights
+          </h3>
+          <ul className="space-y-3">
+            {aiInsights.highlights.map((item, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-3 text-green-800 text-sm"
+              >
+                <span className="mt-1.5 w-1.5 h-1.5 bg-green-600 rounded-full flex-shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="bg-blue-50 rounded-xl p-8 border border-blue-100 print:break-inside-avoid">
+          <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
+            🚀 Action Plan for Improvement
+          </h3>
+          <ul className="space-y-3">
+            {aiInsights.weaknesses.map((item, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-3 text-blue-800 text-sm"
+              >
+                <span className="mt-1.5 w-1.5 h-1.5 bg-blue-600 rounded-full flex-shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-12 text-center text-gray-400 text-xs border-t pt-6">
+        Generated by EduAI Analytics Engine • {new Date().toLocaleDateString()}{" "}
+        • {new Date().toLocaleTimeString()}
       </div>
     </div>
   );
 };
 
-export default SemesterReportCard;
+export default SemesterReport;

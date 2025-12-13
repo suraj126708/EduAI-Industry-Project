@@ -73,7 +73,9 @@ function App() {
     <Router>
       <AuthProvider>
         <div className="App">
-          <Navbar />
+          <div className="print:hidden">
+            <Navbar />
+          </div>
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             {/* Public routes */}
@@ -108,7 +110,7 @@ function App() {
               path="/my-papers"
               element={<ProtectedRoute>{<MyPapers />}</ProtectedRoute>}
             />
-
+            <Route path="semester-report/:id" element={<SemesterReport />} />
             <Route
               path="/admin/*"
               element={
@@ -128,7 +130,6 @@ function App() {
               <Route path="students" element={<AdminStudents />} />
               <Route path="papers" element={<AdminPapers />} />
               <Route path="stats" element={<AdminResults />} />
-              <Route path="semester-report" element={<SemesterReport />} />
             </Route>
 
             {/* Redirect root to /home */}

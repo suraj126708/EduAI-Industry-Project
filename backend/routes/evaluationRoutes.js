@@ -4,6 +4,8 @@ import {
   getEvaluationReport,
   getEvaluationsByClass,
   generateSemesterReport,
+  getSemesterReportById,
+  checkSemesterReports,
 } from "../controllers/evaluationController.js"; // We will create this controller next
 import {
   authenticateFirebaseToken,
@@ -41,6 +43,20 @@ router.post(
   authenticateFirebaseToken,
   authorize("teacher", "principal"),
   generateSemesterReport
+);
+
+router.get(
+  "/semester-report/:id",
+  authenticateFirebaseToken,
+  authorize("principal"),
+  getSemesterReportById
+);
+
+router.post(
+  "/semester/check-status",
+  authenticateFirebaseToken,
+  authorize("principal"),
+  checkSemesterReports
 );
 
 export default router;

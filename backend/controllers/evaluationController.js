@@ -3,6 +3,8 @@
 import Evaluation from "../models/Evaluation.js";
 import QuestionPaper from "../models/QuestionPaper.js";
 import Student from "../models/Student.js";
+import School from "../models/School.js";
+import SemesterReport from "../models/SemesterReport.js";
 import fs from "fs";
 import path from "path";
 import axios from "axios";
@@ -257,155 +259,196 @@ export const getEvaluationsByClass = async (req, res) => {
   }
 };
 
+const getSemesterDates = (year, semester) => {
+  const y = parseInt(year);
+  let start, end;
+
+  if (semester === "Semester 1") {
+    // June 1st to December 31st
+    start = new Date(y, 5, 1); // Month is 0-indexed (5 = June)
+    end = new Date(y, 11, 31); // 11 = Dec
+  } else {
+    // Semester 2: January 1st to May 31st
+    start = new Date(y, 0, 1); // 0 = Jan
+    end = new Date(y, 4, 31); // 4 = May
+  }
+
+  // Set times to start/end of day
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+};
+
 export const generateSemesterReport = async (req, res) => {
   try {
-    const { studentId, startDate, endDate } = req.body;
+    const { studentId, year, semester } = req.body;
 
-    if (!studentId || !startDate || !endDate) {
+    // 1. Validation & Fetching (Keep existing logic)
+    if (!studentId || !year || !semester) {
       return res
         .status(400)
-        .json({ success: false, message: "Missing required fields." });
+        .json({ success: false, message: "Missing fields." });
     }
+    const { start: startDate, end: endDate } = getSemesterDates(year, semester);
 
-    // 1. Fetch Evaluations with Full Student & Paper Details
+    const student = await Student.findById(studentId);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    // Fetch School for the record
+    const school = await School.findById(student.schoolId);
+
+    // 2. Fetch Evaluations (Keep existing logic)
     const evaluations = await Evaluation.find({
       studentId: studentId,
       status: "completed",
       createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
     })
-      .populate("questionPaperId", "subject examType paper.maxMarks paper.date")
-      .populate("studentId", "name rollNo class division")
+      .populate("questionPaperId", "subject examType paper.maxMarks")
       .sort({ createdAt: 1 });
 
-    if (!evaluations || evaluations.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No evaluations found for this period.",
-      });
+    if (!evaluations.length) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No exams found." });
     }
 
-    // --- DATA ADAPTER START ---
-
-    // 2. Extract Student Info (From the first evaluation found)
-    const studentObj = evaluations[0].studentId;
-
-    // 3. Transform Evaluations into 'evaluation_reports' for Python
-    // The Python Model expects: Subject, Class, totalMarks, obtainedMarks, exam_name, exam_date, sections
-    const evaluationReports = evaluations.map((evalDoc) => ({
-      Subject: evalDoc.questionPaperId?.subject || "General",
-      Class: `${studentObj.class}-${studentObj.division}`, // e.g., "10-A"
-      totalMarks: evalDoc.evaluationResults?.totalMarks || 100,
-      obtainedMarks: evalDoc.totalMarksObtained || 0,
-      exam_name: evalDoc.questionPaperId?.examType || "Assessment",
-      exam_date: evalDoc.createdAt.toISOString().split("T")[0], // YYYY-MM-DD
-      sections: evalDoc.evaluationResults?.sections || [], // Passing the sections directly
-    }));
-
-    // 4. Calculate Academic Metadata
-    const startYear = new Date(startDate).getFullYear();
-    const academicYear = `${startYear}-${startYear + 1}`;
-    const currentMonth = new Date(startDate).getMonth();
-    const semester =
-      currentMonth >= 5 ? "Fall " + startYear : "Spring " + startYear;
-
-    // 5. Construct the Payload EXACTLY as Python expects
-    const pythonPayload = {
-      student_name: studentObj.name,
-      student_id: studentId,
-      semester: semester,
-      academic_year: academicYear,
-      evaluation_reports: evaluationReports, // The array we mapped above
-      export_format: "json",
-    };
-
-    console.log(
-      "Sending Payload to AI:",
-      JSON.stringify(pythonPayload, null, 2)
-    );
-
-    // 6. Send to AI Service
-    // Note: Added trailing slash to URL because your Python route is defined as "/generate_semester_report/"
-    const aiResponse = await axios.post(
-      deplyed_url + "generate_semester_report",
-      pythonPayload,
-      {
-        headers: { "Content-Type": "application/json" },
-        timeout: 60000,
-      }
-    );
-
-    const aiData = aiResponse.data;
-
-    // --- DATA ADAPTER END ---
-
-    // 7. Prepare Response for Frontend (The 'rawHistory' table needs database data)
-
-    // Re-map evaluations for the frontend table list
-    const rawHistory = evaluations.map((ev) => ({
-      examId: ev._id,
-      date: ev.createdAt,
-      examType: ev.questionPaperId?.examType || "Exam",
+    // 3. Prepare AI Payload (Keep existing logic)
+    const evalPayload = evaluations.map((ev) => ({
       subject: ev.questionPaperId?.subject || "General",
-      obtainedMarks: ev.totalMarksObtained,
-      totalMarks: ev.evaluationResults?.totalMarks || 100,
+      exam_type: ev.questionPaperId?.examType || "Assessment",
+      marks_obtained: ev.totalMarksObtained || 0,
+      total_marks: ev.evaluationResults?.totalMarks || 20,
+      date: ev.createdAt.toISOString().split("T")[0],
     }));
 
-    // Map AI visual data for Recharts (Frontend expects Arrays)
-    // We try to use AI data if available, otherwise fallback to calculating it here
-    let trendData = [];
-
-    // If AI returns an image string for trend, we can't use it in Recharts.
-    // So we rebuild the array data here for the charts:
-    trendData = rawHistory.map((h) => ({
-      examName: h.examType,
-      percentage: ((h.obtainedMarks / h.totalMarks) * 100).toFixed(1),
-    }));
-
-    // Construct Final Object for React
-    const finalReportData = {
-      schoolInfo: {
-        name: "Green Valley High School",
-        address: "123 Education Lane",
-      },
-      studentInfo: {
-        name: studentObj.name,
-        class: studentObj.class,
-        division: studentObj.division,
-        rollNo: studentObj.rollNo,
-      },
-      period: { start: startDate, end: endDate },
-
-      aiAnalysis: {
-        // Access fields based on what your Python Generator returns structure is
-        // Usually generator.generate_semester_report() returns a specific dict structure.
-        // Adjust these keys based on the *actual* Python return value.
-        aggregate_score: aiData.summary?.overall_percentage || "N/A",
-        overall_grade: aiData.summary?.overall_grade || "N/A",
-        strongest_subject: "Math", // You might need to parse this from AI stats
-
-        trend_data: trendData, // Use the array calculated above for charts
-        subject_performance: [], // Fill this if you want subject bar charts
-
-        strengths: aiData.recommendations || ["Good effort"],
-        weaknesses: ["Focus on consistency"],
-        recommendation: aiData.recommendations?.[0] || "Keep working hard.",
-      },
-
-      rawHistory: rawHistory,
+    const pythonPayload = {
+      student_name: student.name,
+      class_grade: String(student.class),
+      semester: "Term 1",
+      academic_year: `${new Date(startDate).getFullYear()}`,
+      evaluations: evalPayload,
     };
 
+    // 4. Call AI (Keep existing logic)
+    const aiResponse = await axios.post(
+      deplyed_url + "generate_semester_report/",
+      pythonPayload,
+      { headers: { "Content-Type": "application/json" }, timeout: 60000 }
+    );
+
+    if (!aiResponse.data.success) throw new Error("AI generation failed");
+
+    const aiData = aiResponse.data.report;
+
+    // 5. Calculate Grades (Keep existing logic)
+    const totalObtained = evalPayload.reduce(
+      (acc, c) => acc + c.marks_obtained,
+      0
+    );
+    const totalMax = evalPayload.reduce((acc, c) => acc + c.total_marks, 0);
+    const overallPct = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+
+    let grade = "F";
+    if (overallPct >= 90) grade = "A+";
+    else if (overallPct >= 80) grade = "A";
+    else if (overallPct >= 70) grade = "B";
+    else if (overallPct >= 60) grade = "C";
+    else if (overallPct >= 50) grade = "D";
+
+    // --- 6. CREATE & SAVE DATABASE RECORD (NEW STEP) ---
+    const newReport = new SemesterReport({
+      studentId: student._id,
+      schoolId: student.schoolId,
+      generatedBy: req.user?._id, // Assuming auth middleware
+      period: {
+        startDate: startDate,
+        endDate: endDate,
+        academicYear: String(year),
+        semesterName: semester, // You can make this dynamic from frontend input
+      },
+      aiInsights: {
+        summary: aiData.summary,
+        overallGrade: grade,
+        subjectAnalysis: aiData.subject_analysis,
+        skillAnalysis: aiData.skill_analysis,
+        strengths: aiData.highlights || [],
+        weaknesses: aiData.recommendations || [],
+        highlights: aiData.highlights || [],
+      },
+      examHistory: evalPayload.map((ev, i) => ({
+        examId: evaluations[i]._id, // Link back to original exam
+        examType: ev.exam_type,
+        subject: ev.subject,
+        date: new Date(ev.date),
+        obtainedMarks: ev.marks_obtained,
+        totalMarks: ev.total_marks,
+        percentage: (ev.marks_obtained / ev.total_marks) * 100,
+      })),
+    });
+
+    await newReport.save();
+
+    // 7. Return the Saved Report ID
     return res.status(200).json({
       success: true,
-      data: finalReportData,
+      message: "Report generated and saved successfully.",
+      reportId: newReport._id, // Frontend will use this to redirect
+      data: newReport, // Optional: return data immediately
     });
   } catch (error) {
-    console.error("Report Generation Error:", error.message);
-    // Log detailed axios error if available
-    if (error.response) {
-      console.error("AI Service Error Details:", error.response.data);
-    }
+    console.error("Generate Report Error:", error);
     res
       .status(500)
-      .json({ success: false, message: "Report generation failed." });
+      .json({ success: false, message: "Failed to generate report" });
+  }
+};
+
+// --- Add a GET endpoint to fetch the saved report ---
+export const getSemesterReportById = async (req, res) => {
+  try {
+    const report = await SemesterReport.findById(req.params.id)
+      .populate("studentId", "name rollNo class division")
+      .populate("schoolId", "name address logo");
+
+    if (!report)
+      return res
+        .status(404)
+        .json({ success: false, message: "Report not found" });
+
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Check which students have existing semester reports for a specific period
+// @route   POST /api/evaluation/semester/check-status
+export const checkSemesterReports = async (req, res) => {
+  try {
+    const { studentIds, year, semester } = req.body; // Expect year/sem
+
+    if (!studentIds || !year || !semester) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid payload" });
+    }
+
+    // Find reports for these students matching the exact semester & year
+    const reports = await SemesterReport.find({
+      studentId: { $in: studentIds },
+      "period.academicYear": String(year),
+      "period.semesterName": semester,
+    }).select("studentId _id");
+
+    const reportMap = {};
+    reports.forEach((r) => {
+      reportMap[r.studentId.toString()] = r._id;
+    });
+
+    res.status(200).json({ success: true, data: reportMap });
+  } catch (error) {
+    console.error("Check Reports Error:", error);
+    res.status(500).json({ success: false, message: "Failed to check status" });
   }
 };

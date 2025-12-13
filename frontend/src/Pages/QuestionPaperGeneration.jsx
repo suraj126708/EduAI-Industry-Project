@@ -22,90 +22,12 @@ import {
 } from "../components";
 
 const examTypeOptions = ["Unit Test", "Midterm", "Final"];
-
-// Default topics - will be replaced by dynamic data from API
-const defaultMainTopics = [
-  // "1. Historiography : Development in the West",
-  // "2. Historiography : Indian Tradition",
-  // "3. Applied History",
-  // "4. History of Indian Arts",
-  // "5. Mass Media and History",
-  // "6. Entertainment and History",
-  // "7. Sports and History",
-  // "8. Tourism and History",
-  // "9. Heritage Management",
-  // "10. History of India",
-];
-
-// Full topic structure with subtopics for question rows
-// const availableTopics = {
-//   history: {
-//     "1. Historiography : Development in the West": [
-//       "1.1 Tradition of Historiography",
-//       "1.2 Modern Historiography",
-//       "1.3 Development of Scientific Perspective in Europe and Historiography",
-//       "1.4 Notable Scholars",
-//     ],
-//     "2. Historiography : Indian Tradition": [
-//       "2.1 Tradition of Indian Historiography",
-//       "2.2 Indian Historiography : Various Ideological Frameworks",
-//     ],
-//     "3. Applied History": [
-//       "3.1 What is Applied History?",
-//       "3.2 Applied History and Research in Various Fields",
-//       "3.3 Applied History and Our Present",
-//       "3.4 Management of Cultural and Natural Heritage",
-//       "3.5 Affiliated Professional Fields",
-//     ],
-//     "4. History of Indian Arts": [
-//       "4.1 Literature",
-//       "4.2 Various Styles of Indian Paintings",
-//       "4.3 Modern Painting",
-//       "4.4 Sculpture and Theatre",
-//       "4.5 Cinema and Art",
-//     ],
-//     "5. Mass Media and History": [
-//       "5.1 Print Media",
-//       "5.2 Television and History",
-//       "5.3 Films and Theatre",
-//       "5.4 Electronic Media and History",
-//       "5.5 Social Media and History",
-//     ],
-//     "6. Entertainment and History": [
-//       "6.1 Theatre",
-//       "6.2 Cinema",
-//       "6.3 Folk Theatre",
-//       "6.4 Television",
-//       "6.5 Jatra",
-//       "6.6 Tamasha",
-//       "6.7 Puppetry",
-//     ],
-//     "7. Sports and History": [
-//       "7.1 Ancient Games and Sports",
-//       "7.2 Sports and Development of Nationalism",
-//       "7.3 Globalisation and Sports",
-//       "7.4 Sports and Technology",
-//     ],
-//     "8. Tourism and History": [
-//       "8.1 Types of Tourism",
-//       "8.2 Tourism and History",
-//       "8.3 Development of Tourism in India",
-//       "8.4 Conservation of Historical Tourism",
-//     ],
-//     "9. Heritage Management": [
-//       "9.1 Concept of Heritage",
-//       "9.2 Preservation and Conservation of Heritage",
-//       "9.3 Heritage Management Programmes",
-//       "9.4 Professional Opportunities in Heritage Management",
-//     ],
-//   },
-// };
+const defaultMainTopics = [];
 
 const initialQuestions = [
   {
     type: "",
     units: [],
-    // topics field deprecated; keeping for backward compatibility but unused
     topics: [],
     difficulty: "medium",
     numQuestions: 10,
@@ -116,7 +38,7 @@ const initialQuestions = [
 
 export default function MinimalQuestionPaperForm() {
   const navigate = useNavigate();
-  //ADD: The missing state variables for your dropdowns, loading, and errors
+
   const [classOptions, setClassOptions] = useState([]);
   const [subjectOptions, setSubjectOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,8 +63,12 @@ export default function MinimalQuestionPaperForm() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [generatedPaperData, setGeneratedPaperData] = useState(null);
 
+  const [teacherProfile, setTeacherProfile] = useState(null);
   const [allAssignments, setAllAssignments] = useState([]);
-  // Removed final LLM note modal; using per-row subtopics instead
+
+  // ✅ 1. NEW STATE: Store the actual uploaded books
+  const [userBooks, setUserBooks] = useState([]);
+
   const [toast, setToast] = useState({
     visible: false,
     message: "",
@@ -151,85 +77,39 @@ export default function MinimalQuestionPaperForm() {
   const dropdownRefs = useRef({});
   const [showNoBooksModal, setShowNoBooksModal] = useState(false);
 
+  // --- Helper Functions ---
   const getSubjectTopics = useCallback(() => {
-    // If we have dynamic topics, create a simplified structure
     if (dynamicTopics.length > 0) {
       const allTopics = {};
-
-      // Create topic structure from dynamic topics
       dynamicTopics.forEach((topic) => {
-        allTopics[topic.value] = []; // No subtopics for now, just main topics
+        allTopics[topic.value] = [];
       });
-
-      // If no main topics are selected, return all topics
-      if (selectedMainTopics.length === 0) {
-        return allTopics;
-      }
-
-      // Filter topics based on selected main topics (chapters)
+      if (selectedMainTopics.length === 0) return allTopics;
       const filteredTopics = {};
       Object.entries(allTopics).forEach(([unit, topics]) => {
-        // If this unit (chapter) is selected in main topics, include it
         if (selectedMainTopics.includes(unit)) {
           filteredTopics[unit] = topics;
         }
       });
-
       return filteredTopics;
     }
-
-    // Fallback to static topics for backward compatibility
-    const allTopics = {}; // Removed reference to undefined 'availableTopics'
-
-    // If no main topics are selected, return all topics
-    if (selectedMainTopics.length === 0) {
-      return allTopics;
-    }
-
-    // Filter topics based on selected main topics (chapters)
-    const filteredTopics = {};
-    Object.entries(allTopics).forEach(([unit, topics]) => {
-      // If this unit (chapter) is selected in main topics, include all its subtopics
-      if (selectedMainTopics.includes(unit)) {
-        filteredTopics[unit] = topics;
-      }
-    });
-
-    return filteredTopics;
+    return {};
   }, [selectedMainTopics, dynamicTopics]);
 
   const getAllMainTopicsForSubject = useCallback(() => {
-    // Use dynamic topics if available, otherwise fallback to default
-    if (dynamicTopics.length > 0) {
-      return dynamicTopics;
-    }
-
-    // Fallback to default topics
-    return defaultMainTopics.map((topic) => ({
-      topic,
-      value: topic,
-    }));
+    if (dynamicTopics.length > 0) return dynamicTopics;
+    return defaultMainTopics.map((topic) => ({ topic, value: topic }));
   }, [dynamicTopics]);
 
-  // Function to fetch chapters from API
   const fetchChapters = useCallback(async (subject, classId) => {
     if (!subject || !classId) return;
-
     setIsLoadingTopics(true);
     try {
       const response = await api.get("teachers/chapters", {
-        params: {
-          subject: subject,
-          classId: classId,
-          _cacheBust: Date.now(),
-        },
+        params: { subject: subject, classId: classId, _cacheBust: Date.now() },
       });
-
       const data = response.data;
-      console.log("Fetched chapters:", data);
-
       if (data.success && data.chapters && data.chapters.length > 0) {
-        // Transform API response to match our format
         const transformedTopics = data.chapters.map((chapter) => ({
           topic: `${chapter.chapter_no}. ${chapter.chapter_title}`,
           value: `${chapter.chapter_no}. ${chapter.chapter_title}`,
@@ -238,37 +118,28 @@ export default function MinimalQuestionPaperForm() {
           source_book: chapter.source_book,
           author: chapter.author,
         }));
-
         setDynamicTopics(transformedTopics);
-        console.log("Fetched dynamic topics:", transformedTopics);
       } else {
-        // Fallback to default topics if no chapters found
-        console.log("No chapters found, using default topics");
         setDynamicTopics([]);
       }
     } catch (error) {
       console.error("Error fetching chapters:", error);
-      // Fallback to default topics on error
       setDynamicTopics([]);
     } finally {
       setIsLoadingTopics(false);
     }
   }, []);
 
-  // Fetch chapters when subject or class changes
+  // --- Effects ---
   useEffect(() => {
     if (selectedSubject && selectedClass) {
       const classObj = classOptions.find((c) => c.grade === selectedClass);
-
-      if (classObj) {
-        fetchChapters(selectedSubject, selectedClass);
-      }
+      if (classObj) fetchChapters(selectedSubject, selectedClass);
     } else {
       setDynamicTopics([]);
     }
   }, [selectedSubject, selectedClass, fetchChapters, classOptions]);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       Object.keys(openDropdowns).forEach((key) => {
@@ -279,29 +150,19 @@ export default function MinimalQuestionPaperForm() {
         }
       });
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openDropdowns]);
 
   useEffect(() => {
     const allAvailableTopicValues = Object.keys(getSubjectTopics());
-
     setQuestions((prevQuestions) =>
-      prevQuestions.map((q) => ({
-        ...q,
-        units: allAvailableTopicValues,
-      }))
+      prevQuestions.map((q) => ({ ...q, units: allAvailableTopicValues }))
     );
   }, [selectedMainTopics, getSubjectTopics]);
 
-  // Clear errors when form values change
   useEffect(() => {
-    if (Object.keys(errors).length > 0) {
-      setErrors({});
-    }
+    if (Object.keys(errors).length > 0) setErrors({});
   }, [
     selectedClass,
     selectedSubject,
@@ -312,23 +173,15 @@ export default function MinimalQuestionPaperForm() {
   ]);
 
   useEffect(() => {
-    // Always reset subject list and selection when class changes
     setSubjectOptions([]);
     setSelectedSubject("");
-
     if (selectedClass && allAssignments.length > 0 && classOptions.length > 0) {
-      // 1. Find the _id of the selected class (which is a grade string)
       const classObj = classOptions.find((c) => c.grade === selectedClass);
-
       if (classObj) {
         const selectedClassId = classObj._id;
-
-        // 2. Filter assignments to find only those matching the selected class
         const assignmentsForClass = allAssignments.filter(
           (a) => a.classId?._id === selectedClassId
         );
-
-        // 3. Derive unique subjects from that filtered list
         const uniqueSubjectMap = new Map();
         assignmentsForClass.forEach((a) => {
           if (a.subjectId && a.subjectId._id && a.subjectId.name) {
@@ -343,9 +196,9 @@ export default function MinimalQuestionPaperForm() {
     }
   }, [selectedClass, allAssignments, classOptions]);
 
-  // --- DATA FETCHING LOGIC ---
+  // --- ✅ UPDATED DATA FETCHING ---
   useEffect(() => {
-    const fetchAssignments = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
@@ -355,26 +208,28 @@ export default function MinimalQuestionPaperForm() {
         }
 
         const profile = await fetchTeacherProfile();
+        setTeacherProfile(profile);
         const schoolId = profile?.schoolId;
 
         if (!schoolId) {
-          throw new Error(
-            "Your profile is missing a School ID. Please contact support."
-          );
+          throw new Error("Your profile is missing a School ID.");
         }
 
-        const response = await bookAPI.getTeacherAssignments(
+        // 1. Fetch Assignments (For Dropdowns)
+        const assignmentResponse = await bookAPI.getTeacherAssignments(
           schoolId,
           currentUser.email
         );
 
-        if (response.data?.success) {
-          // Get the assignments array from the correct path
-          const fetchedAssignments = response.data.data?.assignments || [];
+        // 2. Fetch Books (For Generation Logic)
+        const booksResponse = await bookAPI.getMyBooks(); // Use the API helper
 
+        // Process Assignments
+        if (assignmentResponse.data?.success) {
+          const fetchedAssignments =
+            assignmentResponse.data.data?.assignments || [];
           setAllAssignments(fetchedAssignments);
 
-          // Derive unique classes
           const uniqueClassMap = new Map();
           fetchedAssignments.forEach((a) => {
             if (
@@ -385,9 +240,7 @@ export default function MinimalQuestionPaperForm() {
               if (!uniqueClassMap.has(a.classId._id)) {
                 uniqueClassMap.set(a.classId._id, {
                   _id: a.classId._id,
-                  // Keep grade as string for consistency if needed by PaperDetailsForm
                   grade: String(a.classId.grade),
-                  // label: String(a.classId.grade) // Add label if needed by PaperDetailsForm
                 });
               }
             }
@@ -395,23 +248,21 @@ export default function MinimalQuestionPaperForm() {
           const sortedClasses = Array.from(uniqueClassMap.values()).sort(
             (a, b) => parseInt(a.grade) - parseInt(b.grade)
           );
-          setClassOptions(sortedClasses); // Update class options state
+          setClassOptions(sortedClasses);
+
           if (fetchedAssignments.length === 0) {
-            console.warn(
-              "No unique classes or subjects derived from assignments."
-            );
-            // Consider showing the NoBooksModal only if NO assignments were fetched
             setShowNoBooksModal(true);
           }
-        } else {
-          throw new Error(
-            response.data?.message || "Could not retrieve your assignments."
-          );
+        }
+
+        // Process Books
+        if (booksResponse.success) {
+          console.log("Loaded Books:", booksResponse.data);
+          setUserBooks(booksResponse.data); // Store books in state
         }
       } catch (err) {
-        console.error("Error fetching assignments:", err);
+        console.error("Error fetching data:", err);
         setFetchError(err.message);
-        // Reset options on error
         setClassOptions([]);
         setSubjectOptions([]);
         setAllAssignments([]);
@@ -420,7 +271,7 @@ export default function MinimalQuestionPaperForm() {
       }
     };
 
-    fetchAssignments();
+    fetchData();
   }, []);
 
   const updateQuestion = useCallback((index, key, value) => {
@@ -438,7 +289,6 @@ export default function MinimalQuestionPaperForm() {
       {
         type: "",
         units: allAvailableTopicValues,
-        // topics deprecated
         topics: [],
         difficulty: "medium",
         numQuestions: 1,
@@ -460,8 +310,6 @@ export default function MinimalQuestionPaperForm() {
   const handleQuestionTypeInput = useCallback(
     (questionIndex, value) => {
       setQuestionTypeInputs((prev) => ({ ...prev, [questionIndex]: value }));
-
-      // Clear the selected type if input is empty
       if (value.length === 0) {
         updateQuestion(questionIndex, "type", "");
         setQuestionTypeSuggestions((prev) => ({
@@ -501,21 +349,17 @@ export default function MinimalQuestionPaperForm() {
     const unitTopics = getSubjectTopics()[unit] || [];
 
     if (currentUnits.includes(unit)) {
-      // Deselect unit and remove all its topics
       const newUnits = currentUnits.filter((u) => u !== unit);
       const newTopics = currentTopics.filter((t) => !unitTopics.includes(t));
       updateQuestion(questionIndex, "units", newUnits);
       updateQuestion(questionIndex, "topics", newTopics);
     } else {
-      // Select unit and add all its topics
       const newUnits = [...currentUnits, unit];
-      const newTopics = [...new Set([...currentTopics, ...unitTopics])]; // Remove duplicates
+      const newTopics = [...new Set([...currentTopics, ...unitTopics])];
       updateQuestion(questionIndex, "units", newUnits);
       updateQuestion(questionIndex, "topics", newTopics);
     }
   };
-
-  // Sub-topic selection logic removed. We keep only main topics (units).
 
   const toggleDropdown = (questionIndex) => {
     setOpenDropdowns((prev) => ({
@@ -529,8 +373,6 @@ export default function MinimalQuestionPaperForm() {
       if (topicValue === "select-all") {
         const allMainTopics = getAllMainTopicsForSubject();
         const allMainTopicValues = allMainTopics.map((t) => t.value);
-
-        // If all main topics are selected, deselect all; otherwise, select all
         const allSelected = allMainTopicValues.every((val) =>
           selectedMainTopics.includes(val)
         );
@@ -559,54 +401,30 @@ export default function MinimalQuestionPaperForm() {
 
   const validateForm = useCallback(() => {
     const newErrors = {};
-
-    // Validate basic form fields
-    if (!selectedClass) {
-      newErrors.class = "Please select a class";
-    }
-    if (!selectedSubject) {
-      newErrors.subject = "Please select a subject";
-    }
-    if (!selectedExamType) {
-      newErrors.examType = "Please select an exam type";
-    }
-    if (!selectedMainTopics || selectedMainTopics.length === 0) {
+    if (!selectedClass) newErrors.class = "Please select a class";
+    if (!selectedSubject) newErrors.subject = "Please select a subject";
+    if (!selectedExamType) newErrors.examType = "Please select an exam type";
+    if (!selectedMainTopics || selectedMainTopics.length === 0)
       newErrors.topic = "Please select at least one topic";
-    }
-    if (!numberOfPapers || numberOfPapers < 1 || numberOfPapers > 10) {
+    if (!numberOfPapers || numberOfPapers < 1 || numberOfPapers > 10)
       newErrors.numberOfPapers = "Number of papers must be between 1 and 10";
-    }
 
-    // Validate questions
     questions.forEach((q, index) => {
       const questionErrors = {};
-
-      // Check if question type is provided (either from dropdown or custom input)
       const hasQuestionType = q.type || questionTypeInputs[index];
-      if (!hasQuestionType) {
+      if (!hasQuestionType)
         questionErrors.type = "Please select or enter a question type";
-      }
-
-      // Require at least one main topic (unit). Sub-topics are disabled.
-      if (!q.units || q.units.length === 0) {
+      if (!q.units || q.units.length === 0)
         questionErrors.topics = "Please select at least one main topic";
-      }
-
-      if (!q.numQuestions || q.numQuestions <= 0) {
+      if (!q.numQuestions || q.numQuestions <= 0)
         questionErrors.numQuestions =
           "Number of questions must be greater than 0";
-      }
-
-      if (!q.marksPerQuestion || q.marksPerQuestion <= 0) {
+      if (!q.marksPerQuestion || q.marksPerQuestion <= 0)
         questionErrors.marksPerQuestion =
           "Marks per question must be greater than 0";
-      }
-
-      if (Object.keys(questionErrors).length > 0) {
+      if (Object.keys(questionErrors).length > 0)
         newErrors[`question_${index}`] = questionErrors;
-      }
     });
-
     return newErrors;
   }, [
     selectedClass,
@@ -619,16 +437,98 @@ export default function MinimalQuestionPaperForm() {
   ]);
 
   const totalQuestions = questions.reduce((sum, q) => sum + q.numQuestions, 0);
-
   const totalMarks = questions.reduce(
     (sum, q) => sum + q.numQuestions * q.marksPerQuestion,
     0
   );
 
+  // --- ✅ FIXED HANDLE GENERATE ---
   const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
 
     try {
+      if (!teacherProfile?._id) {
+        throw new Error("Teacher profile not loaded. Please refresh.");
+      }
+      console.log("Starting Generation...");
+      console.log("Selected Criteria:", {
+        class: selectedClass,
+        subject: selectedSubject,
+        teacherId: teacherProfile._id,
+      });
+
+      // 1. RE-FETCH BOOKS (Ensure we have the absolute latest list)
+      // This prevents stale state issues if you just uploaded a book
+      const booksRes = await bookAPI.getMyBooks();
+      let currentBooks = [];
+
+      if (booksRes.success && Array.isArray(booksRes.data)) {
+        currentBooks = booksRes.data;
+        setUserBooks(currentBooks); // Update state while we're at it
+      } else {
+        // Fallback to existing state if fetch fails
+        currentBooks = userBooks;
+      }
+
+      console.log("Searching through books:", currentBooks.length);
+      // ✅ FIX: Search in userBooks instead of allAssignments
+      const selectedBook = userBooks.find((book) => {
+        // Match Class (book.classId is populated object)
+        const bookGrade = book.classId?.grade;
+        const classMatch = String(bookGrade) === String(selectedClass);
+
+        // Match Subject (book.subject is a string)
+        // Trim and lowercase comparison for robustness
+        const targetSubject = (selectedSubject || "").trim().toLowerCase();
+        const bookSubject = (book.subject || "").trim().toLowerCase();
+        const bookTitle = (book.title || "").trim().toLowerCase();
+
+        // ✅ Check if EITHER the subject field OR the title field matches
+        // Your book has title="Science" but subject=undefined, so this fixes it.
+        const subjectMatch =
+          bookSubject === targetSubject || bookTitle === targetSubject;
+
+        return classMatch && subjectMatch;
+      });
+
+      if (!selectedBook) {
+        // --- DEBUG LOGGING ---
+        // This will print to your browser console (F12) to show exactly what went wrong
+        console.error("❌ BOOK LOOKUP FAILED");
+        console.error(
+          "Looking for -> Class:",
+          selectedClass,
+          "| Subject:",
+          selectedSubject
+        );
+        console.error("Available Books (Mapped):");
+        console.table(
+          currentBooks.map((b) => ({
+            id: b._id,
+            grade: b.classId?.grade,
+            subject: b.subject,
+            title: b.title,
+            matchClass: String(b.classId?.grade) === String(selectedClass),
+            matchSubject:
+              (b.subject || "").trim().toLowerCase() ===
+              (selectedSubject || "").trim().toLowerCase(),
+          }))
+        );
+
+        throw new Error(
+          `Could not find an uploaded book for Class ${selectedClass} - ${selectedSubject}. Please check the browser console for details.`
+        );
+      }
+
+      console.log(
+        "✅ Found Book:",
+        selectedBook.title,
+        "ID:",
+        selectedBook._id
+      );
+
+      const bookId = selectedBook._id; // ✅ We found the correct ID
+
       const timestamp = new Date()
         .toISOString()
         .slice(0, 19)
@@ -636,8 +536,8 @@ export default function MinimalQuestionPaperForm() {
         .replace("T", "");
       const pdfName = `questionPaper${selectedClass}${selectedSubject}${timestamp}`;
 
-      // ✅ CHANGE 1: The payload is now more detailed to improve AI results.
       const payload = {
+        bookId: bookId, // ✅ Passing the bookId correctly
         totalMarks: totalMarks,
         class: selectedClass,
         subject: selectedSubject,
@@ -686,33 +586,22 @@ export default function MinimalQuestionPaperForm() {
         "teachers/generate-question-paper",
         payload
       );
-
       const data = response.data;
-      console.log("generate response", data);
 
-      // ✅ CHANGE 2: This entire block handles the successful response correctly.
       if (!data.success) {
         throw new Error(data.message || "Failed to generate question paper");
       }
 
       const papersArray = data.generated_papers;
-
       if (!papersArray || papersArray.length === 0) {
         throw new Error("The AI returned an empty or invalid paper.");
       }
 
-      // 1. Get the ID of the first paper to use in the URL
       const firstPaperId = papersArray[0]._id;
-
-      // 2. Store the entire array of papers in session storage for the viewer page
       sessionStorage.setItem("paperBatchData", JSON.stringify(papersArray));
-
-      // 3. Navigate to the specific paper's view page
       navigate(`/paper/${firstPaperId}`);
 
       setErrors({});
-
-      // Show success toast
       setToast({
         visible: true,
         message: data.message || "Question paper generated successfully",
@@ -721,31 +610,12 @@ export default function MinimalQuestionPaperForm() {
       setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
     } catch (error) {
       console.error("Generate error:", error);
-
       const backendData = error?.response?.data;
-      let errorMessage = "Failed to generate question paper. Please try again.";
-
-      if (backendData && backendData.message) {
+      let errorMessage = error.message || "Failed to generate question paper.";
+      if (backendData && backendData.message)
         errorMessage = backendData.message;
-      } else if (
-        error.name === "TypeError" &&
-        error.message.includes("Failed to fetch")
-      ) {
-        errorMessage =
-          "Unable to connect to the server. Please check if the backend server is running on localhost:5000";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
 
-      if (backendData) {
-        console.error("Backend response data:", backendData);
-      }
-
-      setErrors({
-        general: errorMessage,
-        backend: backendData || null,
-      });
-
+      setErrors({ general: errorMessage, backend: backendData || null });
       setToast({ visible: true, message: errorMessage, type: "error" });
       setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
     } finally {
@@ -760,8 +630,10 @@ export default function MinimalQuestionPaperForm() {
     selectedHour,
     selectedMinute,
     questions,
-    totalMarks, // Add totalMarks to the dependency array
-    navigate, // Add navigate to the dependency array
+    totalMarks,
+    navigate,
+    teacherProfile,
+    userBooks, // ✅ Added dependency
   ]);
 
   const handleGenerateClick = useCallback(() => {
@@ -773,6 +645,7 @@ export default function MinimalQuestionPaperForm() {
     handleGenerate();
   }, [validateForm, handleGenerate]);
 
+  // ... (rest of the component: getSelectedQuestionType, handleViewPaper, UI render) ...
   const getSelectedQuestionType = useCallback(
     (questionIndex) => {
       const question = questions[questionIndex];
@@ -781,36 +654,28 @@ export default function MinimalQuestionPaperForm() {
     [questions]
   );
 
-  // Handle navigation to paper format page
   const handleViewPaper = useCallback(() => {
     setShowSuccessModal(false);
     navigate("/paper");
   }, [navigate]);
 
-  // Handle closing the modal
   const handleCloseModal = useCallback(() => {
     setShowSuccessModal(false);
     setGeneratedPaperData(null);
   }, []);
 
-  // --- LOADING AND ERROR UI ---
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center">
         <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-        <p className="mt-4 text-lg font-semibold text-gray-700">
-          Loading Your Assignments...
-        </p>
-        <p className="text-sm text-gray-500">
-          Please wait while we fetch your assigned classes and subjects.
-        </p>
+        <p className="mt-4 text-lg font-semibold text-gray-700">Loading...</p>
       </div>
     );
   }
   if (fetchError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-4">
-        <div className="p-8 bg-red-50 border border-red-200 rounded-lg shadow-md">
+        <div className="p-8 bg-red-50 border border-red-200 rounded-lg">
           <AlertCircle className="h-10 w-10 text-red-600 mx-auto" />
           <p className="mt-4 text-lg font-semibold text-red-800">
             Failed to Load Data
@@ -824,22 +689,22 @@ export default function MinimalQuestionPaperForm() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 pb-32">
       <div className="max-w-6xl mx-auto">
-        {/* No Books Modal */}
         <Modal
           isOpen={showNoBooksModal}
           onClose={() => setShowNoBooksModal(false)}
         >
           <ModalHeader className="bg-gradient-to-r from-blue-600 to-indigo-600">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">No Books Found</h3>
+              <h3 className="text-lg font-semibold text-white">
+                No Books Found
+              </h3>
               <ModalCloseButton onClose={() => setShowNoBooksModal(false)} />
             </div>
           </ModalHeader>
           <ModalContent>
             <p className="text-gray-700 mb-4">
-              We couldn't find any books uploaded by you. Upload at least one
-              book to enable class and subject selection for question paper
-              generation.
+              We couldn't find any books uploaded by you. Upload a book to
+              generate papers.
             </p>
             <div className="flex gap-3 justify-end">
               <Button
@@ -852,7 +717,7 @@ export default function MinimalQuestionPaperForm() {
             </div>
           </ModalContent>
         </Modal>
-        {/* Toast Notification */}
+
         {toast.visible && (
           <div
             className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg text-white ${
@@ -863,7 +728,6 @@ export default function MinimalQuestionPaperForm() {
           </div>
         )}
 
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
             Question Paper Builder
@@ -873,7 +737,6 @@ export default function MinimalQuestionPaperForm() {
           </p>
         </div>
 
-        {/* General Error Display */}
         {errors.general && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center gap-2 text-red-800">
@@ -883,7 +746,6 @@ export default function MinimalQuestionPaperForm() {
           </div>
         )}
 
-        {/* Paper Details Form */}
         <PaperDetailsForm
           selectedClass={selectedClass}
           setSelectedClass={setSelectedClass}
@@ -912,7 +774,6 @@ export default function MinimalQuestionPaperForm() {
           errors={errors}
         />
 
-        {/* Duration Picker Modal */}
         <DurationPickerModal
           isOpen={showDurationPicker}
           onClose={() => setShowDurationPicker(false)}
@@ -922,7 +783,6 @@ export default function MinimalQuestionPaperForm() {
           onMinuteChange={setSelectedMinute}
         />
 
-        {/* Questions Table */}
         <QuestionsTable
           questions={questions}
           errors={errors}
@@ -942,17 +802,14 @@ export default function MinimalQuestionPaperForm() {
           totalMarks={totalMarks}
         />
 
-        {/* Action Buttons */}
         <div className="flex gap-4 justify-center mt-8">
           <Button
             onClick={addQuestion}
             variant="secondary"
             className="flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" />
-            Add Question
+            <Plus className="w-4 h-4" /> Add Question
           </Button>
-
           <Button
             onClick={handleGenerateClick}
             disabled={isGenerating}
@@ -967,12 +824,10 @@ export default function MinimalQuestionPaperForm() {
               </>
             ) : (
               <>
-                <FileText className="w-4 h-4" />
-                Generate Paper
+                <FileText className="w-4 h-4" /> Generate Paper
               </>
             )}
           </Button>
-
           {generatedPaperData && (
             <Button
               onClick={handleViewPaper}
@@ -982,18 +837,6 @@ export default function MinimalQuestionPaperForm() {
             </Button>
           )}
         </div>
-
-        {/* Note Modal removed; per-row subtopics inputs are used instead */}
-
-        {/* Success Modal */}
-        {/* <SuccessModal
-          isOpen={showSuccessModal}
-          onClose={handleCloseModal}
-          onViewPaper={handleViewPaper}
-          generatedPaperData={generatedPaperData}
-          totalQuestions={totalQuestions}
-          totalMarks={totalMarks}
-        /> */}
       </div>
     </div>
   );

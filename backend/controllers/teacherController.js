@@ -504,12 +504,29 @@ export const deleteTeacherBook = async (req, res) => {
 
     // Ownership or admin check
     const isOwner = book.uploadedBy?.toString() === req.user?._id?.toString();
-    const isAdmin = req.user?.role === "admin";
+    const isAdmin = req.user?.role === "principal";
     if (!isOwner && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: "You can only delete books you uploaded",
       });
+    }
+
+    if (book.uniqueName) {
+      try {
+        console.log(`Requesting vector deletion for: ${book.uniqueName}`);
+        await axios.delete(deplyed_url + "delete_book/", {
+          data: { pdf_name: book.uniqueName }, // Axios DELETE body
+          headers: { "Content-Type": "application/json" },
+          timeout: 10000,
+        });
+        console.log("Vector store cleanup successful.");
+      } catch (aiError) {
+        console.error(
+          "Warning: Failed to delete chunks from vector store:",
+          aiError.message
+        );
+      }
     }
 
     // Try to remove file from disk if it exists
@@ -671,15 +688,25 @@ export const generateQuestionPaper = async (req, res) => {
     const {
       class: classValue,
       subject,
-      pdf_name: pdfName,
+      bookId,
       numberofPapers = 1,
       duration,
       totalMarks, // <-- Get totalMarks from the body
-
       examType,
+      pdf_name,
     } = req.body;
 
-    if (!classValue || !subject || !pdfName) {
+    if (!bookId) {
+      return res.status(400).json({ message: "bookId is required." });
+    }
+
+    const selectedBook = await Book.findById(bookId);
+    if (!selectedBook) {
+      return res.status(404).json({ message: "Selected book not found." });
+    }
+    const uniquePdfName = selectedBook.uniqueName;
+
+    if (!classValue || !subject || !uniquePdfName) {
       return res.status(400).json({
         success: false,
         message: "Fields 'class', 'subject', and 'pdf_name' are required.",
@@ -689,7 +716,11 @@ export const generateQuestionPaper = async (req, res) => {
     // Forward the entire body to the AI service (port 8000)
     const response = await axios.post(
       deplyed_url + "generate_question_paper/",
-      { ...req.body, pdf_name: pdfName, numberofPapers: numberofPapers },
+      {
+        ...req.body,
+        pdf_name: uniquePdfName,
+        numberofPapers: numberofPapers,
+      },
       {
         headers: { "Content-Type": "application/json" },
         timeout: 5 * 60 * 1000,
@@ -823,7 +854,7 @@ export const generateQuestionPaper = async (req, res) => {
 
         const newPaper = await QuestionPaper.create({
           paper: finalPaper,
-          title: pdfName || undefined,
+          title: pdf_name || uniquePdfName || undefined,
           status: "draft",
           llmPrompt: req.body,
           createdBy: teacherUser?._id,
