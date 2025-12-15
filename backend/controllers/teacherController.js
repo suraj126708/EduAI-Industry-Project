@@ -846,7 +846,13 @@ export const generateQuestionPaper = async (req, res) => {
               ? aiPaper.instructions
               : [
                   "All questions are compulsory.",
+                  "Use a blue or black ballpoint pen for clear visibility.",
                   "Read each question carefully.",
+                  "The question paper is divided into Sections. Start each Section from a new page.",
+                  "Please write the Section number & name clearly before attempting the questions.",
+                  "Write the Question Number (e.g., Q1, Q2) clearly in the margin or at the start of each answer.",
+                  "If an answer continues to the next page, please write 'Q[No] (continued)' at the top of the new page (e.g., 'Q3 continued.').",
+                  "If you skip a question and attempt it later, ensure you write the correct Question Number, Section number & name again.",
                 ],
           date: aiPaper.date || new Date().toISOString().split("T")[0],
         };
