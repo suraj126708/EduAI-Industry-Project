@@ -14,18 +14,11 @@ const PaperView = ({ paperData, calculateTotalMarks }) => (
           <h1 className="college-name text-2xl font-bold text-blue-800 mb-2">
             {paperData.collegeName || "New High School"}
           </h1>
-          {/* --- CHANGE 1: Use examType for the main title --- */}
+
           <h2 className="test-name text-lg font-semibold text-gray-700 mb-2">
             {paperData.examType || paperData.testName || "Examination"}
           </h2>
 
-          {/* --- CHANGE 2: REMOVE this h3 --- */}
-          {/* <h3 className="subject-class text-md font-medium text-gray-600 mb-3">
-            {paperData.subject} - {paperData.className}
-          </h3> */}
-
-          {/* --- CHANGE 3: Add Subject and Class to the details row --- */}
-          {/* Use grid for better alignment on smaller screens */}
           <div className="exam-details grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg text-left sm:text-center">
             <span className="col-span-1">
               {" "}
@@ -88,11 +81,24 @@ const PaperView = ({ paperData, calculateTotalMarks }) => (
                       colSpan="3"
                       className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
                     >
-                      <div className="font-bold text-blue-800">
-                        {section.sectionName}
-                      </div>
-                      <div className="text-sm text-gray-600 italic">
-                        {section.description}
+                      <div className="flex flex-col gap-1">
+                        {/* ✅ FIX: Combined Section Name and Title on one line */}
+                        <div className="text-lg">
+                          <span className="font-bold text-blue-800">
+                            {section.sectionName}
+                          </span>
+                          {section.sectionTitle && (
+                            <span className="font-semibold text-gray-800 font-family-times">
+                              : {section.sectionTitle}
+                            </span>
+                          )}
+                        </div>
+
+                        {section.description && (
+                          <div className="text-sm text-gray-600 italic">
+                            {section.description}
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -233,12 +239,21 @@ const EditView = ({
               placeholder="Section Name (e.g., Section A: Multiple Choice)"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
+            <input
+              type="text"
+              value={section.sectionTitle || ""}
+              onChange={(e) =>
+                updateSection(sectionIndex, "sectionTitle", e.target.value)
+              }
+              placeholder="Section Instruction (e.g., Choose the correct answer...)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-semibold"
+            />
             <textarea
               value={section.description || ""}
               onChange={(e) =>
                 updateSection(sectionIndex, "description", e.target.value)
               }
-              placeholder="Section Description (e.g., Answer all questions)"
+              placeholder="Section Description (Optional)"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 h-16"
             />
           </div>
@@ -460,6 +475,7 @@ function ExamPaperGenerator() {
         .filter(Boolean),
       sections: safeArray(paperObjectData.sections).map((section, sIdx) => ({
         sectionName: safeString(section?.sectionName, `Section ${sIdx + 1}`),
+        sectionTitle: safeString(section?.sectionTitle),
         description: safeString(section?.description),
         questions: safeArray(section?.questions).map((q, qIdx) => ({
           questionNo: safeString(q?.questionNo, `${qIdx + 1}`),

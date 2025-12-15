@@ -546,38 +546,37 @@ export default function MinimalQuestionPaperForm() {
         topics: selectedMainTopics,
         numberOfPapers: Number(numberOfPapers) || 1,
         duration: { hours: selectedHour, minutes: selectedMinute },
-        generation_instructions: `
-        Generate a complete question paper.
-        The total marks should be ${totalMarks}.
-        The time allowed is ${selectedHour} hour(s) and ${selectedMinute} minute(s).
-        Include 3-4 general instructions for the students.
-        The test name is "${selectedExamType}".
-        Do not repeat previous answers. Request ID: ${Date.now()}
-      `,
-        question_type: questions.map((q) =>
-          q.type === "single_correct"
-            ? "Single Correct"
-            : q.type === "short_answer"
-            ? "Short Answer"
-            : q.type === "long_answer"
-            ? "Long Answer"
-            : q.type === "fill_in_the_blanks"
-            ? "Fill in the Blanks"
-            : q.type
-        ),
-        questions: questions.map((q) => ({
-          type: q.type,
-          topics: q.topics && q.topics.length ? q.topics : selectedMainTopics,
-          llm_note: (q.subtopicsInput || "")
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0),
-          difficulty:
-            (q.difficulty || "medium").charAt(0).toUpperCase() +
-            (q.difficulty || "medium").slice(1),
-          numQuestions: q.numQuestions,
-          marksPerQuestion: q.marksPerQuestion,
-        })),
+        /*generation_instructions: ` `,*/
+
+        question_type: questions.map((q, index) => {
+          const foundType = questionTypes.find((t) => t.value === q.type);
+          if (foundType) return foundType.label;
+          return questionTypeInputs[index] || q.type || "Answer the following";
+        }),
+
+        questions: questions.map((q, index) => {
+          const foundType = questionTypes.find((t) => t.value === q.type);
+          const typeLabel = foundType
+            ? foundType.label
+            : questionTypeInputs[index] || q.type;
+
+          return {
+            type: typeLabel,
+            topics: q.topics && q.topics.length ? q.topics : selectedMainTopics,
+            llm_note: q.subtopicsInput
+              ? q.subtopicsInput
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s) => s.length > 0)
+              : [],
+
+            difficulty:
+              (q.difficulty || "medium").charAt(0).toUpperCase() +
+              (q.difficulty || "medium").slice(1),
+            numQuestions: q.numQuestions,
+            marksPerQuestion: q.marksPerQuestion,
+          };
+        }),
       };
 
       console.log("payload", payload);

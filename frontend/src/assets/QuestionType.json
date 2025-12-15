@@ -1,710 +1,245 @@
 [
   {
-    "value": "single_correct",
-    "label": "Single Choice (MCQ)"
+    "value": "mcq_single",
+    "label": "Choose the correct answer from the given options."
   },
   {
-    "value": "multiple_correct",
-    "label": "Multiple Choice (MCQ)"
+    "value": "mcq_multiple",
+    "label": "Choose all correct answers from the given options."
   },
   {
-    "value": "true_false",
-    "label": "True/False"
+    "value": "true_false_statement",
+    "label": "State whether the given statements are True or False."
   },
   {
-    "value": "yes_no",
-    "label": "Yes/No"
+    "value": "fill_in_the_blanks",
+    "label": "Fill in the blanks with suitable words."
+  },
+  {
+    "value": "match_the_following",
+    "label": "Match the items given in Column A with Column B."
+  },
+  {
+    "value": "very_short_answer",
+    "label": "Answer the following questions in one or two words."
   },
   {
     "value": "short_answer",
-    "label": "Short Answer"
+    "label": "Answer the following questions briefly."
   },
   {
     "value": "long_answer",
-    "label": "Long Answer / Essay"
+    "label": "Answer the following questions in detail."
   },
   {
-    "value": "fill_in_blank",
-    "label": "Fill in the Blank"
+    "value": "reason_based",
+    "label": "Give appropriate reasons for the following statements."
   },
   {
-    "value": "fill_in_multiple_blanks",
-    "label": "Fill in Multiple Blanks"
+    "value": "assertion_reason",
+    "label": "Read the Assertion and Reason carefully and choose the correct option."
   },
+
   {
-    "value": "dropdown",
-    "label": "Dropdown Selection"
+    "value": "grammar_error_correction",
+    "label": "Correct the grammatical errors in the following sentences."
   },
   {
-    "value": "multiple_dropdown",
-    "label": "Multiple Dropdown (Cloze)"
+    "value": "fill_grammar_rules",
+    "label": "Fill in the blanks using correct grammatical forms."
   },
   {
-    "value": "matching",
-    "label": "Matching"
+    "value": "tenses_transformation",
+    "label": "Rewrite the sentences using the correct tense."
   },
   {
-    "value": "categorization",
-    "label": "Categorization"
+    "value": "active_passive_voice",
+    "label": "Change the following sentences into Active or Passive Voice."
   },
   {
-    "value": "sequence_ordering",
-    "label": "Ordering / Sequencing"
+    "value": "direct_indirect_speech",
+    "label": "Change the following sentences into Indirect Speech."
   },
   {
-    "value": "drag_drop",
-    "label": "Drag and Drop"
+    "value": "sentence_rearrangement",
+    "label": "Rearrange the jumbled words to form meaningful sentences."
   },
   {
-    "value": "drag_drop_text",
-    "label": "Drag Text to Blanks"
+    "value": "synonyms_antonyms",
+    "label": "Write the synonyms or antonyms of the given words."
   },
   {
-    "value": "drag_drop_image",
-    "label": "Drag and Drop Images"
+    "value": "word_meaning_context",
+    "label": "Explain the meaning of the following words as used in the passage."
   },
   {
-    "value": "hotspot",
-    "label": "Hotspot (Image Click)"
+    "value": "reading_comprehension",
+    "label": "Read the passage carefully and answer the questions that follow."
   },
   {
-    "value": "label_image",
-    "label": "Label Image"
+    "value": "poem_comprehension",
+    "label": "Read the poem carefully and answer the questions based on it."
   },
   {
-    "value": "highlight_text",
-    "label": "Highlight Text"
-  },
-  {
-    "value": "highlight_image",
-    "label": "Highlight Image"
-  },
-  {
-    "value": "numeric",
-    "label": "Numeric Answer"
-  },
-  {
-    "value": "calculated",
-    "label": "Calculated (Formula)"
-  },
-  {
-    "value": "equation",
-    "label": "Equation Entry"
-  },
-  {
-    "value": "chart",
-    "label": "Chart Question"
-  },
-  {
-    "value": "graph",
-    "label": "Graphing"
-  },
-  {
-    "value": "code",
-    "label": "Code Editor"
-  },
-  {
-    "value": "audio",
-    "label": "Audio Response"
-  },
-  {
-    "value": "video",
-    "label": "Video Response"
-  },
-  {
-    "value": "file_upload",
-    "label": "File Upload"
-  },
-  {
-    "value": "crossword",
-    "label": "Crossword Puzzle"
-  },
-  {
-    "value": "puzzle",
-    "label": "Puzzle"
-  },
-  {
-    "value": "word_problem",
-    "label": "Word Problem"
-  },
-  {
-    "value": "story_comprehension",
-    "label": "Story Comprehension"
-  },
-  {
-    "value": "picture_description",
-    "label": "Picture Description"
-  },
-  {
-    "value": "rhyming_words",
-    "label": "Rhyming Words"
-  },
-  {
-    "value": "opposites",
-    "label": "Opposites"
-  },
-  {
-    "value": "synonyms",
-    "label": "Synonyms"
-  },
-  {
-    "value": "jumbled_sentences",
-    "label": "Jumbled Sentences"
-  },
-  {
-    "value": "word_formation",
-    "label": "Word Formation"
-  },
-  {
-    "value": "spelling_correction",
-    "label": "Spelling Correction"
-  },
-  {
-    "value": "missing_letters",
-    "label": "Missing Letters"
-  },
-  {
-    "value": "counting",
-    "label": "Counting"
-  },
-  {
-    "value": "number_pattern",
-    "label": "Number Pattern"
-  },
-  {
-    "value": "shape_recognition",
-    "label": "Shape Recognition"
-  },
-  {
-    "value": "color_recognition",
-    "label": "Color Recognition"
-  },
-  {
-    "value": "size_comparison",
-    "label": "Size Comparison"
-  },
-  {
-    "value": "time_reading",
-    "label": "Time Reading"
-  },
-  {
-    "value": "money_problems",
-    "label": "Money Problems"
-  },
-  {
-    "value": "measurement",
-    "label": "Measurement"
-  },
-  {
-    "value": "fraction_basic",
-    "label": "Basic Fractions"
-  },
-  {
-    "value": "table_completion",
-    "label": "Table Completion"
-  },
-  {
-    "value": "diagram_labeling",
-    "label": "Diagram Labeling"
-  },
-  {
-    "value": "map_reading",
-    "label": "Map Reading"
-  },
-  {
-    "value": "calendar_questions",
-    "label": "Calendar Questions"
-  },
-  {
-    "value": "weather_patterns",
-    "label": "Weather Patterns"
-  },
-  {
-    "value": "animal_habitat",
-    "label": "Animal Habitat"
-  },
-  {
-    "value": "plant_parts",
-    "label": "Plant Parts"
-  },
-  {
-    "value": "simple_experiment",
-    "label": "Simple Experiment"
-  },
-  {
-    "value": "algebra_expression",
-    "label": "Algebra Expression"
-  },
-  {
-    "value": "equation_solving",
-    "label": "Equation Solving"
-  },
-  {
-    "value": "geometry_proof",
-    "label": "Geometry Proof"
-  },
-  {
-    "value": "trigonometry",
-    "label": "Trigonometry"
-  },
-  {
-    "value": "statistics_graph",
-    "label": "Statistics & Graphs"
-  },
-  {
-    "value": "probability",
-    "label": "Probability"
-  },
-  {
-    "value": "percentage_calculation",
-    "label": "Percentage Calculation"
-  },
-  {
-    "value": "ratio_proportion",
-    "label": "Ratio & Proportion"
-  },
-  {
-    "value": "profit_loss",
-    "label": "Profit & Loss"
-  },
-  {
-    "value": "simple_interest",
-    "label": "Simple Interest"
-  },
-  {
-    "value": "compound_interest",
-    "label": "Compound Interest"
-  },
-  {
-    "value": "speed_distance_time",
-    "label": "Speed, Distance & Time"
-  },
-  {
-    "value": "work_time",
-    "label": "Work & Time Problems"
-  },
-  {
-    "value": "age_problems",
-    "label": "Age Problems"
-  },
-  {
-    "value": "grammar_correction",
-    "label": "Grammar Correction"
-  },
-  {
-    "value": "tenses",
-    "label": "Tenses"
-  },
-  {
-    "value": "voice_change",
-    "label": "Voice Change (Active/Passive)"
-  },
-  {
-    "value": "speech_change",
-    "label": "Speech Change (Direct/Indirect)"
-  },
-  {
-    "value": "preposition_fill",
-    "label": "Preposition Fill"
-  },
-  {
-    "value": "article_usage",
-    "label": "Article Usage (a, an, the)"
-  },
-  {
-    "value": "conjunction_fill",
-    "label": "Conjunction Fill"
-  },
-  {
-    "value": "sentence_transformation",
-    "label": "Sentence Transformation"
-  },
-  {
-    "value": "idiom_meaning",
-    "label": "Idiom & Meaning"
-  },
-  {
-    "value": "phrasal_verbs",
-    "label": "Phrasal Verbs"
-  },
-  {
-    "value": "poetry_comprehension",
-    "label": "Poetry Comprehension"
-  },
-  {
-    "value": "character_analysis",
-    "label": "Character Analysis"
-  },
-  {
-    "value": "theme_identification",
-    "label": "Theme Identification"
+    "value": "extract_based_questions",
+    "label": "Read the extract and answer the questions that follow."
   },
   {
     "value": "literary_devices",
-    "label": "Literary Devices"
+    "label": "Identify the literary devices used in the given lines."
   },
   {
-    "value": "physics_calculation",
-    "label": "Physics Calculation"
+    "value": "character_sketch",
+    "label": "Write a brief character sketch of the given character."
   },
   {
-    "value": "chemical_formula",
-    "label": "Chemical Formula"
+    "value": "theme_message",
+    "label": "Explain the theme or message of the given lesson or poem."
   },
   {
-    "value": "chemical_equation",
-    "label": "Chemical Equation"
+    "value": "paragraph_writing",
+    "label": "Write a paragraph on the given topic."
   },
+  { "value": "essay_writing", "label": "Write an essay on the given topic." },
   {
-    "value": "periodic_table",
-    "label": "Periodic Table"
-  },
-  {
-    "value": "atomic_structure",
-    "label": "Atomic Structure"
-  },
-  {
-    "value": "molecular_diagram",
-    "label": "Molecular Diagram"
-  },
-  {
-    "value": "laboratory_safety",
-    "label": "Laboratory Safety"
-  },
-  {
-    "value": "scientific_method",
-    "label": "Scientific Method"
-  },
-  {
-    "value": "hypothesis_testing",
-    "label": "Hypothesis Testing"
-  },
-  {
-    "value": "data_interpretation",
-    "label": "Data Interpretation"
-  },
-  {
-    "value": "ecosystem_diagram",
-    "label": "Ecosystem Diagram"
-  },
-  {
-    "value": "food_chain",
-    "label": "Food Chain"
-  },
-  {
-    "value": "life_cycle",
-    "label": "Life Cycle"
-  },
-  {
-    "value": "human_body_systems",
-    "label": "Human Body Systems"
-  },
-  {
-    "value": "cell_structure",
-    "label": "Cell Structure"
-  },
-  {
-    "value": "photosynthesis",
-    "label": "Photosynthesis"
-  },
-  {
-    "value": "digestive_system",
-    "label": "Digestive System"
-  },
-  {
-    "value": "respiratory_system",
-    "label": "Respiratory System"
-  },
-  {
-    "value": "circulatory_system",
-    "label": "Circulatory System"
-  },
-  {
-    "value": "nervous_system",
-    "label": "Nervous System"
-  },
-  {
-    "value": "reproductive_system",
-    "label": "Reproductive System"
-  },
-  {
-    "value": "genetics_basic",
-    "label": "Basic Genetics"
-  },
-  {
-    "value": "evolution",
-    "label": "Evolution"
-  },
-  {
-    "value": "classification",
-    "label": "Classification"
-  },
-  {
-    "value": "historical_timeline",
-    "label": "Historical Timeline"
-  },
-  {
-    "value": "historical_event",
-    "label": "Historical Event"
-  },
-  {
-    "value": "historical_figure",
-    "label": "Historical Figure"
-  },
-  {
-    "value": "cause_effect",
-    "label": "Cause & Effect"
-  },
-  {
-    "value": "geographical_features",
-    "label": "Geographical Features"
-  },
-  {
-    "value": "climate_zones",
-    "label": "Climate Zones"
-  },
-  {
-    "value": "natural_disasters",
-    "label": "Natural Disasters"
-  },
-  {
-    "value": "population_density",
-    "label": "Population Density"
-  },
-  {
-    "value": "economic_activities",
-    "label": "Economic Activities"
-  },
-  {
-    "value": "government_structure",
-    "label": "Government Structure"
-  },
-  {
-    "value": "constitution_basic",
-    "label": "Basic Constitution"
-  },
-  {
-    "value": "rights_responsibilities",
-    "label": "Rights & Responsibilities"
-  },
-  {
-    "value": "cultural_diversity",
-    "label": "Cultural Diversity"
-  },
-  {
-    "value": "festivals_traditions",
-    "label": "Festivals & Traditions"
-  },
-  {
-    "value": "art_techniques",
-    "label": "Art Techniques"
-  },
-  {
-    "value": "color_theory",
-    "label": "Color Theory"
-  },
-  {
-    "value": "art_movements",
-    "label": "Art Movements"
-  },
-  {
-    "value": "famous_artists",
-    "label": "Famous Artists"
-  },
-  {
-    "value": "musical_instruments",
-    "label": "Musical Instruments"
-  },
-  {
-    "value": "musical_notes",
-    "label": "Musical Notes"
-  },
-  {
-    "value": "rhythm_pattern",
-    "label": "Rhythm Pattern"
-  },
-  {
-    "value": "dance_forms",
-    "label": "Dance Forms"
-  },
-  {
-    "value": "computer_basics",
-    "label": "Computer Basics"
-  },
-  {
-    "value": "programming_logic",
-    "label": "Programming Logic"
-  },
-  {
-    "value": "algorithm_steps",
-    "label": "Algorithm Steps"
-  },
-  {
-    "value": "flowchart",
-    "label": "Flowchart"
-  },
-  {
-    "value": "html_tags",
-    "label": "HTML Tags"
-  },
-  {
-    "value": "css_styling",
-    "label": "CSS Styling"
-  },
-  {
-    "value": "database_concepts",
-    "label": "Database Concepts"
-  },
-  {
-    "value": "network_basics",
-    "label": "Network Basics"
-  },
-  {
-    "value": "cybersecurity_basic",
-    "label": "Basic Cybersecurity"
-  },
-  {
-    "value": "digital_citizenship",
-    "label": "Digital Citizenship"
-  },
-  {
-    "value": "physical_fitness",
-    "label": "Physical Fitness"
-  },
-  {
-    "value": "sports_rules",
-    "label": "Sports Rules"
-  },
-  {
-    "value": "exercise_techniques",
-    "label": "Exercise Techniques"
-  },
-  {
-    "value": "nutrition_basics",
-    "label": "Nutrition Basics"
-  },
-  {
-    "value": "health_hygiene",
-    "label": "Health & Hygiene"
-  },
-  {
-    "value": "first_aid",
-    "label": "First Aid"
-  },
-  {
-    "value": "environmental_conservation",
-    "label": "Environmental Conservation"
-  },
-  {
-    "value": "renewable_energy",
-    "label": "Renewable Energy"
-  },
-  {
-    "value": "pollution_types",
-    "label": "Pollution Types"
-  },
-  {
-    "value": "sustainable_development",
-    "label": "Sustainable Development"
-  },
-  {
-    "value": "moral_values",
-    "label": "Moral Values"
-  },
-  {
-    "value": "ethical_dilemma",
-    "label": "Ethical Dilemma"
-  },
-  {
-    "value": "life_skills",
-    "label": "Life Skills"
-  },
-  {
-    "value": "decision_making",
-    "label": "Decision Making"
-  },
-  {
-    "value": "problem_solving",
-    "label": "Problem Solving"
-  },
-  {
-    "value": "critical_thinking",
-    "label": "Critical Thinking"
-  },
-  {
-    "value": "creative_writing",
-    "label": "Creative Writing"
-  },
-  {
-    "value": "essay_writing",
-    "label": "Essay Writing"
+    "value": "story_writing",
+    "label": "Write a story using the given hints or outline."
   },
   {
     "value": "letter_writing",
-    "label": "Letter Writing"
+    "label": "Write a letter using the given format and details."
   },
   {
-    "value": "dialogue_writing",
-    "label": "Dialogue Writing"
+    "value": "email_writing",
+    "label": "Write an email based on the given situation."
   },
   {
-    "value": "story_writing",
-    "label": "Story Writing"
-  },
-  {
-    "value": "poem_writing",
-    "label": "Poem Writing"
+    "value": "notice_writing",
+    "label": "Write a notice using the given information."
   },
   {
     "value": "report_writing",
-    "label": "Report Writing"
+    "label": "Write a report based on the given data or event."
   },
   {
-    "value": "speech_writing",
-    "label": "Speech Writing"
+    "value": "dialogue_writing",
+    "label": "Write a dialogue based on the given situation."
+  },
+
+  {
+    "value": "mental_math",
+    "label": "Solve the following using mental calculation."
   },
   {
-    "value": "debate_topics",
-    "label": "Debate Topics"
+    "value": "numerical_problems",
+    "label": "Solve the following numerical problems."
   },
   {
-    "value": "presentation_skills",
-    "label": "Presentation Skills"
+    "value": "word_problems_math",
+    "label": "Solve the following word problems."
   },
   {
-    "value": "communication_skills",
-    "label": "Communication Skills"
+    "value": "formula_application",
+    "label": "Solve the problems using appropriate formulae."
+  },
+  { "value": "equation_solving", "label": "Solve the following equations." },
+  {
+    "value": "algebraic_simplification",
+    "label": "Simplify the following algebraic expressions."
   },
   {
-    "value": "leadership_qualities",
-    "label": "Leadership Qualities"
+    "value": "geometry_construction",
+    "label": "Construct the given geometrical figure using proper steps."
   },
   {
-    "value": "teamwork",
-    "label": "Teamwork"
+    "value": "geometry_proof",
+    "label": "Prove the following geometrical statements."
   },
   {
-    "value": "time_management",
-    "label": "Time Management"
+    "value": "coordinate_geometry",
+    "label": "Solve the following questions based on coordinate geometry."
   },
   {
-    "value": "stress_management",
-    "label": "Stress Management"
+    "value": "graph_plotting",
+    "label": "Draw the graph and answer the questions that follow."
   },
   {
-    "value": "goal_setting",
-    "label": "Goal Setting"
+    "value": "data_handling",
+    "label": "Answer the questions based on the given data."
   },
   {
-    "value": "career_planning",
-    "label": "Career Planning"
+    "value": "case_study_math",
+    "label": "Answer the following questions based on the given case study."
+  },
+
+  {
+    "value": "define_scientific_terms",
+    "label": "Define the following scientific terms."
   },
   {
-    "value": "financial_literacy",
-    "label": "Financial Literacy"
+    "value": "explain_scientific_concepts",
+    "label": "Explain the following scientific concepts."
   },
   {
-    "value": "entrepreneurship",
-    "label": "Entrepreneurship"
+    "value": "difference_between",
+    "label": "Differentiate between the following terms."
+  },
+  { "value": "diagram_drawing", "label": "Draw a neat and labelled diagram." },
+  {
+    "value": "diagram_labelling",
+    "label": "Label the parts of the given diagram."
+  },
+  {
+    "value": "numerical_physics",
+    "label": "Solve the following numericals showing proper steps."
+  },
+  {
+    "value": "chemical_equations",
+    "label": "Write balanced chemical equations for the following reactions."
+  },
+  {
+    "value": "experiment_based_questions",
+    "label": "Answer the questions based on the given experiment."
+  },
+  {
+    "value": "application_based_science",
+    "label": "Answer the following application-based questions."
+  },
+  {
+    "value": "case_study_science",
+    "label": "Answer the following questions based on the given case study."
+  },
+
+  {
+    "value": "historical_terms",
+    "label": "Explain the following historical terms or events."
+  },
+  {
+    "value": "cause_and_effect",
+    "label": "Explain the causes and effects of the following events."
+  },
+  {
+    "value": "source_based_history",
+    "label": "Read the historical source and answer the questions."
+  },
+  {
+    "value": "map_work",
+    "label": "Locate and label the following on the given map."
+  },
+  {
+    "value": "geographical_explanation",
+    "label": "Explain the following geographical concepts."
+  },
+  {
+    "value": "civics_concepts",
+    "label": "Explain the following political or civic concepts."
+  },
+  {
+    "value": "economics_reasoning",
+    "label": "Answer the following economics-based reasoning questions."
+  },
+  {
+    "value": "case_study_social_science",
+    "label": "Answer the following questions based on the given case study."
   }
 ]
