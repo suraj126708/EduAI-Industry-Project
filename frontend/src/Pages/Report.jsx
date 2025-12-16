@@ -173,73 +173,178 @@ const questionImageStyle = {
 const CustomTooltip = ({ active, payload, label, chapterMap }) => {
   if (active && payload && payload.length) {
     const chapterName = chapterMap[label] || "";
+    // The payload contains the data object for the hovered bar
+    const data = payload[0].payload;
+
     return (
       <div
         style={{
           backgroundColor: "#fff",
           border: "1px solid #e2e8f0",
-          borderRadius: "8px",
-          padding: "12px",
-          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-          minWidth: "180px",
+          borderRadius: "12px",
+          padding: "16px",
+          boxShadow:
+            "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+          maxWidth: "400px",
           zIndex: 100,
+          fontFamily: "'Poppins', sans-serif",
         }}
       >
-        <p
+        {/* Header */}
+        <div
           style={{
-            fontWeight: "700",
-            color: "#334155",
+            borderBottom: "1px solid #f1f5f9",
+            paddingBottom: "8px",
             marginBottom: "8px",
-            fontSize: "0.95rem",
           }}
         >
-          Chapter {label}
-          {chapterName && (
-            <span
-              style={{
-                display: "block",
-                color: "#64748b",
-                fontWeight: "500",
-                marginTop: "2px",
-                fontSize: "0.85rem",
-              }}
-            >
-              {chapterName}
-            </span>
-          )}
-        </p>
-        {payload.map((entry, index) => (
-          <div
-            key={index}
+          <p
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              marginBottom: "4px",
+              fontWeight: "700",
+              color: "#1e293b",
+              fontSize: "1rem",
+              margin: 0,
             }}
           >
-            <div
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                backgroundColor: entry.color,
-              }}
-            ></div>
-            <span style={{ fontSize: "0.9rem", color: "#64748b" }}>
-              {entry.name}:
+            Chapter {label}: {chapterName}
+          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginTop: "4px",
+            }}
+          >
+            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>
+              Marks:{" "}
+              <strong>
+                {data.obtainedMarks} / {data.totalMarks}
+              </strong>
             </span>
             <span
               style={{
-                fontSize: "0.9rem",
-                fontWeight: "600",
-                color: "#0f172a",
+                fontSize: "0.85rem",
+                fontWeight: "700",
+                color:
+                  data.percentage >= 75
+                    ? "#166534"
+                    : data.percentage >= 40
+                    ? "#b45309"
+                    : "#991b1b",
               }}
             >
-              {entry.value}
+              {Math.round(data.percentage)}%
             </span>
           </div>
-        ))}
+        </div>
+
+        {/* Qualitative Analysis Section */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {/* Strengths */}
+          {data.strengths && data.strengths.length > 0 && (
+            <div>
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: "700",
+                  color: "#166534",
+                  textTransform: "uppercase",
+                  marginBottom: "2px",
+                }}
+              >
+                ✅ Strengths
+              </p>
+              {/* Added listStyleType: "disc" to force bullets */}
+              <ul
+                style={{
+                  margin: 0,
+                  paddingLeft: "18px",
+                  listStyleType: "disc",
+                  fontSize: "0.8rem",
+                  color: "#334155",
+                }}
+              >
+                {data.strengths.map((s, i) => (
+                  <li
+                    key={i}
+                    style={{ marginBottom: "2px", paddingLeft: "2px" }}
+                  >
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Weaknesses */}
+          {data.weaknesses && data.weaknesses.length > 0 && (
+            <div>
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: "700",
+                  color: "#991b1b",
+                  textTransform: "uppercase",
+                  marginBottom: "2px",
+                }}
+              >
+                ⚠️ Focus Areas
+              </p>
+              {/* Added listStyleType: "disc" to force bullets */}
+              <ul
+                style={{
+                  margin: 0,
+                  paddingLeft: "18px",
+                  listStyleType: "disc",
+                  fontSize: "0.8rem",
+                  color: "#334155",
+                }}
+              >
+                {data.weaknesses.map((w, i) => (
+                  <li
+                    key={i}
+                    style={{ marginBottom: "2px", paddingLeft: "2px" }}
+                  >
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Recommendation */}
+          {data.recommendations && (
+            <div
+              style={{
+                marginTop: "4px",
+                paddingTop: "8px",
+                borderTop: "1px dashed #e2e8f0",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: "700",
+                  color: "#0369a1",
+                  marginBottom: "2px",
+                }}
+              >
+                💡 Tip
+              </p>
+              <p
+                style={{
+                  fontSize: "0.8rem",
+                  color: "#475569",
+                  fontStyle: "italic",
+                  margin: 0,
+                  lineHeight: "1.4",
+                }}
+              >
+                "{data.recommendations}"
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
