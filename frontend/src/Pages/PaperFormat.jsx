@@ -5,47 +5,66 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
 
+const VisualRenderer = ({ imageUrl, svgContent, altText }) => {
+  if (svgContent) {
+    return (
+      <div
+        className="my-3 p-2 border border-gray-200 rounded flex justify-start bg-white"
+        title={altText}
+        dangerouslySetInnerHTML={{ __html: svgContent }}
+      />
+    );
+  }
+
+  if (imageUrl) {
+    return (
+      <div className="my-3 flex justify-start">
+        <img
+          src={imageUrl}
+          alt={altText || "Question Diagram"}
+          className="max-h-64 max-w-full object-contain border border-gray-200 rounded p-1 bg-white"
+        />
+      </div>
+    );
+  }
+
+  return null;
+};
+
 // A stand-alone component for viewing the paper
 const PaperView = ({ paperData, calculateTotalMarks }) => (
   <div className="min-h-screen bg-gray-100 py-8 px-4">
     <div className="max-w-5xl mx-auto">
       <div className="paper-content bg-white border-2 border-blue-400 rounded-xl shadow-lg px-8 py-6 mb-8 min-h-[11in]">
+        {/* Header */}
         <div className="header text-center border-b-2 border-blue-300 pb-4 mb-6">
           <h1 className="college-name text-2xl font-bold text-blue-800 mb-2">
             {paperData.collegeName || "New High School"}
           </h1>
-
           <h2 className="test-name text-lg font-semibold text-gray-700 mb-2">
             {paperData.examType || paperData.testName || "Examination"}
           </h2>
-
           <div className="exam-details grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg text-left sm:text-center">
             <span className="col-span-1">
-              {" "}
-              {/* Make Date span 1 column */}
               <strong>Date:</strong>{" "}
               {paperData.date || new Date().toISOString().split("T")[0]}
             </span>
-            {/* Added Subject */}
             <span className="col-span-1">
               <strong>Subject:</strong> {paperData.subject || "-"}
             </span>
-            {/* Added Class */}
             <span className="col-span-1">
               <strong>Class:</strong> {paperData.className || "-"}
             </span>
             <span className="col-span-1">
-              {" "}
-              {/* Make Marks span 1 */}
               <strong>Marks:</strong> {calculateTotalMarks()}
             </span>
             <span className="col-span-1">
-              {" "}
-              {/* Make Time span 1 */}
               <strong>Time:</strong> {paperData.timeAllowed}
             </span>
           </div>
         </div>
+
+        {/* Instructions */}
         <div className="instructions border border-blue-300 rounded-lg mb-6 px-4 py-3 bg-blue-50">
           <h3 className="font-semibold mb-2 text-blue-800">
             General Instructions:
@@ -58,6 +77,8 @@ const PaperView = ({ paperData, calculateTotalMarks }) => (
             ))}
           </ul>
         </div>
+
+        {/* Questions Table */}
         <div className="border border-gray-400 rounded-lg overflow-hidden">
           <table className="w-full">
             <thead>
@@ -82,7 +103,6 @@ const PaperView = ({ paperData, calculateTotalMarks }) => (
                       className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
                     >
                       <div className="flex flex-col gap-1">
-                        {/* ✅ FIX: Combined Section Name and Title on one line */}
                         <div className="text-lg">
                           <span className="font-bold text-blue-800">
                             {section.sectionName}
@@ -93,7 +113,6 @@ const PaperView = ({ paperData, calculateTotalMarks }) => (
                             </span>
                           )}
                         </div>
-
                         {section.description && (
                           <div className="text-sm text-gray-600 italic">
                             {section.description}
@@ -113,16 +132,12 @@ const PaperView = ({ paperData, calculateTotalMarks }) => (
                       <td className="question-cell border border-gray-400 px-3 py-3">
                         <div className="text-gray-800">{question.question}</div>
 
-                        {/* --- NEW IMAGE RENDERING LOGIC --- */}
-                        {question.imageUrl && (
-                          <div className="my-3 flex justify-start">
-                            <img
-                              src={question.imageUrl}
-                              alt={`Diagram for Q${question.questionNo}`}
-                              className="max-h-48 max-w-full object-contain border border-gray-200 rounded p-1"
-                            />
-                          </div>
-                        )}
+                        {/* ✅ RENDER VISUALS (SVG or IMAGE) */}
+                        <VisualRenderer
+                          imageUrl={question.imageUrl}
+                          svgContent={question.svgContent}
+                          altText={`Diagram for Q${question.questionNo}`}
+                        />
 
                         {Array.isArray(question.options) &&
                           question.options.length > 0 && (
@@ -168,7 +183,7 @@ const EditView = ({
         </div>
       </div>
 
-      {/* Paper Header Inputs */}
+      {/* Paper Details Inputs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 p-4 border rounded-lg">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -178,7 +193,7 @@ const EditView = ({
             type="text"
             value={paperData.collegeName || ""}
             onChange={(e) => handleInputChange("collegeName", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
           />
         </div>
         <div>
@@ -189,18 +204,18 @@ const EditView = ({
             type="text"
             value={paperData.testName || ""}
             onChange={(e) => handleInputChange("testName", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Time Allowed (e.g., 2 hours)
+            Time Allowed
           </label>
           <input
             type="text"
             value={paperData.timeAllowed || ""}
             onChange={(e) => handleInputChange("timeAllowed", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
           />
         </div>
       </div>
@@ -215,8 +230,7 @@ const EditView = ({
           onChange={(e) =>
             handleInputChange("instructions", e.target.value.split("\n"))
           }
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 h-24"
-          placeholder="Enter each instruction on a new line"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm h-24"
         />
       </div>
 
@@ -229,15 +243,15 @@ const EditView = ({
           <h3 className="text-lg font-semibold text-gray-700 mb-4">
             Section {sectionIndex + 1}
           </h3>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 mb-4">
             <input
               type="text"
               value={section.sectionName || ""}
               onChange={(e) =>
                 updateSection(sectionIndex, "sectionName", e.target.value)
               }
-              placeholder="Section Name (e.g., Section A: Multiple Choice)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Section Name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
             />
             <input
               type="text"
@@ -245,16 +259,8 @@ const EditView = ({
               onChange={(e) =>
                 updateSection(sectionIndex, "sectionTitle", e.target.value)
               }
-              placeholder="Section Instruction (e.g., Choose the correct answer...)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-semibold"
-            />
-            <textarea
-              value={section.description || ""}
-              onChange={(e) =>
-                updateSection(sectionIndex, "description", e.target.value)
-              }
-              placeholder="Section Description (Optional)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 h-16"
+              placeholder="Section Instruction"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm font-semibold"
             />
           </div>
 
@@ -296,68 +302,58 @@ const EditView = ({
                   )
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm h-20"
-                placeholder="Enter question text"
               />
 
-              {/* --- NEW IMAGE INPUT FIELDS --- */}
-              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-100 p-2 rounded">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Question Type
-                  </label>
-                  <select
-                    value={question.questionType || "text"}
-                    onChange={(e) =>
-                      updateQuestion(
-                        sectionIndex,
-                        questionIndex,
-                        "questionType",
-                        e.target.value
-                      )
-                    }
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                  >
-                    <option value="text">Text Only</option>
-                    <option value="image">Image/Diagram</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Image URL
-                  </label>
-                  <input
-                    type="text"
-                    value={question.imageUrl || ""}
-                    onChange={(e) =>
-                      updateQuestion(
-                        sectionIndex,
-                        questionIndex,
-                        "imageUrl",
-                        e.target.value
-                      )
-                    }
-                    placeholder="https://..."
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                  />
-                </div>
-                {/* Preview in Edit Mode */}
-                {question.imageUrl && (
-                  <div className="md:col-span-2">
-                    <p className="text-xs text-gray-500 mb-1">Preview:</p>
-                    <img
-                      src={question.imageUrl}
-                      alt="Preview"
-                      className="h-32 object-contain bg-white border"
+              {/* --- UPDATED IMAGE EDITING UI --- */}
+              <div className="mt-2 bg-gray-100 p-2 rounded">
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Image URL / Data
+                    </label>
+                    <input
+                      type="text"
+                      value={
+                        question.imageUrl ||
+                        (question.svgContent ? "<SVG Data...>" : "")
+                      }
+                      onChange={(e) =>
+                        updateQuestion(
+                          sectionIndex,
+                          questionIndex,
+                          "imageUrl",
+                          e.target.value
+                        )
+                      }
+                      placeholder="http://... or data:image/..."
+                      disabled={!!question.svgContent} // Disable direct edit for SVG content
+                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-500"
                     />
                   </div>
-                )}
+                </div>
+
+                {/* Preview in Edit Mode */}
+                <div className="mt-2 p-2 border border-dashed border-gray-300 bg-white rounded flex justify-center items-center">
+                  {question.imageUrl || question.svgContent ? (
+                    <div className="max-w-xs">
+                      <VisualRenderer
+                        imageUrl={question.imageUrl}
+                        svgContent={question.svgContent}
+                      />
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">
+                      No image attached
+                    </span>
+                  )}
+                </div>
               </div>
 
               {Array.isArray(question.options) &&
                 question.options.length > 0 && (
                   <div className="mt-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Options (one per line)
+                      Options
                     </label>
                     <textarea
                       value={question.options.join("\n")}
@@ -370,7 +366,6 @@ const EditView = ({
                         )
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm h-24"
-                      placeholder="Enter each option on a new line"
                     />
                   </div>
                 )}
@@ -397,14 +392,14 @@ const SaveConfirmationModal = ({
         <button
           onClick={handleCancelSave}
           disabled={isSaving}
-          className="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
+          className="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
         >
           Cancel
         </button>
         <button
           onClick={handleSavePaper}
           disabled={isSaving}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
           {isSaving ? "Saving..." : "Save Paper"}
         </button>
@@ -413,58 +408,48 @@ const SaveConfirmationModal = ({
   </div>
 );
 
-// --- Main Component ---
 function ExamPaperGenerator() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { id: paperIdFromUrl } = useParams();
 
+  // --- UPDATED NORMALIZATION LOGIC ---
   const normalizePaper = useCallback((incoming, fallback = {}) => {
-    // --- START: MODIFIED LOGIC ---
-    const topLevelData = incoming || {}; // Original document
-    let paperObjectData = incoming?.paper || {}; // Data inside 'paper' field
-    // --- END: MODIFIED LOGIC ---
+    const topLevelData = incoming || {};
+    let paperObjectData = incoming?.paper || {};
 
-    // Keep these helpers
     const safeString = (v, fb = "") =>
       typeof v === "string" ? v.trim() || fb : fb;
     const safeNumber = (v, fb = 0) =>
       Number.isFinite(Number(v)) ? Number(v) : fb;
     const safeArray = (v) => (Array.isArray(v) ? v : []);
 
-    // --- START: MODIFIED FIELD RESOLUTION ---
-    // Prioritize top-level fields saved by your controller,
-    // then fall back to fields inside the 'paper' object, then to fallback object.
     const subject = safeString(
       topLevelData.subject || paperObjectData.subject,
       fallback.subject
     );
     const className = safeString(
-      topLevelData.classGrade || paperObjectData.className, // Use classGrade from top-level
+      topLevelData.classGrade || paperObjectData.className,
       fallback.className
     );
-    const examType = safeString(topLevelData.examType, fallback.examType); // Get from top level
-
-    // Use testName from inside 'paper' object or top-level title
+    const examType = safeString(topLevelData.examType, fallback.examType);
     let testName = safeString(
       paperObjectData.testName || topLevelData.title,
       fallback.testName
     );
+
     if (testName.startsWith("questionPaper")) {
-      // If it's the default generated name, use examType or fallback
       testName =
         examType || (subject ? `${subject} Examination` : "Examination");
     }
-    // --- END: MODIFIED FIELD RESOLUTION ---
 
-    const normalized = {
-      // These come from inside 'paper' object primarily
+    return {
       collegeName: safeString(
         paperObjectData.collegeName,
         fallback.collegeName
       ),
-      testName: testName, // Use the cleaned-up testName
+      testName: testName,
       timeAllowed: safeString(
         paperObjectData.timeAllowed,
         fallback.timeAllowed
@@ -473,40 +458,56 @@ function ExamPaperGenerator() {
       instructions: safeArray(paperObjectData.instructions)
         .map(safeString)
         .filter(Boolean),
+
       sections: safeArray(paperObjectData.sections).map((section, sIdx) => ({
         sectionName: safeString(section?.sectionName, `Section ${sIdx + 1}`),
         sectionTitle: safeString(section?.sectionTitle),
         description: safeString(section?.description),
-        questions: safeArray(section?.questions).map((q, qIdx) => ({
-          questionNo: safeString(q?.questionNo, `${qIdx + 1}`),
-          question: safeString(q?.question),
-          marks: safeNumber(q?.marks, 1),
-          options: safeArray(q?.options).map(safeString).filter(Boolean),
 
-          questionType: safeString(q?.questionType || q?.type, "text"),
-          imageUrl: safeString(q?.imageUrl || q?.image || q?.diagramUrl || ""),
-        })),
+        questions: safeArray(section?.questions).map((q, qIdx) => {
+          // --- LOGIC TO EXTRACT VISUALS ---
+          const imgData = q?.image_data || {};
+          const isSvg =
+            imgData.type === "svg" || q?.visual_annotation?.type === "svg";
+
+          let resolvedImageUrl = "";
+          let resolvedSvgContent = "";
+
+          if (isSvg && imgData.content) {
+            resolvedSvgContent = imgData.content;
+          } else if (imgData.type === "image" && imgData.content) {
+            // Backend sends Base64 data URI directly
+            resolvedImageUrl = imgData.content;
+          } else {
+            // Fallback for older papers
+            resolvedImageUrl = q?.imageUrl || q?.image || q?.diagramUrl || "";
+          }
+
+          return {
+            questionNo: safeString(q?.questionNo, `${qIdx + 1}`),
+            question: safeString(q?.question),
+            marks: safeNumber(q?.marks, 1),
+            options: safeArray(q?.options).map(safeString).filter(Boolean),
+            questionType: safeString(q?.questionType || q?.type, "text"),
+
+            // Set the resolved fields
+            imageUrl: resolvedImageUrl,
+            svgContent: resolvedSvgContent,
+          };
+        }),
       })),
 
-      // --- START: ADDED/MODIFIED FIELDS ---
-      // These now reliably come from top-level or fallbacks
       subject: subject,
       className: className,
       examType: examType,
-      // maxMarks can come from top-level if saved there, or inside paper object
       maxMarks: safeNumber(
         topLevelData.totalMarks || paperObjectData.maxMarks,
         fallback.maxMarks
       ),
     };
-
-    if (normalized.instructions.length === 0 && fallback.instructions) {
-      normalized.instructions = fallback.instructions;
-    }
-    return normalized;
   }, []);
 
-  const [paperData, setPaperData] = useState(null); // Initialize as null
+  const [paperData, setPaperData] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -546,7 +547,6 @@ function ExamPaperGenerator() {
           if (response.data && response.data.success) {
             const fetchedDoc = response.data.data;
             initialPaperToView = fetchedDoc;
-
             if (batchPapers.length > 0) {
               const paperIndex = batchPapers.findIndex(
                 (p) => p._id === fetchedDoc._id
@@ -558,8 +558,6 @@ function ExamPaperGenerator() {
             } else {
               setGeneratedPapers([fetchedDoc]);
             }
-          } else {
-            throw new Error(response.data.message || "Failed to fetch paper.");
           }
         }
 
@@ -577,7 +575,6 @@ function ExamPaperGenerator() {
         sessionStorage.removeItem("paperBatchData");
       }
     };
-
     loadPaperData();
   }, [paperIdFromUrl, normalizePaper]);
 
@@ -591,10 +588,7 @@ function ExamPaperGenerator() {
   };
 
   const handleInputChange = useCallback((field, value) => {
-    setPaperData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setPaperData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   const updateSection = useCallback((sectionIndex, field, value) => {
@@ -630,22 +624,20 @@ function ExamPaperGenerator() {
   const calculateTotalMarks = useCallback(() => {
     if (!paperData) return 0;
     return (paperData.sections || []).reduce((total, section) => {
-      const sectionSum = (section.questions || []).reduce(
-        (sectionTotal, question) =>
-          sectionTotal + (Number(question.marks) || 0),
-        0
+      return (
+        total +
+        (section.questions || []).reduce(
+          (sum, q) => sum + (Number(q.marks) || 0),
+          0
+        )
       );
-      return total + sectionSum;
     }, 0);
   }, [paperData]);
 
-  // ✅ REMOVED useCallback - This ensures the function is always new and has the latest state
   const handleSavePaper = async () => {
     setIsSaving(true);
     try {
-      if (!user) {
-        throw new Error("Authentication error. Please log in again.");
-      }
+      if (!user) throw new Error("Authentication error.");
       const token = await user.getIdToken();
 
       const paperToSave = {
@@ -654,31 +646,13 @@ function ExamPaperGenerator() {
       };
 
       let response;
-      const headers = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      };
-
-      console.log("--- SAVE BUTTON CLICKED ---");
-      console.log("Value of paperId at save time:", paperId); // Keep this for one last check
-
       if (paperId) {
-        console.log("ATTEMPTING TO UPDATE (PUT)");
-        const payload = {
-          paper: paperToSave,
-          title: paperToSave.testName,
-        };
-
-        console.log(
-          "Sending PUT request with payload:",
-          JSON.stringify(payload, null, 2)
-        );
+        const payload = { paper: paperToSave, title: paperToSave.testName };
         response = await api.put(
           `teachers/question-papers/${paperId}`,
           payload
         );
       } else {
-        console.log("ATTEMPTING TO CREATE (POST)");
         const payloadForCreation = {
           class: paperToSave.className,
           subject: paperToSave.subject,
@@ -692,66 +666,35 @@ function ExamPaperGenerator() {
         );
       }
 
-      const data = await response.data;
-
-      if (!data || !data.success) {
-        throw new Error(data?.message || "Failed to save question paper");
-      }
-
-      // ✅ --- START OF NEW LOGIC ---
+      const data = response.data;
+      if (!data || !data.success)
+        throw new Error(data?.message || "Failed to save.");
 
       const updatedDocument = data.question_paper;
-
-      // 2. Update the main paperData state by normalizing the new document
-      //    This ensures the view updates correctly
       setPaperData(normalizePaper(updatedDocument, {}));
 
-      // 3. Find the index of the paper you just updated
       const updatedIndex = generatedPapers.findIndex((p) => p._id === paperId);
-
-      // 4. Create a new array with the updated document in the correct spot
       if (updatedIndex !== -1) {
         const newGeneratedPapers = [...generatedPapers];
         newGeneratedPapers[updatedIndex] = updatedDocument;
         setGeneratedPapers(newGeneratedPapers);
-
-        // ✅ ADD THIS LINE to persist the changes for the next refresh
         sessionStorage.setItem(
           "generatedPapersArray",
           JSON.stringify(newGeneratedPapers)
         );
       }
 
-      // 4. Show a success message
-      setSavedMessage("Question paper saved successfully!");
+      setSavedMessage("Paper saved successfully!");
       setShowSaveModal(false);
-
-      // 5. Switch back to preview mode
       setEditMode(false);
-
-      // 6. Hide the success message after a few seconds
-      setTimeout(() => {
-        setSavedMessage("");
-      }, 3000);
+      setTimeout(() => setSavedMessage(""), 3000);
     } catch (error) {
       console.error("Save error:", error);
-      let errorMessage = "Failed to save paper.";
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      setSavedMessage(`Error: ${errorMessage}`);
+      setSavedMessage(`Error: ${error.message || "Failed to save."}`);
       setTimeout(() => setSavedMessage(""), 5000);
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleConfirmSave = () => {
-    setShowSaveModal(true);
-  };
-
-  const handleCancelSave = () => {
-    setShowSaveModal(false);
   };
 
   const downloadPDF = () => {
@@ -762,16 +705,14 @@ function ExamPaperGenerator() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${paperData.testName} - ${paperData.subject}</title>
+          <title>${paperData.testName}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.4; }
             .header { text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
             .college-name { font-size: 24px; font-weight: bold; color: #1e40af; margin-bottom: 8px; }
             .test-name { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-            .subject-class { font-size: 16px; margin-bottom: 8px; }
-            .exam-details { background: #eff6ff; padding: 10px; border-radius: 8px; }
+            .exam-details { background: #eff6ff; padding: 10px; border-radius: 8px; display: flex; justify-content: space-around; font-size: 14px; }
             .instructions { border: 1px solid #3b82f6; border-radius: 8px; padding: 15px; background: #eff6ff; margin-bottom: 20px; }
-            .instructions h3 { color: #1e40af; margin-bottom: 10px; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
             th, td { border: 1px solid #374151; padding: 8px; text-align: left; }
             th { background-color: #bfdbfe; font-weight: bold; }
@@ -779,34 +720,13 @@ function ExamPaperGenerator() {
             .question-cell { vertical-align: top; }
             .marks-cell { text-align: center; vertical-align: top; width: 60px; }
             .question-no { text-align: center; vertical-align: top; width: 50px; }
-            .options { margin-top: 8px; font-size: 14px; }
-            .footer { text-align: center; font-size: 12px; color: #6b7280; margin-top: 30px; border-top: 1px solid #d1d5db; padding-top: 15px; }
-            .question-cell img {
-              max-height: 200px; /* Matches the approx height of max-h-48 */
-              max-width: 100%;   /* Prevents overflow */
-              width: auto;       /* Maintains aspect ratio */
-              height: auto;      /* Maintains aspect ratio */
-              object-fit: contain;
-              display: block;
-              margin-top: 10px;
-              margin-bottom: 10px;
-              border: 1px solid #e5e7eb; /* Optional: Light gray border like screen view */
-              padding: 4px;
-              border-radius: 4px;
-            }
-            @media print {
-              body { margin: 0; }
-              .no-print { display: none; }
-              * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            }
+            img { max-width: 100%; height: auto; display: block; margin: 10px 0; border: 1px solid #ddd; }
+            svg { max-width: 300px; height: auto; display: block; margin: 10px 0; }
           </style>
         </head>
-        <body>
-          ${paperContent}
-        </body>
+        <body>${paperContent}</body>
       </html>
     `);
-
     printWindow.document.close();
     setTimeout(() => {
       printWindow.print();
@@ -816,273 +736,117 @@ function ExamPaperGenerator() {
 
   const downloadDOCX = () => {
     try {
-      // Create HTML content that Word can open
       const htmlContent = `
         <!DOCTYPE html>
         <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
           <head>
             <meta charset="utf-8">
-            <meta name="ProgId" content="Word.Document">
-            <meta name="Generator" content="Microsoft Word 15">
-            <meta name="Originator" content="Microsoft Word 15">
             <style>
-              body { 
-                font-family: 'Times New Roman', serif; 
-                margin: 1in; 
-                line-height: 1.15; 
-                color: #000;
-                font-size: 12pt;
-              }
-              .header { 
-                text-align: center; 
-                border-bottom: 2px solid #000; 
-                padding-bottom: 10px; 
-                margin-bottom: 20px; 
-              }
-              .college-name { 
-                font-size: 18pt; 
-                font-weight: bold; 
-                margin-bottom: 8px; 
-              }
-              .test-name { 
-                font-size: 14pt; 
-                font-weight: bold; 
-                margin-bottom: 8px; 
-              }
-              .subject-class { 
-                font-size: 12pt; 
-                margin-bottom: 8px; 
-              }
-              .exam-details { 
-                background: #f0f0f0; 
-                padding: 10px; 
-                margin-bottom: 20px; 
-                font-size: 10pt;
-              }
-              .instructions { 
-                border: 1px solid #000; 
-                padding: 15px; 
-                background: #f9f9f9; 
-                margin-bottom: 20px; 
-              }
-              .instructions h3 { 
-                font-weight: bold; 
-                margin-bottom: 10px; 
-                font-size: 12pt;
-              }
-              table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                margin-bottom: 20px; 
-              }
-              th, td { 
-                border: 1px solid #000; 
-                padding: 8px; 
-                text-align: left; 
-                vertical-align: top;
-              }
-              th { 
-                background-color: #e0e0e0; 
-                font-weight: bold; 
-              }
-              .section-header { 
-                background-color: #d0d0d0; 
-                font-weight: bold; 
-              }
-              .question-cell { 
-                vertical-align: top; 
-              }
-              .marks-cell { 
-                text-align: center; 
-                vertical-align: top; 
-                width: 60px; 
-              }
-              .question-no { 
-                text-align: center; 
-                vertical-align: top; 
-                width: 50px; 
-              }
-              .options { 
-                margin-top: 8px; 
-                font-size: 11pt; 
-              }
-              .page-break {
-                page-break-before: always;
-              }
+              body { font-family: 'Times New Roman', serif; font-size: 12pt; }
+              table { width: 100%; border-collapse: collapse; }
+              td, th { border: 1px solid #000; padding: 5px; }
             </style>
           </head>
           <body>
-            <!-- Header -->
-            <div class="header">
-              <div class="college-name">${
-                paperData.collegeName || "New High School"
-              }</div>
-              <div class="test-name">${paperData.testName}</div>
-              <div class="subject-class">${paperData.subject} - ${
+            <div style="text-align: center;">
+              <h2>${paperData.collegeName || "School Name"}</h2>
+              <h3>${paperData.testName}</h3>
+              <p>Subject: ${paperData.subject} | Class: ${
         paperData.className
-      }</div>
-              <div class="exam-details">
-                <strong>Date:</strong> ${
-                  new Date().toISOString().split("T")[0]
-                } &nbsp;&nbsp;&nbsp;
-                <strong>Max. Marks:</strong> ${calculateTotalMarks()} &nbsp;&nbsp;&nbsp;
-                <strong>Time:</strong> ${paperData.timeAllowed}
-              </div>
+      }</p>
             </div>
-
-            <!-- Instructions -->
-            <div class="instructions">
-              <h3>General Instructions:</h3>
-              <ol>
-                ${(paperData.instructions || [])
-                  .filter(
-                    (instruction) => instruction && instruction.length > 0
-                  )
-                  .map((instruction) => `<li>${instruction}</li>`)
-                  .join("")}
-              </ol>
-            </div>
-
-            <!-- Questions Table -->
             <table>
               <thead>
-                <tr>
-                  <th class="question-no">Q. No.</th>
-                  <th>Questions</th>
-                  <th class="marks-cell">Marks</th>
-                </tr>
+                <tr><th>Q. No.</th><th>Question</th><th>Marks</th></tr>
               </thead>
               <tbody>
                 ${(paperData.sections || [])
-                  .map((section) => {
-                    const header = `
-                  <tr>
-                    <td colspan="3" class="section-header">
-                      <strong>${section.sectionName}</strong><br>
-                      <em>${section.description}</em>
-                    </td>
-                  </tr>`;
-                    const rows = (section.questions || [])
-                      .map((question) => {
-                        const opts = Array.isArray(question.options)
-                          ? question.options.filter((o) => o && o.length > 0)
-                          : [];
-                        const optsHtml =
-                          opts.length > 0
-                            ? `
-                          <div class="options">
-                            ${opts
-                              .map((option) => `<div>${option}</div>`)
-                              .join("")}
-                          </div>
-                        `
-                            : "";
-
-                        const imageHtml = question.imageUrl
-                          ? `<br/><img src="${question.imageUrl}" width="200" height="auto" style="max-width: 300px; height: auto; display: block; margin: 10px 0;" /><br/>`
+                  .map((section) =>
+                    (section.questions || [])
+                      .map((q) => {
+                        const imgTag = q.imageUrl
+                          ? `<br/><img src="${q.imageUrl}" width="200" /><br/>`
                           : "";
-                        return `
-                    <tr>
-                      <td class="question-no">${question.questionNo}</td>
-                      <td class="question-cell">
-                        ${question.question}
-                        ${imageHtml}  ${optsHtml}
+                        return `<tr>
+                      <td>${q.questionNo}</td>
+                      <td>${q.question}${imgTag}
+                        ${(q.options || [])
+                          .map((o) => `<div>${o}</div>`)
+                          .join("")}
                       </td>
-                      <td class="marks-cell">${question.marks}</td>
+                      <td>${q.marks}</td>
                     </tr>`;
                       })
-                      .join("");
-                    return header + rows;
-                  })
+                      .join("")
+                  )
                   .join("")}
               </tbody>
             </table>
-
-            <div style="margin-top: 30px; text-align: center; font-size: 10pt; color: #666;">
-              Total Marks: ${calculateTotalMarks()}
-            </div>
           </body>
         </html>
       `;
-
-      // Create blob and download
-      const blob = new Blob([htmlContent], {
-        type: "application/msword",
-      });
-
-      const fileName = `${paperData.subject}_${paperData.testName.replace(
-        /\s+/g,
-        "_"
-      )}.doc`;
-      saveAs(blob, fileName);
-    } catch (error) {
-      console.error("Error generating DOCX:", error);
-      alert("Error generating DOC file. Please try again.");
+      const blob = new Blob([htmlContent], { type: "application/msword" });
+      saveAs(
+        blob,
+        `${paperData.subject}_${paperData.testName.replace(/\s+/g, "_")}.doc`
+      );
+    } catch (e) {
+      console.error(e);
+      alert("Error generating DOC.");
     }
   };
-  if (isLoading) {
-    return <div className="text-center p-10">Loading paper...</div>;
-  }
 
-  if (error) {
+  if (isLoading) return <div className="text-center p-10">Loading...</div>;
+  if (error)
     return <div className="text-center p-10 text-red-600">Error: {error}</div>;
-  }
-  if (!paperData) {
-    return <div className="text-center p-10">Initializing paper view...</div>;
-  }
+  if (!paperData) return <div className="text-center p-10">No data</div>;
 
   return (
     <div>
-      {/* Control Panel */}
       <div className="fixed top-20 right-4 z-50 flex flex-col gap-2">
         <button
           onClick={() => setEditMode(!editMode)}
-          className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg"
+          className="bg-blue-600 text-white py-2 px-4 rounded"
         >
-          {editMode ? "Preview Paper" : "Edit Paper"}
+          {editMode ? "Preview" : "Edit"}
         </button>
         {!editMode && (
           <>
             <button
               onClick={downloadPDF}
-              className="bg-red-600 text-white py-2 px-4 rounded-lg"
+              className="bg-red-600 text-white py-2 px-4 rounded"
             >
-              Download PDF
+              PDF
             </button>
             <button
               onClick={downloadDOCX}
-              className="bg-green-600 text-white py-2 px-4 rounded-lg"
+              className="bg-green-600 text-white py-2 px-4 rounded"
             >
-              Download DOC
+              DOC
             </button>
             <button
               onClick={() => setShowSaveModal(true)}
-              className="bg-purple-600 text-white py-2 px-4 rounded-lg"
+              className="bg-purple-600 text-white py-2 px-4 rounded"
             >
-              Save Paper
+              Save
             </button>
           </>
         )}
       </div>
 
-      {/* --- Paper Set Tabs UI --- */}
       {generatedPapers.length > 1 && !editMode && (
-        <div className="max-w-5xl mx-auto my-4 p-2 bg-white rounded-lg shadow">
-          <div className="flex border-b border-gray-200">
-            {generatedPapers.map((paper, index) => (
-              <button
-                key={paper._id || index}
-                onClick={() => handlePaperSelection(index)}
-                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-                  selectedPaperIndex === index
-                    ? "border-b-2 border-blue-600 text-blue-600"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Set {String.fromCharCode(65 + index)}
-              </button>
-            ))}
-          </div>
+        <div className="max-w-5xl mx-auto my-4 p-2 bg-white rounded shadow">
+          {generatedPapers.map((p, i) => (
+            <button
+              key={i}
+              onClick={() => handlePaperSelection(i)}
+              className={`px-4 py-2 ${
+                selectedPaperIndex === i ? "text-blue-600 font-bold" : ""
+              }`}
+            >
+              Set {String.fromCharCode(65 + i)}
+            </button>
+          ))}
         </div>
       )}
 
@@ -1095,11 +859,11 @@ function ExamPaperGenerator() {
       )}
 
       {savedMessage && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-sm">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-white p-4 shadow rounded border">
           <div
-            className={`font-medium ${
+            className={
               savedMessage.includes("Error") ? "text-red-600" : "text-green-600"
-            }`}
+            }
           >
             {savedMessage}
           </div>

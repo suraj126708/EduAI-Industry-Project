@@ -587,6 +587,8 @@ export default function MinimalQuestionPaperForm() {
       );
       const data = response.data;
 
+      console.log("Generation Response:", data);
+
       if (!data.success) {
         throw new Error(data.message || "Failed to generate question paper");
       }

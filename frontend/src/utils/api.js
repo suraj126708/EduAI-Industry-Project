@@ -41,6 +41,7 @@ api.interceptors.response.use(
     // Log successful responses for debugging
     console.log("=== API RESPONSE SUCCESS ===");
     console.log("Status:", response.status);
+    
     console.log("URL:", response.config.url);
     console.log("============================");
     return response;
