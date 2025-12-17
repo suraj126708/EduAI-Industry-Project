@@ -5,6 +5,89 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
 
+const SmartQuestionRenderer = ({ text }) => {
+  // 1. Check if this is a "Match the Columns" question
+  const isMatchColumn =
+    text.includes("Column A:") && text.includes("Column B:");
+
+  if (isMatchColumn) {
+    // 2. Safe Parsing Logic
+    // Split into: [Instruction, Rest]
+    const partsA = text.split(/Column A:/i);
+    let instruction = partsA[0] ? partsA[0].trim() : "";
+
+    // If instruction is just the standard boilerplate, hide it to prevent redundancy
+    // (removes "Match the items given in Column A with Column B" etc.)
+    const cleanInst = instruction.replace(/[^a-zA-Z]/g, "").toLowerCase();
+    if (cleanInst.includes("matchtheitemsgivenincolumnawithcolumnb")) {
+      instruction = null;
+    }
+
+    // Split the remaining part into Col A and Col B
+    // partsA[1] contains "1. Item... Column B: A. Item..."
+    const partsB = partsA[1] ? partsA[1].split(/Column B:/i) : ["", ""];
+
+    const colARaw = partsB[0] ? partsB[0].trim() : "";
+    const colBRaw = partsB[1] ? partsB[1].trim() : "";
+
+    // 3. ROW-BY-ROW SPLITTING (The Fix for Alignment)
+    // We split by newline to get individual items
+    const rowsA = colARaw
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const rowsB = colBRaw
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    // Calculate how many rows we need (in case lists are uneven)
+    const maxRows = Math.max(rowsA.length, rowsB.length);
+
+    return (
+      <div className="w-full mt-2">
+        {/* Only show instruction if it's NOT the generic one */}
+        {instruction && (
+          <div className="mb-3 text-gray-800 whitespace-pre-wrap font-medium">
+            {instruction}
+          </div>
+        )}
+
+        {/* The Table Container */}
+        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm">
+          {/* Header Row */}
+          <div className="grid grid-cols-2 bg-blue-100 border-b border-gray-300">
+            <div className="px-4 py-2 font-bold text-blue-900 border-r border-gray-300">
+              Column A
+            </div>
+            <div className="px-4 py-2 font-bold text-blue-900">Column B</div>
+          </div>
+
+          {/* Content Rows */}
+          <div className="divide-y divide-gray-200">
+            {Array.from({ length: maxRows }).map((_, index) => (
+              <div key={index} className="grid grid-cols-2">
+                {/* Left Cell */}
+                <div className="px-4 py-3 text-gray-700 border-r border-gray-200 whitespace-pre-wrap">
+                  {rowsA[index] || ""}
+                </div>
+
+                {/* Right Cell */}
+                <div className="px-4 py-3 text-gray-700 whitespace-pre-wrap">
+                  {rowsB[index] || ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback for normal questions
+  return <div className="whitespace-pre-wrap leading-relaxed">{text}</div>;
+};
+
 // A stand-alone component for viewing the paper
 const PaperView = ({ paperData, calculateTotalMarks }) => {
   useEffect(() => {
@@ -124,7 +207,7 @@ const PaperView = ({ paperData, calculateTotalMarks }) => {
                         </td>
                         <td className="question-cell border border-gray-400 px-3 py-3">
                           <div className="text-gray-800">
-                            {question.question}
+                            <SmartQuestionRenderer text={question.question} />
                           </div>
 
                           {/* --- NEW IMAGE RENDERING LOGIC --- */}
