@@ -6,6 +6,7 @@ import {
   generateSemesterReport,
   getSemesterReportById,
   checkSemesterReports,
+  updateEvaluationReport,
 } from "../controllers/evaluationController.js"; // We will create this controller next
 import {
   authenticateFirebaseToken,
@@ -36,6 +37,13 @@ router.get(
   authenticateFirebaseToken,
   authorize("teacher", "principal"),
   getEvaluationReport
+);
+
+router.put(
+  "/update/:id",
+  authenticateFirebaseToken,
+  authorize("teacher", "principal"),
+  updateEvaluationReport
 );
 
 router.post(

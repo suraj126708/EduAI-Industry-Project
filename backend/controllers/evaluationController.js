@@ -259,6 +259,66 @@ export const getEvaluationsByClass = async (req, res) => {
   }
 };
 
+// @desc    Update an evaluation report (Teacher edits marks/feedback)
+// @route   PUT /api/evaluations/:id
+// @access  Private (Teacher)
+export const updateEvaluationReport = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { evaluationResults, totalMarksObtained } = req.body;
+    const teacherId = req.user._id;
+
+    // 1. Validation
+    if (!evaluationResults || totalMarksObtained === undefined) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid data provided." });
+    }
+
+    // 2. Find and Verify ownership
+    const evaluation = await Evaluation.findById(id);
+    if (!evaluation) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Evaluation not found." });
+    }
+
+    // Optional: Ensure only the assigning teacher can edit
+    // if (evaluation.teacherId.toString() !== teacherId.toString()) {
+    //   return res.status(403).json({ success: false, message: "Not authorized to edit this report." });
+    // }
+
+    // 3. backend recalculation sanity check (Optional but recommended)
+    // We recalculate total marks here to ensure the sum sent from frontend is correct
+    let calculatedTotal = 0;
+    evaluationResults.sections.forEach((section) => {
+      section.questions.forEach((q) => {
+        calculatedTotal += parseFloat(q.awarded || 0);
+      });
+    });
+
+    // 4. Update the document
+    evaluation.evaluationResults = evaluationResults;
+    evaluation.totalMarksObtained = calculatedTotal; // Use backend calculated total for safety
+
+    // Update status just in case
+    evaluation.status = "completed";
+
+    await evaluation.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Evaluation updated successfully.",
+      data: evaluation,
+    });
+  } catch (error) {
+    console.error("Update Report Error:", error.message);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update evaluation." });
+  }
+};
+
 const getSemesterDates = (year, semester) => {
   const y = parseInt(year);
   let start, end;

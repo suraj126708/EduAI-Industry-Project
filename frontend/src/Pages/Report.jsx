@@ -11,8 +11,8 @@ import {
   Cell,
 } from "recharts";
 import { useParams } from "react-router-dom";
-import { evaluationAPI, bookAPI } from "../utils/api";
-import { Loader2 } from "lucide-react";
+import { evaluationAPI, bookAPI } from "../utils/api"; // Ensure updateReport is added to evaluationAPI
+import { Loader2, Edit, Save, X } from "lucide-react";
 
 // --- STYLES ---
 
@@ -173,7 +173,6 @@ const questionImageStyle = {
 const CustomTooltip = ({ active, payload, label, chapterMap }) => {
   if (active && payload && payload.length) {
     const chapterName = chapterMap[label] || "";
-    // The payload contains the data object for the hovered bar
     const data = payload[0].payload;
 
     return (
@@ -190,7 +189,6 @@ const CustomTooltip = ({ active, payload, label, chapterMap }) => {
           fontFamily: "'Poppins', sans-serif",
         }}
       >
-        {/* Header */}
         <div
           style={{
             borderBottom: "1px solid #f1f5f9",
@@ -238,9 +236,7 @@ const CustomTooltip = ({ active, payload, label, chapterMap }) => {
           </div>
         </div>
 
-        {/* Qualitative Analysis Section */}
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {/* Strengths */}
           {data.strengths && data.strengths.length > 0 && (
             <div>
               <p
@@ -254,7 +250,6 @@ const CustomTooltip = ({ active, payload, label, chapterMap }) => {
               >
                 ✅ Strengths
               </p>
-              {/* Added listStyleType: "disc" to force bullets */}
               <ul
                 style={{
                   margin: 0,
@@ -276,7 +271,6 @@ const CustomTooltip = ({ active, payload, label, chapterMap }) => {
             </div>
           )}
 
-          {/* Weaknesses */}
           {data.weaknesses && data.weaknesses.length > 0 && (
             <div>
               <p
@@ -290,7 +284,6 @@ const CustomTooltip = ({ active, payload, label, chapterMap }) => {
               >
                 ⚠️ Focus Areas
               </p>
-              {/* Added listStyleType: "disc" to force bullets */}
               <ul
                 style={{
                   margin: 0,
@@ -309,39 +302,6 @@ const CustomTooltip = ({ active, payload, label, chapterMap }) => {
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {/* Recommendation */}
-          {data.recommendations && (
-            <div
-              style={{
-                marginTop: "4px",
-                paddingTop: "8px",
-                borderTop: "1px dashed #e2e8f0",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "0.75rem",
-                  fontWeight: "700",
-                  color: "#0369a1",
-                  marginBottom: "2px",
-                }}
-              >
-                💡 Tip
-              </p>
-              <p
-                style={{
-                  fontSize: "0.8rem",
-                  color: "#475569",
-                  fontStyle: "italic",
-                  margin: 0,
-                  lineHeight: "1.4",
-                }}
-              >
-                "{data.recommendations}"
-              </p>
             </div>
           )}
         </div>
@@ -446,8 +406,12 @@ const ChapterPerformanceChart = ({ chapterData, chapterMap }) => {
   );
 };
 
-// --- DETAILED ANALYSIS COMPONENT ---
-const DetailedQuestionAnalysis = ({ sections }) => {
+// --- DETAILED ANALYSIS COMPONENT (UPDATED FOR EDITING) ---
+const DetailedQuestionAnalysis = ({
+  sections,
+  isEditing,
+  onQuestionUpdate,
+}) => {
   if (!sections || sections.length === 0) return null;
 
   return (
@@ -489,17 +453,66 @@ const DetailedQuestionAnalysis = ({ sections }) => {
                       />
                     )}
                   </div>
-                  <span
+
+                  {/* --- MARKS DISPLAY / EDIT --- */}
+                  <div
                     style={{
-                      ...markStyle,
-                      color: markColor,
-                      borderColor: "transparent",
-                      backgroundColor: markBg,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
                     }}
                   >
-                    {q.awarded} / {q.marks} Marks
-                  </span>
+                    {isEditing ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "end",
+                        }}
+                      >
+                        <label style={{ fontSize: "0.7rem", color: "#64748b" }}>
+                          Max: {q.marks}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max={q.marks}
+                          step="0.5"
+                          value={q.awarded}
+                          onChange={(e) =>
+                            onQuestionUpdate(
+                              sIdx,
+                              qIdx,
+                              "awarded",
+                              e.target.value,
+                              q.marks
+                            )
+                          }
+                          style={{
+                            width: "70px",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            border: "2px solid #3b82f6",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <span
+                        style={{
+                          ...markStyle,
+                          color: markColor,
+                          borderColor: "transparent",
+                          backgroundColor: markBg,
+                        }}
+                      >
+                        {q.awarded} / {q.marks} Marks
+                      </span>
+                    )}
+                  </div>
                 </div>
+
                 <div style={answerBoxStyle}>
                   <div style={answerRowStyle}>
                     <div style={{ flex: 1, minWidth: "250px" }}>
@@ -520,11 +533,38 @@ const DetailedQuestionAnalysis = ({ sections }) => {
                     </div>
                   </div>
                 </div>
-                {q.remarks && (
+
+                {/* --- FEEDBACK DISPLAY / EDIT --- */}
+                {(q.remarks || isEditing) && (
                   <div style={remarksBoxStyle}>
                     <span style={{ fontSize: "1.2rem" }}>💡</span>
-                    <div>
-                      <strong>Feedback:</strong> {q.remarks}
+                    <div style={{ width: "100%" }}>
+                      <strong>Feedback:</strong>{" "}
+                      {isEditing ? (
+                        <textarea
+                          value={q.remarks}
+                          onChange={(e) =>
+                            onQuestionUpdate(
+                              sIdx,
+                              qIdx,
+                              "remarks",
+                              e.target.value
+                            )
+                          }
+                          style={{
+                            width: "100%",
+                            marginTop: "8px",
+                            padding: "8px",
+                            borderRadius: "6px",
+                            border: "1px solid #cbd5e1",
+                            fontFamily: "inherit",
+                          }}
+                          rows={2}
+                          placeholder="Add your remarks here..."
+                        />
+                      ) : (
+                        q.remarks
+                      )}
                     </div>
                   </div>
                 )}
@@ -541,10 +581,16 @@ const DetailedQuestionAnalysis = ({ sections }) => {
 export default function ExamReport() {
   const { id } = useParams();
   const [evaluation, setEvaluation] = useState(null);
+  const [originalEvaluation, setOriginalEvaluation] = useState(null); // Backup for cancel
   const [chapterMap, setChapterMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Edit Mode States
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 1. Fetch Report Data
   useEffect(() => {
     const fetchReport = async () => {
       if (!id) return;
@@ -552,6 +598,8 @@ export default function ExamReport() {
         const res = await evaluationAPI.getReportById(id);
         if (res.success) {
           setEvaluation(res.data);
+          // Create deep copy for backup
+          setOriginalEvaluation(JSON.parse(JSON.stringify(res.data)));
         } else {
           throw new Error(res.message);
         }
@@ -564,6 +612,7 @@ export default function ExamReport() {
     fetchReport();
   }, [id]);
 
+  // 2. Fetch Chapter Names
   useEffect(() => {
     const fetchChapters = async () => {
       if (!evaluation) return;
@@ -589,6 +638,120 @@ export default function ExamReport() {
     fetchChapters();
   }, [evaluation]);
 
+  // --- RECALCULATION LOGIC ---
+  const recalculateEvaluation = (currentEval) => {
+    const sections = currentEval.evaluationResults.sections;
+    const chaptersSummary = [
+      ...currentEval.evaluationResults.chapter_summary.chapters,
+    ];
+
+    let newTotalObtained = 0;
+    const chapterScoreMap = {}; // { chapterNo: obtainedMarks }
+
+    // Loop through all questions to sum marks
+    sections.forEach((section) => {
+      section.questions.forEach((q) => {
+        const marks = parseFloat(q.awarded) || 0;
+        newTotalObtained += marks;
+
+        const rawCh = q.chapter || q.chapterNo || "";
+        const chKey = rawCh.toString().replace(/\D/g, "");
+        if (chKey) {
+          chapterScoreMap[chKey] = (chapterScoreMap[chKey] || 0) + marks;
+        }
+      });
+    });
+
+    // Update the Chapter Summary Array (for the Graph)
+    const updatedChapters = chaptersSummary.map((ch) => {
+      const summaryChKey = ch.chapterNo.toString().replace(/\D/g, "");
+      const calculatedScore = chapterScoreMap[summaryChKey] || 0;
+
+      return {
+        ...ch,
+        obtainedMarks: calculatedScore,
+        percentage:
+          ch.totalMarks > 0 ? (calculatedScore / ch.totalMarks) * 100 : 0,
+      };
+    });
+
+    return {
+      ...currentEval,
+      totalMarksObtained: newTotalObtained,
+      evaluationResults: {
+        ...currentEval.evaluationResults,
+        chapter_summary: {
+          ...currentEval.evaluationResults.chapter_summary,
+          chapters: updatedChapters,
+        },
+      },
+    };
+  };
+
+  // --- EVENT HANDLERS ---
+
+  const handleQuestionUpdate = (
+    sectionIdx,
+    questionIdx,
+    field,
+    value,
+    maxMarks
+  ) => {
+    const newEval = JSON.parse(JSON.stringify(evaluation)); // Deep copy
+    const question =
+      newEval.evaluationResults.sections[sectionIdx].questions[questionIdx];
+
+    if (field === "awarded") {
+      let numVal = parseFloat(value);
+      if (isNaN(numVal)) numVal = 0;
+      if (numVal < 0) numVal = 0;
+      if (numVal > maxMarks) numVal = maxMarks;
+
+      question.awarded = numVal;
+
+      // Automatically recalculate totals and graph
+      const recalculatedEval = recalculateEvaluation(newEval);
+      setEvaluation(recalculatedEval);
+    } else {
+      // Just updating text fields like remarks
+      question[field] = value;
+      setEvaluation(newEval);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        evaluationResults: evaluation.evaluationResults,
+        totalMarksObtained: evaluation.totalMarksObtained,
+      };
+
+      // Call API to update report
+      const res = await evaluationAPI.updateEvaluationReport(id, payload);
+
+      if (res.success) {
+        setEvaluation(res.data);
+        setOriginalEvaluation(JSON.parse(JSON.stringify(res.data)));
+        setIsEditing(false);
+        alert("Report updated successfully!");
+      } else {
+        throw new Error(res.message || "Failed to update report");
+      }
+    } catch (err) {
+      alert("Error saving report: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // Revert to original state
+    setEvaluation(JSON.parse(JSON.stringify(originalEvaluation)));
+    setIsEditing(false);
+  };
+
+  // 3. Prepare Report Data for Display
   const reportData = useMemo(() => {
     if (!evaluation) return null;
     const {
@@ -605,15 +768,18 @@ export default function ExamReport() {
       examDetails: {
         title: questionPaperId.examType,
         date: new Date(evaluation.createdAt).toLocaleDateString(),
-        duration: questionPaperId.paper.duration || "N/A",
+        duration: questionPaperId.paper?.duration || "N/A",
         totalMarks: evaluationResults.totalMarks,
       },
       performance: {
         obtainedMarks: totalMarksObtained,
-        percentage: (
-          (totalMarksObtained / evaluationResults.totalMarks) *
-          100
-        ).toFixed(0),
+        percentage:
+          evaluationResults.totalMarks > 0
+            ? (
+                (totalMarksObtained / evaluationResults.totalMarks) *
+                100
+              ).toFixed(0)
+            : 0,
       },
       sections: evaluationResults.sections,
       chapters: chapterSummary.chapters || [],
@@ -649,26 +815,17 @@ export default function ExamReport() {
 
   return (
     <>
-      {/* This style block handles the PRINT Layout. 
-        It hides the navbar (by tag/class) and resets the report container
-        to standard white paper format.
-      */}
       <style>
         {`
           @media print {
-            /* 1. HIDE NAVBAR & UI CHROME */
-            nav, header, .navbar, .sidebar, button {
+            nav, header, .navbar, .sidebar, button, .no-print {
               display: none !important;
             }
-
-            /* 2. RESET BODY BACKGROUND */
             body {
               background-color: white !important;
               -webkit-print-color-adjust: exact;
               margin: 0;
             }
-
-            /* 3. CONFIGURE REPORT CONTAINER FOR A4/PDF */
             .report-container {
               margin: 0 !important;
               padding: 20px !important;
@@ -679,8 +836,6 @@ export default function ExamReport() {
               border: none !important;
               border-radius: 0 !important;
             }
-
-            /* 4. FORCE COLORS TO PRINT */
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
@@ -689,7 +844,90 @@ export default function ExamReport() {
         `}
       </style>
 
-      {/* Added class 'report-container' for the print styles to target */}
+      {/* --- FLOATING ACTION BUTTONS --- */}
+      <div
+        className="no-print"
+        style={{
+          position: "fixed",
+          bottom: "30px",
+          right: "30px",
+          display: "flex",
+          gap: "12px",
+          zIndex: 1000,
+        }}
+      >
+        {!isEditing ? (
+          <button
+            onClick={() => setIsEditing(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "#2563eb",
+              color: "white",
+              padding: "12px 24px",
+              borderRadius: "30px",
+              border: "none",
+              boxShadow: "0 4px 12px rgba(37, 99, 235, 0.3)",
+              cursor: "pointer",
+              fontWeight: "600",
+              transition: "transform 0.2s",
+            }}
+          >
+            <Edit size={18} /> Edit Marks
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={handleCancel}
+              disabled={isSaving}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "#ef4444",
+                color: "white",
+                padding: "12px 24px",
+                borderRadius: "30px",
+                border: "none",
+                boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)",
+                cursor: "pointer",
+                fontWeight: "600",
+                opacity: isSaving ? 0.7 : 1,
+              }}
+            >
+              <X size={18} /> Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "#16a34a",
+                color: "white",
+                padding: "12px 24px",
+                borderRadius: "30px",
+                border: "none",
+                boxShadow: "0 4px 12px rgba(22, 163, 74, 0.3)",
+                cursor: "pointer",
+                fontWeight: "600",
+                opacity: isSaving ? 0.7 : 1,
+              }}
+            >
+              {isSaving ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : (
+                <Save size={18} />
+              )}
+              Save Changes
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* --- MAIN REPORT CONTAINER --- */}
       <div style={containerStyle} className="report-container">
         <header style={{ textAlign: "center", marginBottom: "40px" }}>
           <h1
@@ -777,17 +1015,28 @@ export default function ExamReport() {
             </p>
             <p style={metadataLineStyle}>
               Marks Obtained:{" "}
-              <strong>
+              <strong style={{ color: isEditing ? "#2563eb" : "inherit" }}>
                 <em>{performance.obtainedMarks}</em>
+                {isEditing && (
+                  <span style={{ fontSize: "0.8rem", marginLeft: "6px" }}>
+                    (Live Updating)
+                  </span>
+                )}
               </strong>
             </p>
           </div>
         </section>
 
+        {/* --- DETAILED ANALYSIS (NOW EDITABLE) --- */}
         <section>
-          <DetailedQuestionAnalysis sections={sections} />
+          <DetailedQuestionAnalysis
+            sections={sections}
+            isEditing={isEditing}
+            onQuestionUpdate={handleQuestionUpdate}
+          />
         </section>
 
+        {/* --- CHAPTER CHART --- */}
         {chapters.length > 0 && (
           <section style={{ marginBottom: "32px" }}>
             <ChapterPerformanceChart
@@ -797,6 +1046,7 @@ export default function ExamReport() {
           </section>
         )}
 
+        {/* --- OVERALL SUMMARY CARDS --- */}
         <section
           style={{
             display: "grid",

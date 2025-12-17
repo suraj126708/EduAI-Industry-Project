@@ -1,5 +1,6 @@
 import axios from "axios";
 import { auth } from "../firebase/firebase.js";
+import { updateEvaluationReport } from "../../../backend/controllers/evaluationController.js";
 
 // API configuration
 const local_api = "http://localhost:5000/api/";
@@ -706,6 +707,16 @@ export const evaluationAPI = {
     } catch (err) {
       console.error("Check status error:", err);
       return { success: false, data: {} };
+    }
+  },
+
+  updateEvaluationReport: async (reportId, payload) => {
+    try {
+      const res = await api.put(`/evaluation/update/${reportId}`, payload);
+      return res.data;
+    } catch (err) {
+      console.error("Update report error:", err);
+      return err.response?.data || { success: false, message: err.message };
     }
   },
 };
