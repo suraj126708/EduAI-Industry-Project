@@ -6,149 +6,164 @@ import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
 
 // A stand-alone component for viewing the paper
-const PaperView = ({ paperData, calculateTotalMarks }) => (
-  <div className="min-h-screen bg-gray-100 py-8 px-4">
-    <div className="max-w-5xl mx-auto">
-      <div className="paper-content bg-white border-2 border-blue-400 rounded-xl shadow-lg px-8 py-6 mb-8 min-h-[11in]">
-        <div className="header text-center border-b-2 border-blue-300 pb-4 mb-6">
-          <h1 className="college-name text-2xl font-bold text-blue-800 mb-2">
-            {paperData.collegeName || "New High School"}
-          </h1>
+const PaperView = ({ paperData, calculateTotalMarks }) => {
+  useEffect(() => {
+    // Check if MathJax is loaded and paperData exists
+    if (typeof window?.MathJax !== "undefined" && paperData) {
+      // Tell MathJax to clear previous math and typeset the new content
+      window.MathJax.typesetPromise()
+        .then(() => {
+          console.log("MathJax typesetting complete");
+        })
+        .catch((err) => console.log("MathJax error:", err));
+    }
+  }, [paperData]);
+  return (
+    <div className="min-h-screen bg-gray-100 py-8 px-4">
+      <div className="max-w-5xl mx-auto">
+        <div className="paper-content bg-white border-2 border-blue-400 rounded-xl shadow-lg px-8 py-6 mb-8 min-h-[11in]">
+          <div className="header text-center border-b-2 border-blue-300 pb-4 mb-6">
+            <h1 className="college-name text-2xl font-bold text-blue-800 mb-2">
+              {paperData.collegeName || "New High School"}
+            </h1>
 
-          <h2 className="test-name text-lg font-semibold text-gray-700 mb-2">
-            {paperData.examType || paperData.testName || "Examination"}
-          </h2>
+            <h2 className="test-name text-lg font-semibold text-gray-700 mb-2">
+              {paperData.examType || paperData.testName || "Examination"}
+            </h2>
 
-          <div className="exam-details grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg text-left sm:text-center">
-            <span className="col-span-1">
-              {" "}
-              {/* Make Date span 1 column */}
-              <strong>Date:</strong>{" "}
-              {paperData.date || new Date().toISOString().split("T")[0]}
-            </span>
-            {/* Added Subject */}
-            <span className="col-span-1">
-              <strong>Subject:</strong> {paperData.subject || "-"}
-            </span>
-            {/* Added Class */}
-            <span className="col-span-1">
-              <strong>Class:</strong> {paperData.className || "-"}
-            </span>
-            <span className="col-span-1">
-              {" "}
-              {/* Make Marks span 1 */}
-              <strong>Marks:</strong> {calculateTotalMarks()}
-            </span>
-            <span className="col-span-1">
-              {" "}
-              {/* Make Time span 1 */}
-              <strong>Time:</strong> {paperData.timeAllowed}
-            </span>
+            <div className="exam-details grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg text-left sm:text-center">
+              <span className="col-span-1">
+                {" "}
+                {/* Make Date span 1 column */}
+                <strong>Date:</strong>{" "}
+                {paperData.date || new Date().toISOString().split("T")[0]}
+              </span>
+              {/* Added Subject */}
+              <span className="col-span-1">
+                <strong>Subject:</strong> {paperData.subject || "-"}
+              </span>
+              {/* Added Class */}
+              <span className="col-span-1">
+                <strong>Class:</strong> {paperData.className || "-"}
+              </span>
+              <span className="col-span-1">
+                {" "}
+                {/* Make Marks span 1 */}
+                <strong>Marks:</strong> {calculateTotalMarks()}
+              </span>
+              <span className="col-span-1">
+                {" "}
+                {/* Make Time span 1 */}
+                <strong>Time:</strong> {paperData.timeAllowed}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="instructions border border-blue-300 rounded-lg mb-6 px-4 py-3 bg-blue-50">
-          <h3 className="font-semibold mb-2 text-blue-800">
-            General Instructions:
-          </h3>
-          <ul className="list-disc pl-6 text-sm text-gray-700">
-            {(paperData.instructions || []).map((instruction, index) => (
-              <li key={index} className="mb-1">
-                {instruction}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="border border-gray-400 rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-blue-200">
-                <th className="border border-gray-400 px-3 py-2 w-16 font-semibold">
-                  Q. No.
-                </th>
-                <th className="border border-gray-400 px-3 py-2 font-semibold">
-                  Questions
-                </th>
-                <th className="border border-gray-400 px-3 py-2 w-16 font-semibold">
-                  Marks
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {(paperData.sections || []).map((section, sIdx) => (
-                <React.Fragment key={`section-${sIdx}`}>
-                  <tr>
-                    <td
-                      colSpan="3"
-                      className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
-                    >
-                      <div className="flex flex-col gap-1">
-                        {/* ✅ FIX: Combined Section Name and Title on one line */}
-                        <div className="text-lg">
-                          <span className="font-bold text-blue-800">
-                            {section.sectionName}
-                          </span>
-                          {section.sectionTitle && (
-                            <span className="font-semibold text-gray-800 font-family-times">
-                              : {section.sectionTitle}
+          <div className="instructions border border-blue-300 rounded-lg mb-6 px-4 py-3 bg-blue-50">
+            <h3 className="font-semibold mb-2 text-blue-800">
+              General Instructions:
+            </h3>
+            <ul className="list-disc pl-6 text-sm text-gray-700">
+              {(paperData.instructions || []).map((instruction, index) => (
+                <li key={index} className="mb-1">
+                  {instruction}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="border border-gray-400 rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-blue-200">
+                  <th className="border border-gray-400 px-3 py-2 w-16 font-semibold">
+                    Q. No.
+                  </th>
+                  <th className="border border-gray-400 px-3 py-2 font-semibold">
+                    Questions
+                  </th>
+                  <th className="border border-gray-400 px-3 py-2 w-16 font-semibold">
+                    Marks
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(paperData.sections || []).map((section, sIdx) => (
+                  <React.Fragment key={`section-${sIdx}`}>
+                    <tr>
+                      <td
+                        colSpan="3"
+                        className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
+                      >
+                        <div className="flex flex-col gap-1">
+                          {/* ✅ FIX: Combined Section Name and Title on one line */}
+                          <div className="text-lg">
+                            <span className="font-bold text-blue-800">
+                              {section.sectionName}
                             </span>
-                          )}
-                        </div>
-
-                        {section.description && (
-                          <div className="text-sm text-gray-600 italic">
-                            {section.description}
+                            {section.sectionTitle && (
+                              <span className="font-semibold text-gray-800 font-family-times">
+                                : {section.sectionTitle}
+                              </span>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  {(section.questions || []).map((question, qIndex) => (
-                    <tr
-                      key={`q-${sIdx}-${qIndex}`}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="question-no border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.questionNo}
-                      </td>
-                      <td className="question-cell border border-gray-400 px-3 py-3">
-                        <div className="text-gray-800">{question.question}</div>
 
-                        {/* --- NEW IMAGE RENDERING LOGIC --- */}
-                        {question.imageUrl && (
-                          <div className="my-3 flex justify-start">
-                            <img
-                              src={question.imageUrl}
-                              alt={`Diagram for Q${question.questionNo}`}
-                              className="max-h-48 max-w-full object-contain border border-gray-200 rounded p-1"
-                            />
-                          </div>
-                        )}
-
-                        {Array.isArray(question.options) &&
-                          question.options.length > 0 && (
-                            <div className="options mt-2 text-sm text-gray-700">
-                              {question.options.map((option, oIndex) => (
-                                <div key={oIndex} className="ml-4">
-                                  {option}
-                                </div>
-                              ))}
+                          {section.description && (
+                            <div className="text-sm text-gray-600 italic">
+                              {section.description}
                             </div>
                           )}
-                      </td>
-                      <td className="marks-cell border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.marks}
+                        </div>
                       </td>
                     </tr>
-                  ))}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+                    {(section.questions || []).map((question, qIndex) => (
+                      <tr
+                        key={`q-${sIdx}-${qIndex}`}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="question-no border border-gray-400 text-center px-2 py-3 font-medium">
+                          {question.questionNo}
+                        </td>
+                        <td className="question-cell border border-gray-400 px-3 py-3">
+                          <div className="text-gray-800">
+                            {question.question}
+                          </div>
+
+                          {/* --- NEW IMAGE RENDERING LOGIC --- */}
+                          {question.imageUrl && (
+                            <div className="my-3 flex justify-start">
+                              <img
+                                src={question.imageUrl}
+                                alt={`Diagram for Q${question.questionNo}`}
+                                className="max-h-48 max-w-full object-contain border border-gray-200 rounded p-1"
+                              />
+                            </div>
+                          )}
+
+                          {Array.isArray(question.options) &&
+                            question.options.length > 0 && (
+                              <div className="options mt-2 text-sm text-gray-700">
+                                {question.options.map((option, oIndex) => (
+                                  <div key={oIndex} className="ml-4">
+                                    {option}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                        </td>
+                        <td className="marks-cell border border-gray-400 text-center px-2 py-3 font-medium">
+                          {question.marks}
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const EditView = ({
   paperData,
@@ -800,18 +815,35 @@ function ExamPaperGenerator() {
               * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             }
           </style>
+          <script>
+            window.MathJax = {
+              tex: { inlineMath: [['$', '$'], ['\\\\(', '\\\\)']] },
+              startup: {
+                typeset: false // Prevent auto-run, we will trigger it manually
+              }
+            };
+          </script>
+          
+          <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
         </head>
         <body>
           ${paperContent}
+
+          <script>
+            window.onload = function() {
+              window.MathJax.typesetPromise().then(() => {
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 1000); 
+              });
+            };
+          </script>
         </body>
       </html>
     `);
 
     printWindow.document.close();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
   };
 
   const downloadDOCX = () => {
