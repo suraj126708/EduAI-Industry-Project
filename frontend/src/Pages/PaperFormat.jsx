@@ -5,6 +5,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
 
+// --- COMPONENT: VISUAL RENDERER ---
 const VisualRenderer = ({ imageUrl, svgContent, altText }) => {
   if (svgContent) {
     return (
@@ -31,140 +32,220 @@ const VisualRenderer = ({ imageUrl, svgContent, altText }) => {
   return null;
 };
 
-// A stand-alone component for viewing the paper
-const PaperView = ({ paperData, calculateTotalMarks }) => (
-  <div className="min-h-screen bg-gray-100 py-8 px-4">
-    <div className="max-w-5xl mx-auto">
-      <div className="paper-content bg-white border-2 border-blue-400 rounded-xl shadow-lg px-8 py-6 mb-8 min-h-[11in]">
-        {/* Header */}
-        <div className="header text-center border-b-2 border-blue-300 pb-4 mb-6">
-          <h1 className="college-name text-2xl font-bold text-blue-800 mb-2">
-            {paperData.collegeName || "New High School"}
-          </h1>
-          <h2 className="test-name text-lg font-semibold text-gray-700 mb-2">
-            {paperData.examType || paperData.testName || "Examination"}
-          </h2>
-          <div className="exam-details grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg text-left sm:text-center">
-            <span className="col-span-1">
-              <strong>Date:</strong>{" "}
-              {paperData.date || new Date().toISOString().split("T")[0]}
-            </span>
-            <span className="col-span-1">
-              <strong>Subject:</strong> {paperData.subject || "-"}
-            </span>
-            <span className="col-span-1">
-              <strong>Class:</strong> {paperData.className || "-"}
-            </span>
-            <span className="col-span-1">
-              <strong>Marks:</strong> {calculateTotalMarks()}
-            </span>
-            <span className="col-span-1">
-              <strong>Time:</strong> {paperData.timeAllowed}
-            </span>
+// --- COMPONENT: SMART QUESTION RENDERER (Match Columns logic) ---
+const SmartQuestionRenderer = ({ text }) => {
+  const isMatchColumn =
+    text && text.includes("Column A:") && text.includes("Column B:");
+
+  if (isMatchColumn) {
+    const partsA = text.split(/Column A:/i);
+    let instruction = partsA[0] ? partsA[0].trim() : "";
+
+    const cleanInst = instruction.replace(/[^a-zA-Z]/g, "").toLowerCase();
+    if (cleanInst.includes("matchtheitemsgivenincolumnawithcolumnb")) {
+      instruction = null;
+    }
+
+    const partsB = partsA[1] ? partsA[1].split(/Column B:/i) : ["", ""];
+    const colARaw = partsB[0] ? partsB[0].trim() : "";
+    const colBRaw = partsB[1] ? partsB[1].trim() : "";
+
+    const rowsA = colARaw
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const rowsB = colBRaw
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    const maxRows = Math.max(rowsA.length, rowsB.length);
+
+    return (
+      <div className="w-full mt-2">
+        {instruction && (
+          <div className="mb-3 text-gray-800 whitespace-pre-wrap font-medium">
+            {instruction}
+          </div>
+        )}
+        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm">
+          <div className="grid grid-cols-2 bg-blue-100 border-b border-gray-300">
+            <div className="px-4 py-2 font-bold text-blue-900 border-r border-gray-300">
+              Column A
+            </div>
+            <div className="px-4 py-2 font-bold text-blue-900">Column B</div>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {Array.from({ length: maxRows }).map((_, index) => (
+              <div key={index} className="grid grid-cols-2">
+                <div className="px-4 py-3 text-gray-700 border-r border-gray-200 whitespace-pre-wrap">
+                  {rowsA[index] || ""}
+                </div>
+                <div className="px-4 py-3 text-gray-700 whitespace-pre-wrap">
+                  {rowsB[index] || ""}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {/* Instructions */}
-        <div className="instructions border border-blue-300 rounded-lg mb-6 px-4 py-3 bg-blue-50">
-          <h3 className="font-semibold mb-2 text-blue-800">
-            General Instructions:
-          </h3>
-          <ul className="list-disc pl-6 text-sm text-gray-700">
-            {(paperData.instructions || []).map((instruction, index) => (
-              <li key={index} className="mb-1">
-                {instruction}
-              </li>
-            ))}
-          </ul>
-        </div>
+  return <div className="whitespace-pre-wrap leading-relaxed">{text}</div>;
+};
 
-        {/* Questions Table */}
-        <div className="border border-gray-400 rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-blue-200">
-                <th className="border border-gray-400 px-3 py-2 w-16 font-semibold">
-                  Q. No.
-                </th>
-                <th className="border border-gray-400 px-3 py-2 font-semibold">
-                  Questions
-                </th>
-                <th className="border border-gray-400 px-3 py-2 w-16 font-semibold">
-                  Marks
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {(paperData.sections || []).map((section, sIdx) => (
-                <React.Fragment key={`section-${sIdx}`}>
-                  <tr>
-                    <td
-                      colSpan="3"
-                      className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
-                    >
-                      <div className="flex flex-col gap-1">
-                        <div className="text-lg">
-                          <span className="font-bold text-blue-800">
-                            {section.sectionName}
-                          </span>
-                          {section.sectionTitle && (
-                            <span className="font-semibold text-gray-800 font-family-times">
-                              : {section.sectionTitle}
+// --- COMPONENT: PAPER VIEW (Read Only) ---
+const PaperView = ({ paperData, calculateTotalMarks }) => {
+  useEffect(() => {
+    if (typeof window?.MathJax !== "undefined" && paperData) {
+      window.MathJax.typesetPromise()
+        .then(() => console.log("MathJax typesetting complete"))
+        .catch((err) => console.log("MathJax error:", err));
+    }
+  }, [paperData]);
+
+  return (
+    <div className="min-h-screen bg-gray-100 py-8 px-4">
+      <div className="max-w-5xl mx-auto">
+        <div className="paper-content bg-white border-2 border-blue-400 rounded-xl shadow-lg px-8 py-6 mb-8 min-h-[11in]">
+          {/* Header */}
+          <div className="header text-center border-b-2 border-blue-300 pb-4 mb-6">
+            <h1 className="college-name text-2xl font-bold text-blue-800 mb-2">
+              {paperData.collegeName || "New High School"}
+            </h1>
+            <h2 className="test-name text-lg font-semibold text-gray-700 mb-2">
+              {paperData.examType || paperData.testName || "Examination"}
+            </h2>
+            <div className="exam-details grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg text-left sm:text-center">
+              <span className="col-span-1">
+                <strong>Date:</strong>{" "}
+                {paperData.date || new Date().toISOString().split("T")[0]}
+              </span>
+              <span className="col-span-1">
+                <strong>Subject:</strong> {paperData.subject || "-"}
+              </span>
+              <span className="col-span-1">
+                <strong>Class:</strong> {paperData.className || "-"}
+              </span>
+              <span className="col-span-1">
+                <strong>Marks:</strong> {calculateTotalMarks()}
+              </span>
+              <span className="col-span-1">
+                <strong>Time:</strong> {paperData.timeAllowed}
+              </span>
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div className="instructions border border-blue-300 rounded-lg mb-6 px-4 py-3 bg-blue-50">
+            <h3 className="font-semibold mb-2 text-blue-800">
+              General Instructions:
+            </h3>
+            <ul className="list-disc pl-6 text-sm text-gray-700">
+              {(paperData.instructions || []).map((instruction, index) => (
+                <li key={index} className="mb-1">
+                  {instruction}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Questions Table */}
+          <div className="border border-gray-400 rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-blue-200">
+                  <th className="border border-gray-400 px-3 py-2 w-16 font-semibold">
+                    Q. No.
+                  </th>
+                  <th className="border border-gray-400 px-3 py-2 font-semibold">
+                    Questions
+                  </th>
+                  <th className="border border-gray-400 px-3 py-2 w-16 font-semibold">
+                    Marks
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(paperData.sections || []).map((section, sIdx) => (
+                  <React.Fragment key={`section-${sIdx}`}>
+                    {/* Section Header Row */}
+                    <tr>
+                      <td
+                        colSpan="3"
+                        className="section-header border border-gray-400 bg-blue-100 px-3 py-2"
+                      >
+                        <div className="flex flex-col gap-1">
+                          <div className="text-lg">
+                            <span className="font-bold text-blue-800">
+                              {section.sectionName}
                             </span>
-                          )}
-                        </div>
-                        {section.description && (
-                          <div className="text-sm text-gray-600 italic">
-                            {section.description}
+                            {section.sectionTitle && (
+                              <span className="font-semibold text-gray-800 font-family-times">
+                                : {section.sectionTitle}
+                              </span>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  {(section.questions || []).map((question, qIndex) => (
-                    <tr
-                      key={`q-${sIdx}-${qIndex}`}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="question-no border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.questionNo}
-                      </td>
-                      <td className="question-cell border border-gray-400 px-3 py-3">
-                        <div className="text-gray-800">{question.question}</div>
-
-                        {/* ✅ RENDER VISUALS (SVG or IMAGE) */}
-                        <VisualRenderer
-                          imageUrl={question.imageUrl}
-                          svgContent={question.svgContent}
-                          altText={`Diagram for Q${question.questionNo}`}
-                        />
-
-                        {Array.isArray(question.options) &&
-                          question.options.length > 0 && (
-                            <div className="options mt-2 text-sm text-gray-700">
-                              {question.options.map((option, oIndex) => (
-                                <div key={oIndex} className="ml-4">
-                                  {option}
-                                </div>
-                              ))}
+                          {section.description && (
+                            <div className="text-sm text-gray-600 italic">
+                              {section.description}
                             </div>
                           )}
-                      </td>
-                      <td className="marks-cell border border-gray-400 text-center px-2 py-3 font-medium">
-                        {question.marks}
+                        </div>
                       </td>
                     </tr>
-                  ))}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+
+                    {/* Questions Loop */}
+                    {(section.questions || []).map((question, qIndex) => (
+                      <tr
+                        key={`q-${sIdx}-${qIndex}`}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="question-no border border-gray-400 text-center px-2 py-3 font-medium">
+                          {question.questionNo}
+                        </td>
+                        <td className="question-cell border border-gray-400 px-3 py-3">
+                          <div className="text-gray-800">
+                            <SmartQuestionRenderer text={question.question} />
+                          </div>
+
+                          {/* Visuals */}
+                          <VisualRenderer
+                            imageUrl={question.imageUrl}
+                            svgContent={question.svgContent}
+                            altText={`Diagram for Q${question.questionNo}`}
+                          />
+
+                          {/* Options */}
+                          {Array.isArray(question.options) &&
+                            question.options.length > 0 && (
+                              <div className="options mt-2 text-sm text-gray-700">
+                                {question.options.map((option, oIndex) => (
+                                  <div key={oIndex} className="ml-4">
+                                    {option}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                        </td>
+                        <td className="marks-cell border border-gray-400 text-center px-2 py-3 font-medium">
+                          {question.marks}
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
+// --- COMPONENT: EDIT VIEW ---
 const EditView = ({
   paperData,
   savedMessage,
@@ -304,7 +385,7 @@ const EditView = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm h-20"
               />
 
-              {/* --- UPDATED IMAGE EDITING UI --- */}
+              {/* Image Editing UI */}
               <div className="mt-2 bg-gray-100 p-2 rounded">
                 <div className="flex gap-4">
                   <div className="flex-1">
@@ -326,7 +407,7 @@ const EditView = ({
                         )
                       }
                       placeholder="http://... or data:image/..."
-                      disabled={!!question.svgContent} // Disable direct edit for SVG content
+                      disabled={!!question.svgContent}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-500"
                     />
                   </div>
@@ -377,6 +458,7 @@ const EditView = ({
   </div>
 );
 
+// --- COMPONENT: SAVE MODAL ---
 const SaveConfirmationModal = ({
   handleCancelSave,
   handleSavePaper,
@@ -408,13 +490,14 @@ const SaveConfirmationModal = ({
   </div>
 );
 
+// --- MAIN PAGE COMPONENT ---
 function ExamPaperGenerator() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { id: paperIdFromUrl } = useParams();
 
-  // --- UPDATED NORMALIZATION LOGIC ---
+  // Data Normalization Logic
   const normalizePaper = useCallback((incoming, fallback = {}) => {
     const topLevelData = incoming || {};
     let paperObjectData = incoming?.paper || {};
@@ -465,7 +548,6 @@ function ExamPaperGenerator() {
         description: safeString(section?.description),
 
         questions: safeArray(section?.questions).map((q, qIdx) => {
-          // --- LOGIC TO EXTRACT VISUALS ---
           const imgData = q?.image_data || {};
           const isSvg =
             imgData.type === "svg" || q?.visual_annotation?.type === "svg";
@@ -476,10 +558,8 @@ function ExamPaperGenerator() {
           if (isSvg && imgData.content) {
             resolvedSvgContent = imgData.content;
           } else if (imgData.type === "image" && imgData.content) {
-            // Backend sends Base64 data URI directly
             resolvedImageUrl = imgData.content;
           } else {
-            // Fallback for older papers
             resolvedImageUrl = q?.imageUrl || q?.image || q?.diagramUrl || "";
           }
 
@@ -489,8 +569,6 @@ function ExamPaperGenerator() {
             marks: safeNumber(q?.marks, 1),
             options: safeArray(q?.options).map(safeString).filter(Boolean),
             questionType: safeString(q?.questionType || q?.type, "text"),
-
-            // Set the resolved fields
             imageUrl: resolvedImageUrl,
             svgContent: resolvedSvgContent,
           };
@@ -638,8 +716,6 @@ function ExamPaperGenerator() {
     setIsSaving(true);
     try {
       if (!user) throw new Error("Authentication error.");
-      const token = await user.getIdToken();
-
       const paperToSave = {
         ...paperData,
         totalMarks: calculateTotalMarks(),
@@ -723,15 +799,30 @@ function ExamPaperGenerator() {
             img { max-width: 100%; height: auto; display: block; margin: 10px 0; border: 1px solid #ddd; }
             svg { max-width: 300px; height: auto; display: block; margin: 10px 0; }
           </style>
+          <script>
+            window.MathJax = {
+              tex: { inlineMath: [['$', '$'], ['\\\\(', '\\\\)']] },
+              startup: { typeset: false }
+            };
+          </script>
+          <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
         </head>
-        <body>${paperContent}</body>
+        <body>
+          ${paperContent}
+          <script>
+            window.onload = function() {
+              window.MathJax.typesetPromise().then(() => {
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 1000); 
+              });
+            };
+          </script>
+        </body>
       </html>
     `);
     printWindow.document.close();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
   };
 
   const downloadDOCX = () => {

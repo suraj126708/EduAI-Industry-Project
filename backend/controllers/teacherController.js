@@ -723,7 +723,7 @@ export const generateQuestionPaper = async (req, res) => {
       },
       {
         headers: { "Content-Type": "application/json" },
-        timeout: 5 * 60 * 1000,
+        //timeout: 5 * 60 * 1000,
         validateStatus: (status) => status >= 200 && status < 500,
       }
     );
