@@ -46,7 +46,7 @@ export const uploadAnswerSheetForEvaluation = async (req, res) => {
 
     // 3. Verify all documents exist and belong to the teacher's school
     const student = await Student.findById(studentId);
-    const paper = await QuestionPaper.findById(questionPaperId);
+    const paper = await QuestionPaper.findById(questionPaperId).lean();
 
     if (!student || !paper) {
       if (answerSheetUrl) await fs.promises.unlink(answerSheetUrl);

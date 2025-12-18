@@ -169,6 +169,25 @@ const questionImageStyle = {
   display: "block",
 };
 
+// Helper component to render text with MathJax
+const MathJaxText = ({ text }) => {
+  const ref = React.useRef(null);
+  const cleanText = (text || "No answer provided").replace(
+    /\\newline/g,
+    "<br/>"
+  );
+  React.useEffect(() => {
+    if (window.MathJax && ref.current) {
+      ref.current.innerHTML = cleanText;
+      window.MathJax.typesetPromise([ref.current]).catch((err) =>
+        console.warn("MathJax typeset failed:", err)
+      );
+    }
+  }, [cleanText]); // Re-run whenever text changes
+
+  return <span ref={ref} />;
+};
+
 // --- CUSTOM TOOLTIP ---
 const CustomTooltip = ({ active, payload, label, chapterMap }) => {
   if (active && payload && payload.length) {
@@ -518,7 +537,7 @@ const DetailedQuestionAnalysis = ({
                     <div style={{ flex: 1, minWidth: "250px" }}>
                       <div style={answerLabelStyle(false)}>Your Answer</div>
                       <p style={answerTextStyle}>
-                        {q.studentAnswer || "No answer provided"}
+                        <MathJaxText text={q.studentAnswer} />
                       </p>
                     </div>
                     <div
@@ -563,7 +582,7 @@ const DetailedQuestionAnalysis = ({
                           placeholder="Add your remarks here..."
                         />
                       ) : (
-                        q.remarks
+                        <MathJaxText text={q.remarks} />
                       )}
                     </div>
                   </div>
@@ -589,7 +608,13 @@ export default function ExamReport() {
   // Edit Mode States
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
+  useEffect(() => {
+    // Check if MathJax is loaded and evaluation data exists
+    if (window.MathJax && evaluation) {
+      // Queue the typesetting operation
+      window.MathJax.typesetPromise && window.MathJax.typesetPromise();
+    }
+  }, [evaluation, isEditing]);
   // 1. Fetch Report Data
   useEffect(() => {
     const fetchReport = async () => {

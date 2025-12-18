@@ -469,6 +469,24 @@ const EvaluationSetupForm = () => {
       }));
     }
   };
+  // --- PERSISTENCE: Restore state on load ---
+  useEffect(() => {
+    const savedGrade = sessionStorage.getItem("eval_grade");
+    const savedDiv = sessionStorage.getItem("eval_div");
+    const savedSub = sessionStorage.getItem("eval_subject");
+
+    if (savedGrade) setSelectedGrade(savedGrade);
+    if (savedDiv) setSelectedDivision(savedDiv);
+    if (savedSub) setSelectedSubject(savedSub);
+  }, []);
+
+  // --- PERSISTENCE: Save state on change ---
+  useEffect(() => {
+    if (selectedGrade) sessionStorage.setItem("eval_grade", selectedGrade);
+    if (selectedDivision) sessionStorage.setItem("eval_div", selectedDivision);
+    if (selectedSubject)
+      sessionStorage.setItem("eval_subject", selectedSubject);
+  }, [selectedGrade, selectedDivision, selectedSubject]);
 
   // === 10. JSX ===
   return (
@@ -741,13 +759,14 @@ const EvaluationSetupForm = () => {
 
                         <td className="px-6 py-4 whitespace-nowrap">
                           {isEvaluated ? (
-                            <Link
-                              to={`/reports/${evalData._id}`}
+                            <a
+                              href={`/reports/${evalData._id}`}
                               target="_blank"
+                              rel="noopener noreferrer"
                               className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
                             >
                               View Report
-                            </Link>
+                            </a>
                           ) : (
                             <button
                               onClick={() => handleSubmit(student._id)}
