@@ -571,6 +571,8 @@ function ExamPaperGenerator() {
             questionType: safeString(q?.questionType || q?.type, "text"),
             imageUrl: resolvedImageUrl,
             svgContent: resolvedSvgContent,
+            correct_answer: safeString(q?.correct_answer, q?.answer),
+            chapterNo: q?.chapterNo || q?.chapter || 0,
           };
         }),
       })),

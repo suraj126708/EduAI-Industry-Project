@@ -241,5 +241,53 @@
   {
     "value": "case_study_social_science",
     "label": "Answer the following questions based on the given case study."
+  },
+  {
+    "value": "reference_to_context",
+    "label": "Reference to Context (RTC): Answer questions based on the given extract."
+  },
+  {
+    "value": "appreciation_of_poem",
+    "label": "Write an appreciation of the poem based on the given points."
+  },
+  {
+    "value": "do_as_directed_grammar",
+    "label": "Do as Directed: Solve the following grammar-based questions."
+  },
+  {
+    "value": "error_correction_passage",
+    "label": "Identify the error in each line and write the correction."
+  },
+  {
+    "value": "omission_passage",
+    "label": "Find the missing word in each line and write it along with previous and next words."
+  },
+  {
+    "value": "speech_writing",
+    "label": "Draft a speech on the given topic."
+  },
+  {
+    "value": "article_writing",
+    "label": "Write an article on the given topic."
+  },
+  {
+    "value": "diary_entry",
+    "label": "Write a diary entry based on the given situation."
+  },
+  {
+    "value": "advertisement_writing",
+    "label": "Draft an advertisement based on the given details."
+  },
+  {
+    "value": "poster_making",
+    "label": "Design a poster on the given theme."
+  },
+  {
+    "value": "message_writing",
+    "label": "Draft a message in about 50 words."
+  },
+  {
+    "value": "translation",
+    "label": "Translate the following sentences/passage into the target language."
   }
 ]
