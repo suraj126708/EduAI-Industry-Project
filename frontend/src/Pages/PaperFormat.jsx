@@ -246,6 +246,7 @@ const PaperView = ({ paperData, calculateTotalMarks }) => {
 };
 
 // --- COMPONENT: EDIT VIEW ---
+// --- COMPONENT: EDIT VIEW ---
 const EditView = ({
   paperData,
   savedMessage,
@@ -430,6 +431,7 @@ const EditView = ({
                 </div>
               </div>
 
+              {/* Options Section */}
               {Array.isArray(question.options) &&
                 question.options.length > 0 && (
                   <div className="mt-2">
@@ -450,6 +452,27 @@ const EditView = ({
                     />
                   </div>
                 )}
+
+              {/* --- CORRECT ANSWER FIELD --- */}
+              <div className="mt-4 border-t pt-3 border-gray-200">
+                <label className="block text-sm font-bold text-green-700 mb-1">
+                  Correct Answer / Solution
+                </label>
+                <textarea
+                  value={question.correct_answer || ""}
+                  onChange={(e) =>
+                    updateQuestion(
+                      sectionIndex,
+                      questionIndex,
+                      "correct_answer",
+                      e.target.value
+                    )
+                  }
+                  placeholder="Enter the correct answer or key here..."
+                  className="w-full px-3 py-2 border border-green-200 bg-green-50 rounded-md shadow-sm h-16 text-sm"
+                />
+              </div>
+              {/* --- END CORRECT ANSWER FIELD --- */}
             </div>
           ))}
         </div>
@@ -503,7 +526,7 @@ function ExamPaperGenerator() {
     let paperObjectData = incoming?.paper || {};
 
     const safeString = (v, fb = "") =>
-      typeof v === "string" ? v.trim() || fb : fb;
+      v !== null && v !== undefined ? String(v).trim() || fb : fb;
     const safeNumber = (v, fb = 0) =>
       Number.isFinite(Number(v)) ? Number(v) : fb;
     const safeArray = (v) => (Array.isArray(v) ? v : []);
