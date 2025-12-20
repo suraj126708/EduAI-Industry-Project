@@ -27,6 +27,7 @@ import {
   deleteTeacherQuestionPaper,
   getStudentsByClass,
   getFilteredQuestionPaperGroups,
+  deleteQuestionPaper,
 } from "../controllers/teacherController.js";
 import {
   authenticateFirebaseToken,
@@ -138,6 +139,13 @@ router.put(
   authenticateFirebaseToken,
   authorize("teacher", "principal"),
   updateQuestionPaper
+);
+
+router.delete(
+  "/question-papers/:id",
+  authenticateFirebaseToken,
+  authorize("teacher", "principal"),
+  deleteQuestionPaper
 );
 
 router.delete(

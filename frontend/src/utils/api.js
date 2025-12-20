@@ -42,7 +42,7 @@ api.interceptors.response.use(
     // Log successful responses for debugging
     console.log("=== API RESPONSE SUCCESS ===");
     console.log("Status:", response.status);
-    
+
     console.log("URL:", response.config.url);
     console.log("============================");
     return response;
@@ -271,7 +271,19 @@ export const bookAPI = {
 
 // Question paper API functions
 export const paperAPI = {
-  // Fetch papers created by current teacher
+  generateQuestionPaper: async (paperPayload) => {
+    try {
+      const response = await api.post(
+        "teachers/generate-question-paper",
+        paperPayload
+      );
+      return response.data; // { success, question_paper, id }
+    } catch (error) {
+      console.error("Create paper error:", error);
+      throw error;
+    }
+  },
+
   getMyPapers: async () => {
     try {
       const response = await api.get("teachers/my-question-papers");
@@ -300,6 +312,16 @@ export const paperAPI = {
       return response.data; // { success, question_paper, id }
     } catch (error) {
       console.error("Update paper error:", error);
+      throw error;
+    }
+  },
+
+  deletePaper: async (paperId) => {
+    try {
+      const response = await api.delete(`teachers/question-papers/${paperId}`);
+      return response.data; // { success, message, id }
+    } catch (error) {
+      console.error("Delete paper error:", error);
       throw error;
     }
   },

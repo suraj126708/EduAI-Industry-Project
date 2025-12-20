@@ -4,7 +4,7 @@ import { auth } from "../firebase/firebase";
 import { useNavigate } from "react-router-dom";
 import { Plus, FileText, AlertCircle, Loader2 } from "lucide-react";
 import questionTypes from "../assets/QuestionType.json";
-import { bookAPI, fetchTeacherProfile } from "../utils/api";
+import { bookAPI, fetchTeacherProfile, paperAPI } from "../utils/api";
 import api from "../utils/api";
 
 // Import reusable components
@@ -105,10 +105,9 @@ export default function MinimalQuestionPaperForm() {
     if (!subject || !classId) return;
     setIsLoadingTopics(true);
     try {
-      const response = await api.get("teachers/chapters", {
-        params: { subject: subject, classId: classId, _cacheBust: Date.now() },
-      });
-      const data = response.data;
+      const response = await bookAPI.getChapters(subject, classId);
+
+      const data = response;
       if (data.success && data.chapters && data.chapters.length > 0) {
         const transformedTopics = data.chapters.map((chapter) => ({
           topic: `${chapter.chapter_no}. ${chapter.chapter_title}`,
@@ -581,10 +580,7 @@ export default function MinimalQuestionPaperForm() {
 
       console.log("payload", payload);
 
-      const response = await api.post(
-        "teachers/generate-question-paper",
-        payload
-      );
+      const response = await paperAPI.generateQuestionPaper(payload);
       const data = response.data;
 
       console.log("Generation Response:", data);

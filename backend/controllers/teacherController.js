@@ -1239,3 +1239,33 @@ export const getFilteredQuestionPaperGroups = async (req, res) => {
     });
   }
 };
+
+// Delete a Question Paper by ID
+export const deleteQuestionPaper = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Attempt to find and delete the specific paper
+    const deletedPaper = await QuestionPaper.findByIdAndDelete(id);
+
+    if (!deletedPaper) {
+      return res.status(404).json({
+        success: false,
+        message: "Question paper not found or already deleted.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Question paper deleted successfully.",
+      deletedId: id,
+    });
+  } catch (error) {
+    console.error("Error deleting paper:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while deleting paper.",
+      error: error.message,
+    });
+  }
+};

@@ -3,7 +3,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { saveAs } from "file-saver";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import api from "../utils/api";
+import { paperAPI } from "../utils/api";
 
 // --- COMPONENT: VISUAL RENDERER ---
 const VisualRenderer = ({ imageUrl, svgContent, altText }) => {
@@ -481,6 +481,42 @@ const EditView = ({
   </div>
 );
 
+// --- COMPONENT: DELETE MODAL ---
+const DeleteConfirmationModal = ({
+  handleCancelDelete,
+  handleConfirmDelete,
+  isDeleting,
+}) => (
+  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 border-2 border-red-100">
+      <h3 className="text-lg font-bold text-red-600 mb-4">Delete Paper</h3>
+      <p className="text-gray-600 mb-6">
+        Are you sure you want to delete this question paper?
+        <br />
+        <span className="text-sm text-red-500 font-medium">
+          This action cannot be undone.
+        </span>
+      </p>
+      <div className="flex gap-3 justify-end">
+        <button
+          onClick={handleCancelDelete}
+          disabled={isDeleting}
+          className="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleConfirmDelete}
+          disabled={isDeleting}
+          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
+        >
+          {isDeleting ? <>Processing...</> : <>Yes, Delete</>}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 // --- COMPONENT: SAVE MODAL ---
 const SaveConfirmationModal = ({
   handleCancelSave,
@@ -620,6 +656,47 @@ function ExamPaperGenerator() {
   const [selectedPaperIndex, setSelectedPaperIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeletePaper = async () => {
+    if (!paperId) return;
+
+    setIsDeleting(true);
+    try {
+      // 1. Call Backend API
+      const response = await paperAPI.deletePaper(paperId);
+
+      if (response && response.success) {
+        setSavedMessage("Paper deleted successfully. Redirecting...");
+
+        // 2. Cleanup local state/storage (good practice before navigating)
+        const updatedPapersList = generatedPapers.filter(
+          (p) => p._id !== paperId
+        );
+        sessionStorage.setItem(
+          "generatedPapersArray",
+          JSON.stringify(updatedPapersList)
+        );
+        setGeneratedPapers(updatedPapersList);
+
+        // 3. Navigate to My Papers page
+        // We use a short timeout so the user sees the success message first
+        setTimeout(() => {
+          navigate("/my-papers");
+        }, 1000);
+      } else {
+        throw new Error(response?.message || "Delete failed");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      setSavedMessage(`Error: ${err.message || "Failed to delete"}`);
+      setTimeout(() => setSavedMessage(""), 4000);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
 
   useEffect(() => {
     const loadPaperData = async () => {
@@ -644,9 +721,7 @@ function ExamPaperGenerator() {
         }
 
         if (paperIdFromUrl) {
-          const response = await api.get(
-            `/teachers/question-papers/${paperIdFromUrl}`
-          );
+          const response = await paperAPI.getPaperById(paperIdFromUrl);
           if (response.data && response.data.success) {
             const fetchedDoc = response.data.data;
             initialPaperToView = fetchedDoc;
@@ -749,10 +824,7 @@ function ExamPaperGenerator() {
       let response;
       if (paperId) {
         const payload = { paper: paperToSave, title: paperToSave.testName };
-        response = await api.put(
-          `teachers/question-papers/${paperId}`,
-          payload
-        );
+        response = await paperAPI.updatePaper(paperId, payload);
       } else {
         const payloadForCreation = {
           class: paperToSave.className,
@@ -761,10 +833,7 @@ function ExamPaperGenerator() {
           numberofPapers: 1,
           ...paperToSave,
         };
-        response = await api.post(
-          "teachers/generate-question-paper",
-          payloadForCreation
-        );
+        response = await paperAPI.createPaper(payloadForCreation);
       }
 
       const data = response.data;
@@ -946,6 +1015,15 @@ function ExamPaperGenerator() {
             >
               Save
             </button>
+
+            {paperId && (
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="bg-gray-700 text-white py-2 px-4 rounded hover:bg-gray-800 border border-gray-600"
+              >
+                Delete
+              </button>
+            )}
           </>
         )}
       </div>
@@ -964,6 +1042,14 @@ function ExamPaperGenerator() {
             </button>
           ))}
         </div>
+      )}
+
+      {showDeleteModal && (
+        <DeleteConfirmationModal
+          handleCancelDelete={() => setShowDeleteModal(false)}
+          handleConfirmDelete={handleDeletePaper}
+          isDeleting={isDeleting}
+        />
       )}
 
       {showSaveModal && (
