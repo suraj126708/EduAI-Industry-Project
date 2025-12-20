@@ -28,6 +28,25 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+      mjx-container[display="true"] {
+        display: block !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-width: 100%;
+      }
+
+      /* 2. For inline math (like inside a question), force INLINE-BLOCK */
+      mjx-container:not([display="true"]) {
+        display: inline-block !important;
+        vertical-align: middle; /* Keeps fractions aligned with text */
+        margin: 0 2px;
+      }
+      mjx-container[jax="SVG"] {
+        display: block !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

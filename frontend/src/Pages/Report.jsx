@@ -123,6 +123,7 @@ const answerRowStyle = {
   display: "flex",
   gap: "16px",
   flexWrap: "wrap",
+  alignItems: "stretch",
 };
 
 const answerLabelStyle = (isCorrect) => ({
@@ -140,8 +141,12 @@ const answerTextStyle = {
   margin: 0,
   padding: "12px 16px",
   fontSize: "0.95rem",
-  lineHeight: "1.6",
+  lineHeight: "1.7",
   color: "#334155",
+  wordBreak: "break-word",
+  overflowWrap: "anywhere",
+  whiteSpace: "normal",
+  display: "block",
 };
 
 const remarksBoxStyle = {
@@ -170,22 +175,71 @@ const questionImageStyle = {
 };
 
 // Helper component to render text with MathJax
-const MathJaxText = ({ text }) => {
+// Helper component to render text with MathJax
+// Helper component to render text with MathJax
+// Helper component to render text with MathJax
+// Helper component to render text with MathJax
+// Helper component to render text with MathJax
+// Helper component to render text with MathJax
+const MathJaxText = ({ text, isQuestion = false, isAnswer = false }) => {
   const ref = React.useRef(null);
-  const cleanText = (text || "No answer provided").replace(
-    /\\newline/g,
-    "<br/>"
-  );
-  React.useEffect(() => {
-    if (window.MathJax && ref.current) {
-      ref.current.innerHTML = cleanText;
-      window.MathJax.typesetPromise([ref.current]).catch((err) =>
-        console.warn("MathJax typeset failed:", err)
-      );
-    }
-  }, [cleanText]); // Re-run whenever text changes
 
-  return <span ref={ref} />;
+  React.useEffect(() => {
+    if (!ref.current || !window.MathJax) return;
+
+    ref.current.innerHTML = ""; // CLEAR old content
+
+    // 1. CHOOSE TAG
+    // Questions are inline (span), everything else is block (div)
+    const tagName = isQuestion ? "span" : "div";
+    const container = document.createElement(tagName);
+
+    // 2. APPLY STYLES
+    container.style.whiteSpace = "normal";
+    container.style.wordBreak = "break-word";
+
+    if (isQuestion) {
+      container.style.display = "inline";
+      container.style.lineHeight = "1.6"; // Normal for Questions
+    } else if (isAnswer) {
+      container.style.display = "block";
+      container.style.lineHeight = "2.2"; // WIDE for Math Steps
+      container.style.marginTop = "4px";
+    } else {
+      // FEEDBACK / DEFAULT CASE
+      container.style.display = "block";
+      container.style.lineHeight = "1.6"; // Normal for Feedback
+      container.style.marginTop = "4px";
+    }
+
+    // --- CLEANING LOGIC ---
+    let cleanText = text || "";
+
+    // A. General Fixes
+    cleanText = cleanText.replace(/=\s*(?:\\\\|[\r\n]+)\s*/g, "= ");
+    cleanText = cleanText.replace(/\\degree/g, "^\\circ");
+
+    // B. Context-Specific Formatting
+    if (isQuestion) {
+      // Strip breaks for questions to keep them inline
+      cleanText = cleanText.replace(/[\r\n]+/g, " ").replace(/\\\\/g, " ");
+    } else {
+      // For Answers AND Feedback: Respect newlines
+      cleanText = cleanText
+        // Add spacing for logical steps (useful for answers)
+        .replace(/(Step \d+:|Hence,|Therefore,)/g, "<br/><strong>$1</strong>")
+        // Convert standard/latex newlines to HTML breaks
+        .replace(/\n/g, "<br/>")
+        .replace(/\\\\/g, "<br/>");
+    }
+
+    container.innerHTML = cleanText;
+    ref.current.appendChild(container);
+
+    window.MathJax.typesetPromise([ref.current]).catch(console.warn);
+  }, [text, isQuestion, isAnswer]);
+
+  return isQuestion ? <span ref={ref} /> : <div ref={ref} />;
 };
 
 // --- CUSTOM TOOLTIP ---
@@ -433,6 +487,16 @@ const DetailedQuestionAnalysis = ({
 }) => {
   if (!sections || sections.length === 0) return null;
 
+  // Style for the scrollable answer columns
+  const answerColumnStyle = {
+    flex: "1 1 0", // Distribute space equally
+    minWidth: "0", // Critical for flex text wrapping
+    padding: "16px",
+    maxHeight: "350px", // <--- SET FIXED HEIGHT
+    overflowY: "auto", // <--- ENABLE VERTICAL SCROLL
+    borderRight: "1px solid #e2e8f0",
+  };
+
   return (
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ padding: "24px 24px 0" }}>
@@ -450,20 +514,23 @@ const DetailedQuestionAnalysis = ({
 
             return (
               <div key={qIdx} style={questionBoxStyle}>
+                {/* QUESTION HEADER */}
                 <div style={questionHeaderStyle}>
                   <div style={{ flex: 1 }}>
                     <div
                       style={{
                         fontSize: "1.05rem",
                         color: "#1e293b",
-                        lineHeight: "1.5",
+                        lineHeight: "1.6",
                       }}
                     >
                       <strong style={{ color: "#475569", marginRight: "8px" }}>
                         Q{q.questionNo}.
                       </strong>
-                      {q.question}
+                      {/* Pass isQuestion={true} to force paragraph formatting */}
+                      <MathJaxText text={q.question} isQuestion={true} />
                     </div>
+
                     {q.imageUrl && (
                       <img
                         src={q.imageUrl}
@@ -473,7 +540,7 @@ const DetailedQuestionAnalysis = ({
                     )}
                   </div>
 
-                  {/* --- MARKS DISPLAY / EDIT --- */}
+                  {/* MARKS DISPLAY / EDIT */}
                   <div
                     style={{
                       display: "flex",
@@ -532,28 +599,28 @@ const DetailedQuestionAnalysis = ({
                   </div>
                 </div>
 
+                {/* ANSWER COMPARISON BOX */}
                 <div style={answerBoxStyle}>
                   <div style={answerRowStyle}>
-                    <div style={{ flex: 1, minWidth: "250px" }}>
+                    {/* STUDENT ANSWER */}
+                    <div style={answerColumnStyle}>
                       <div style={answerLabelStyle(false)}>Your Answer</div>
-                      <p style={answerTextStyle}>
-                        <MathJaxText text={q.studentAnswer} />
-                      </p>
+                      <div style={{ marginTop: "10px" }}>
+                        <MathJaxText text={q.studentAnswer} isAnswer={true} />
+                      </div>
                     </div>
-                    <div
-                      style={{
-                        flex: 1,
-                        minWidth: "250px",
-                        borderLeft: "1px solid #e2e8f0",
-                      }}
-                    >
+
+                    {/* CORRECT ANSWER */}
+                    <div style={{ ...answerColumnStyle, borderRight: "none" }}>
                       <div style={answerLabelStyle(true)}>Correct Answer</div>
-                      <p style={answerTextStyle}>{q.correctAnswer}</p>
+                      <div style={{ marginTop: "10px" }}>
+                        <MathJaxText text={q.correctAnswer} isAnswer={true} />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* --- FEEDBACK DISPLAY / EDIT --- */}
+                {/* FEEDBACK */}
                 {(q.remarks || isEditing) && (
                   <div style={remarksBoxStyle}>
                     <span style={{ fontSize: "1.2rem" }}>💡</span>
@@ -608,13 +675,6 @@ export default function ExamReport() {
   // Edit Mode States
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  useEffect(() => {
-    // Check if MathJax is loaded and evaluation data exists
-    if (window.MathJax && evaluation) {
-      // Queue the typesetting operation
-      window.MathJax.typesetPromise && window.MathJax.typesetPromise();
-    }
-  }, [evaluation, isEditing]);
   // 1. Fetch Report Data
   useEffect(() => {
     const fetchReport = async () => {
