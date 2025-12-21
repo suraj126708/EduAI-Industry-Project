@@ -2813,4 +2813,4 @@ async def clear_index():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("Image_based3:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

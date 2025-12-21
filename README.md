@@ -58,9 +58,9 @@ Password: [suraj9890@gmail.com](mailto:suraj9890@gmail.com)
 
 _Secure entry point for Teachers and Administrators._
 
-|              Login Page               |              Home Dashboard              |
-| :-----------------------------------: | :--------------------------------------: |
-| ![Login Page](./Photos/LoginPage.png) | ![Home Screen](./Photos/HomeScreeen.png) |
+|                                                      Login Page                                                      |                                                     Home Dashboard                                                      |
+| :------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------: |
+| ![Login Page](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/LoginPage.png) | ![Home Screen](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/HomeScreeen.png) |
 
 ---
 
@@ -68,9 +68,9 @@ _Secure entry point for Teachers and Administrators._
 
 _Textbook upload, multimodal chunking, and TOC extraction._
 
-|             Upload Interface              |                Book Management                |
-| :---------------------------------------: | :-------------------------------------------: |
-| ![Upload Books](./Photos/UploadBooks.png) | ![Uploaded Books](./Photos/UploadedBooks.png) |
+|                                                     Upload Interface                                                     |                                                       Book Management                                                        |
+| :----------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------: |
+| ![Upload Books](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/UploadBooks.png) | ![Uploaded Books](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/UploadedBooks.png) |
 
 ---
 
@@ -78,9 +78,9 @@ _Textbook upload, multimodal chunking, and TOC extraction._
 
 _Configure Bloom’s taxonomy, difficulty, and syllabus coverage._
 
-|                  Configuration                  |             Paper Editor              |
-| :---------------------------------------------: | :-----------------------------------: |
-| ![Generate Papers](./Photos/Generatepapers.png) | ![Edit Paper](./Photos/EditPaper.png) |
+|                                                         Configuration                                                          |                                                     Paper Editor                                                     |
+| :----------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------: |
+| ![Generate Papers](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/Generatepapers.png) | ![Edit Paper](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/EditPaper.png) |
 
 ---
 
@@ -88,9 +88,9 @@ _Configure Bloom’s taxonomy, difficulty, and syllabus coverage._
 
 _Professionally formatted PDFs with AI-generated diagrams._
 
-|             Question Set View             |                 All Papers Preview                 |
-| :---------------------------------------: | :------------------------------------------------: |
-| ![Question Set](./Photos/QuestionSet.png) | ![My Question Paper](./Photos/MyQuestionpaper.png) |
+|                                                    Question Set View                                                     |                                                        All Papers Preview                                                         |
+| :----------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------: |
+| ![Question Set](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/QuestionSet.png) | ![My Question Paper](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/MyQuestionpaper.png) |
 
 ---
 
@@ -98,9 +98,9 @@ _Professionally formatted PDFs with AI-generated diagrams._
 
 _Handwriting OCR, strict answer matching, and analytics._
 
-|                     Script Upload                      |               Performance Report                |
-| :----------------------------------------------------: | :---------------------------------------------: |
-| ![Answer Sheet Upload](./Photos/AnswerSheetUpload.png) | [View Sample Report (PDF)](./Photos/Report.pdf) |
+|                                                             Script Upload                                                             |                                                       Performance Report                                                       |
+| :-----------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------: |
+| ![Answer Sheet Upload](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/AnswerSheetUpload.png) | [View Sample Report (PDF)](https://raw.githubusercontent.com/suraj126708/EduAI-Industry-Project/showcase-v1/Photos/Report.pdf) |
 
 ---
 
