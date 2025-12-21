@@ -60,7 +60,7 @@ _Secure entry point for Teachers and Administrators._
 
 |              Login Page               |              Home Dashboard              |
 | :-----------------------------------: | :--------------------------------------: |
-| ![Login Page](./photos/LoginPage.png) | ![Home Screen](./photos/HomeScreeen.png) |
+| ![Login Page](./Photos/LoginPage.png) | ![Home Screen](./Photos/HomeScreeen.png) |
 
 ---
 
@@ -70,7 +70,7 @@ _Textbook upload, multimodal chunking, and TOC extraction._
 
 |             Upload Interface              |                Book Management                |
 | :---------------------------------------: | :-------------------------------------------: |
-| ![Upload Books](./photos/UploadBooks.png) | ![Uploaded Books](./photos/UploadedBooks.png) |
+| ![Upload Books](./Photos/UploadBooks.png) | ![Uploaded Books](./Photos/UploadedBooks.png) |
 
 ---
 
@@ -80,7 +80,7 @@ _Configure Bloom’s taxonomy, difficulty, and syllabus coverage._
 
 |                  Configuration                  |             Paper Editor              |
 | :---------------------------------------------: | :-----------------------------------: |
-| ![Generate Papers](./photos/Generatepapers.png) | ![Edit Paper](./photos/EditPaper.png) |
+| ![Generate Papers](./Photos/Generatepapers.png) | ![Edit Paper](./Photos/EditPaper.png) |
 
 ---
 
@@ -90,7 +90,7 @@ _Professionally formatted PDFs with AI-generated diagrams._
 
 |             Question Set View             |                 All Papers Preview                 |
 | :---------------------------------------: | :------------------------------------------------: |
-| ![Question Set](./photos/QuestionSet.png) | ![My Question Paper](./photos/MyQuestionpaper.png) |
+| ![Question Set](./Photos/QuestionSet.png) | ![My Question Paper](./Photos/MyQuestionpaper.png) |
 
 ---
 
@@ -100,7 +100,7 @@ _Handwriting OCR, strict answer matching, and analytics._
 
 |                     Script Upload                      |               Performance Report                |
 | :----------------------------------------------------: | :---------------------------------------------: |
-| ![Answer Sheet Upload](./photos/AnswerSheetUpload.png) | [View Sample Report (PDF)](./photos/Report.pdf) |
+| ![Answer Sheet Upload](./Photos/AnswerSheetUpload.png) | [View Sample Report (PDF)](./Photos/Report.pdf) |
 
 ---
 
