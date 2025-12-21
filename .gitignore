@@ -92,3 +92,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp 
+
+.env
+.env.local
+frontend/.env
+backend/.env

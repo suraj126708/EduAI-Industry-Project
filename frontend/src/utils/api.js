@@ -3,11 +3,11 @@ import { auth } from "../firebase/firebase.js";
 import { updateEvaluationReport } from "../../../backend/controllers/evaluationController.js";
 
 // API configuration
-const local_api = "http://localhost:5000/api/";
-// const production_api = 'https://your-production-api.com/api/'
+// const local_api = "http://localhost:5000/api/";
+const production_api = "http://localhost:5000/api/";
 
 const api = axios.create({
-  baseURL: local_api,
+  baseURL: production_api,
 });
 
 // Add request interceptor to dynamically set the Authorization header
@@ -133,7 +133,7 @@ export const bookAPI = {
     try {
       // Use the 'api' instance which has the interceptor for auth
       const response = await api.post(
-        `${local_api}teachers/upload-book`, // Use relative path
+        `${production_api}teachers/upload-book`, // Use relative path
         formData,
         {
           headers: {
@@ -206,7 +206,7 @@ export const bookAPI = {
       const idToken = await user.getIdToken();
 
       const response = await axios.put(
-        `${local_api}books/${bookId}/status`,
+        `${production_api}books/${bookId}/status`,
         { status },
         {
           headers: {
@@ -337,7 +337,7 @@ export const schoolService = {
     try {
       // This is a public route, so no auth token is needed.
       const response = await axios.post(
-        `${local_api}schools/register`,
+        `${production_api}schools/register`,
         schoolData
       );
       return response.data;
@@ -457,7 +457,7 @@ export const adminService = {
   // Fetch classes (admin or public)
   getClasses: async () => {
     try {
-      const response = await api.get(`${local_api}admin/classes`);
+      const response = await api.get(`${production_api}admin/classes`);
       return response;
     } catch (error) {
       console.error("Get classes error:", error);
@@ -468,7 +468,7 @@ export const adminService = {
   // Fetch subjects (admin or public)
   getSubjects: async () => {
     try {
-      const response = await api.get(`${local_api}admin/subjects`);
+      const response = await api.get(`${production_api}admin/subjects`);
       return response;
     } catch (error) {
       console.error("Get subjects error:", error);
