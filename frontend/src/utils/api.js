@@ -1,6 +1,6 @@
 import axios from "axios";
 import { auth } from "../firebase/firebase.js";
-import { updateEvaluationReport } from "../../../backend/controllers/evaluationController.js";
+// import { updateEvaluationReport } from "../../../backend/controllers/evaluationController.js";
 
 // API configuration
 // const local_api = "http://localhost:5000/api/";
