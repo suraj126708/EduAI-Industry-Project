@@ -581,9 +581,9 @@ export default function MinimalQuestionPaperForm() {
       console.log("payload", payload);
 
       const response = await paperAPI.generateQuestionPaper(payload);
-      const data = response.data;
+      const data = response;
 
-      console.log("Generation Response:", data);
+      console.log("Generation Response:", response);
 
       if (!data.success) {
         throw new Error(data.message || "Failed to generate question paper");
