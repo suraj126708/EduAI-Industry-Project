@@ -92,3 +92,19 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp 
+
+# Environment variables
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Node dependencies
+node_modules/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
