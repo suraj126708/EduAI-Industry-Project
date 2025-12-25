@@ -368,7 +368,10 @@ export const teacherUploadBook = async (req, res) => {
         });
 
         return axios.post(deplyed_url + "process_pdf/", form, {
-          headers: { ...form.getHeaders() },
+          headers: {
+            ...form.getHeaders(),
+            "X-User-ID": teacher._id.toString(),
+          },
           timeout: 15 * 60 * 1000,
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
@@ -713,6 +716,8 @@ export const generateQuestionPaper = async (req, res) => {
       });
     }
 
+    const teacherUser = await User.findById(req.user?._id);
+
     // Forward the entire body to the AI service (port 8000)
     const response = await axios.post(
       deplyed_url + "generate_question_paper/",
@@ -722,7 +727,10 @@ export const generateQuestionPaper = async (req, res) => {
         numberofPapers: numberofPapers,
       },
       {
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": teacherUser._id.toString(),
+        },
         //timeout: 5 * 60 * 1000,
         validateStatus: (status) => status >= 200 && status < 500,
       }
@@ -759,9 +767,6 @@ export const generateQuestionPaper = async (req, res) => {
         message: "AI service did not return a valid array of papers.",
       });
     }
-
-    // Resolve teacher user, classId (by grade), subjectId (by name or subjectId), and schoolId
-    const teacherUser = await User.findById(req.user?._id);
 
     // 1. Resolve School Name for College Name
     let resolvedSchoolName = "New High School"; // Default fallback
