@@ -2,7 +2,7 @@ import axios from "axios";
 import { auth } from "../firebase/firebase.js";
 
 // API configuration
-const local_api = "http://localhost:5000/api/";
+const local_api = "http://localhost:5001/api/";
 // const production_api = 'https://your-production-api.com/api/'
 
 const api = axios.create({

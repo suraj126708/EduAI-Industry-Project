@@ -518,11 +518,15 @@ export const deleteTeacherBook = async (req, res) => {
     if (book.uniqueName) {
       try {
         console.log(`Requesting vector deletion for: ${book.uniqueName}`);
-        await axios.delete(deplyed_url + "delete_book/", {
-          data: { pdf_name: book.uniqueName }, // Axios DELETE body
-          headers: { "Content-Type": "application/json" },
-          timeout: 10000,
-        });
+        await axios.delete(
+          deplyed_url + `delete_book/${encodeURIComponent(book.uniqueName)}`,
+          {
+            headers: {
+              "X-User-ID": req.user._id.toString()
+            },
+            timeout: 10000
+          }
+        );
         console.log("Vector store cleanup successful.");
       } catch (aiError) {
         console.error(
