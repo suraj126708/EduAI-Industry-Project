@@ -253,6 +253,9 @@ const EditView = ({
   handleInputChange,
   updateSection,
   updateQuestion,
+  handleImageUpload,
+  handleRegenerateImage,
+  regeneratingIds = {},
 }) => (
   <div className="min-h-screen bg-gray-100 py-8 px-4">
     <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
@@ -387,47 +390,174 @@ const EditView = ({
               />
 
               {/* Image Editing UI */}
-              <div className="mt-2 bg-gray-100 p-2 rounded">
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Image URL / Data
-                    </label>
-                    <input
-                      type="text"
-                      value={
-                        question.imageUrl ||
-                        (question.svgContent ? "<SVG Data...>" : "")
-                      }
-                      onChange={(e) =>
-                        updateQuestion(
+              <div className="mt-2 bg-gray-50 p-3 rounded border border-gray-200">
+                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">
+                  Visual Content (Image / Diagram)
+                </label>
+
+                <div className="flex flex-col gap-3">
+                  {/* 1. URL/Data Input Field */}
+                  <input
+                    type="text"
+                    value={
+                      question.imageUrl ||
+                      (question.svgContent ? "<SVG Data Present>" : "")
+                    }
+                    onChange={(e) =>
+                      updateQuestion(
+                        sectionIndex,
+                        questionIndex,
+                        "imageUrl",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Paste Image URL or Base64 string here..."
+                    disabled={!!question.svgContent}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 focus:ring-2 focus:ring-blue-400 outline-none"
+                  />
+
+                  {/* 2. Action Buttons */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* A. Manual Upload Button */}
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id={`upload-${sectionIndex}-${questionIndex}`}
+                        className="hidden"
+                        onChange={(e) =>
+                          handleImageUpload(e, sectionIndex, questionIndex)
+                        }
+                      />
+                      <label
+                        htmlFor={`upload-${sectionIndex}-${questionIndex}`}
+                        className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-100 transition shadow-sm"
+                      >
+                        {/* Upload Icon */}
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="17 8 12 3 7 8" />
+                          <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        Upload Image
+                      </label>
+                    </div>
+
+                    {/* B. AI Regenerate Button */}
+                    <button
+                      onClick={() =>
+                        handleRegenerateImage(
                           sectionIndex,
                           questionIndex,
-                          "imageUrl",
-                          e.target.value
+                          question.question
                         )
                       }
-                      placeholder="http://... or data:image/..."
-                      disabled={!!question.svgContent}
-                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-500"
-                    />
-                  </div>
-                </div>
+                      disabled={
+                        regeneratingIds[`${sectionIndex}-${questionIndex}`]
+                      }
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm text-white shadow-sm transition
+            ${
+              regeneratingIds[`${sectionIndex}-${questionIndex}`]
+                ? "bg-purple-400 cursor-not-allowed"
+                : "bg-purple-600 hover:bg-purple-700"
+            }`}
+                    >
+                      {regeneratingIds[`${sectionIndex}-${questionIndex}`] ? (
+                        <>
+                          {/* Spinner */}
+                          <svg
+                            className="animate-spin h-4 w-4 text-white"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              fill="none"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          {/* Magic Wand Icon */}
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                            <path d="M16 16h5v5" />
+                          </svg>
+                          Regenerate (AI)
+                        </>
+                      )}
+                    </button>
 
-                {/* Preview in Edit Mode */}
-                <div className="mt-2 p-2 border border-dashed border-gray-300 bg-white rounded flex justify-center items-center">
-                  {question.imageUrl || question.svgContent ? (
-                    <div className="max-w-xs">
-                      <VisualRenderer
-                        imageUrl={question.imageUrl}
-                        svgContent={question.svgContent}
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-400">
-                      No image attached
-                    </span>
-                  )}
+                    {/* C. Remove Button */}
+                    {(question.imageUrl || question.svgContent) && (
+                      <button
+                        onClick={() => {
+                          updateQuestion(
+                            sectionIndex,
+                            questionIndex,
+                            "imageUrl",
+                            ""
+                          );
+                          updateQuestion(
+                            sectionIndex,
+                            questionIndex,
+                            "svgContent",
+                            ""
+                          );
+                        }}
+                        className="ml-auto text-red-500 hover:text-red-700 text-sm underline"
+                      >
+                        Remove Image
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 3. Preview Area */}
+                  <div className="mt-2 flex justify-center items-center min-h-[120px] bg-white border border-dashed border-gray-300 rounded overflow-hidden">
+                    {question.imageUrl || question.svgContent ? (
+                      <div className="max-w-full max-h-[300px]">
+                        <VisualRenderer
+                          imageUrl={question.imageUrl}
+                          svgContent={question.svgContent}
+                          altText="Question Visual"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-xs italic">
+                        No visual attached
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -658,6 +788,7 @@ function ExamPaperGenerator() {
   const [error, setError] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [regeneratingIds, setRegeneratingIds] = useState({});
 
   const handleDeletePaper = async () => {
     if (!paperId) return;
@@ -695,6 +826,62 @@ function ExamPaperGenerator() {
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
+    }
+  };
+
+  const handleImageUpload = (e, sectionIndex, questionIndex) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Optional: Limit size to 2MB to prevent DB bloat
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image is too large. Please upload a file smaller than 2MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // reader.result is a full Data URI (e.g., "data:image/png;base64,iVBOR...")
+      // This works perfectly in <img src="..." />
+      updateQuestion(sectionIndex, questionIndex, "imageUrl", reader.result);
+      // Clear SVG content to avoid conflicts
+      updateQuestion(sectionIndex, questionIndex, "svgContent", "");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 3. Add this Handler for AI Regeneration
+  const handleRegenerateImage = async (
+    sectionIndex,
+    questionIndex,
+    questionText
+  ) => {
+    const uniqueKey = `${sectionIndex}-${questionIndex}`;
+
+    // Start loading spinner for this specific button
+    setRegeneratingIds((prev) => ({ ...prev, [uniqueKey]: true }));
+
+    try {
+      const response = await paperAPI.regenerateQuestionImage(questionText);
+
+      if (response.success && response.imageUrl) {
+        // Backend can return a URL or Base64 string; both work here.
+        updateQuestion(
+          sectionIndex,
+          questionIndex,
+          "imageUrl",
+          response.imageUrl
+        );
+        updateQuestion(sectionIndex, questionIndex, "svgContent", "");
+      } else {
+        alert("AI could not generate an image. Please try again.");
+      }
+    } catch (err) {
+      console.error("Regeneration failed", err);
+      alert("Error regenerating image: " + (err.message || "Unknown error"));
+    } finally {
+      // Stop loading spinner
+      setRegeneratingIds((prev) => ({ ...prev, [uniqueKey]: false }));
     }
   };
 
@@ -816,27 +1003,34 @@ function ExamPaperGenerator() {
     setIsSaving(true);
     try {
       if (!user) throw new Error("Authentication error.");
-      const paperToSave = {
+
+      // 1. Prepare Content
+      const paperContent = {
         ...paperData,
         totalMarks: calculateTotalMarks(),
       };
 
+      // 2. Prepare Payload
+      const payload = {
+        paper: paperContent,
+        title: paperData.testName,
+      };
+
       let response;
       if (paperId) {
-        const payload = { paper: paperToSave, title: paperToSave.testName };
         response = await paperAPI.updatePaper(paperId, payload);
       } else {
         const payloadForCreation = {
-          class: paperToSave.className,
-          subject: paperToSave.subject,
-          pdf_name: paperToSave.testName,
+          class: paperContent.className,
+          subject: paperContent.subject,
+          pdf_name: paperContent.testName,
           numberofPapers: 1,
-          ...paperToSave,
+          ...paperContent,
         };
         response = await paperAPI.createPaper(payloadForCreation);
       }
 
-      const data = response.data;
+      const data = response;
       if (!data || !data.success)
         throw new Error(data?.message || "Failed to save.");
 
@@ -1079,6 +1273,9 @@ function ExamPaperGenerator() {
           handleInputChange={handleInputChange}
           updateSection={updateSection}
           updateQuestion={updateQuestion}
+          handleImageUpload={handleImageUpload} // <--- PASS THIS
+          handleRegenerateImage={handleRegenerateImage} // <--- PASS THIS
+          regeneratingIds={regeneratingIds}
         />
       ) : (
         <PaperView

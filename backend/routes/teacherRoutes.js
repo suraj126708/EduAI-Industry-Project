@@ -28,6 +28,7 @@ import {
   getStudentsByClass,
   getFilteredQuestionPaperGroups,
   deleteQuestionPaper,
+  regenerateQuestionImage,
 } from "../controllers/teacherController.js";
 import {
   authenticateFirebaseToken,
@@ -171,6 +172,12 @@ router.post(
   generateQuestionPaper
 );
 
+router.post(
+  "/question-paper/regenerate-image",
+  authenticateFirebaseToken,
+  authorize("teacher", "principal"),
+  regenerateQuestionImage
+);
 // --- MOST GENERIC PARAMETERIZED ROUTES LAST ---
 
 router.get(

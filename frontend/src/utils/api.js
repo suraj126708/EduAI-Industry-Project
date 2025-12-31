@@ -303,12 +303,14 @@ export const paperAPI = {
     }
   },
 
-  updatePaper: async (paperId, paper) => {
+  updatePaper: async (paperId, payload) => {
     try {
-      const response = await api.put(`teachers/question-papers/${paperId}`, {
-        paper,
-      });
-      return response.data; // { success, question_paper, id }
+      // ✅ FIX: Remove { } so the payload is sent directly
+      const response = await api.put(
+        `teachers/question-papers/${paperId}`,
+        payload
+      );
+      return response.data;
     } catch (error) {
       console.error("Update paper error:", error);
       throw error;
@@ -323,6 +325,16 @@ export const paperAPI = {
       console.error("Delete paper error:", error);
       throw error;
     }
+  },
+
+  regenerateQuestionImage: async (questionText) => {
+    const response = await api.post(
+      "teachers/question-paper/regenerate-image",
+      {
+        prompt: questionText,
+      }
+    );
+    return response.data;
   },
 };
 

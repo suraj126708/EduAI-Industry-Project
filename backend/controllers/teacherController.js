@@ -522,9 +522,9 @@ export const deleteTeacherBook = async (req, res) => {
           deplyed_url + `delete_book/${encodeURIComponent(book.uniqueName)}`,
           {
             headers: {
-              "X-User-ID": req.user._id.toString()
+              "X-User-ID": req.user._id.toString(),
             },
-            timeout: 10000
+            timeout: 10000,
           }
         );
         console.log("Vector store cleanup successful.");
@@ -910,6 +910,16 @@ export const updateQuestionPaper = async (req, res) => {
     const { id } = req.params;
     const incoming = req.body || {};
 
+    console.log("--- DEBUG UPDATE REQUEST ---");
+    console.log("Content-Type Header:", req.headers["content-type"]);
+    console.log("Req Body Keys:", Object.keys(incoming));
+
+    if (incoming.paper) {
+      console.log("Paper sections count:", incoming.paper.sections?.length);
+    } else {
+      console.log("❌ incoming.paper is UNDEFINED");
+    }
+
     // --- 1. Validate the incoming request ---
     if (!id) {
       return res
@@ -991,6 +1001,53 @@ export const updateQuestionPaper = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to update question paper",
+      error: error.message,
+    });
+  }
+};
+
+export const regenerateQuestionImage = async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({
+        success: false,
+        message: "Prompt is required",
+      });
+    }
+
+    console.log(
+      `🎨 Requesting image generation for: "${prompt.substring(0, 50)}..."`
+    );
+
+    const response = await axios.post(deplyed_url + "regenerate_image/", {
+      prompt: prompt,
+    });
+
+    const data = response.data;
+
+    if (!data || (!data.imageUrl && !data.image_url)) {
+      throw new Error("AI Service returned invalid data.");
+    }
+
+    // 3. Return the result to the Frontend
+    return res.status(200).json({
+      success: true,
+      imageUrl: data.imageUrl || data.image_url,
+    });
+  } catch (error) {
+    console.error("❌ Image Regeneration Error:", error.message);
+    // Handle case where Python server is down
+    if (error.code === "ECONNREFUSED") {
+      return res.status(503).json({
+        success: false,
+        message: "AI Service is currently unavailable.",
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate image",
       error: error.message,
     });
   }
