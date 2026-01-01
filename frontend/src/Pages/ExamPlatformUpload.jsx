@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { auth } from "../firebase/firebase";
 import {
   Upload,
@@ -12,29 +12,25 @@ import {
   Loader2,
   Search,
   BookOpen,
-  CloudUpload,
-  FileCheck,
   Zap,
-  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { bookAPI, fetchTeacherProfile } from "../utils/api.js";
-import Loader from "../components/Loader.jsx";
-
-// --- Constants ---
 
 // --- Helper Components ---
+
 const StatusBadge = ({ status }) => {
   const config = {
     pending: { label: "Pending", classes: "bg-gray-100 text-gray-700" },
-    uploading: { label: "Uploading", classes: "bg-blue-100 text-blue-700" },
-    process: { label: "Processing", classes: "bg-purple-100 text-purple-700" },
-    analyze: { label: "Analyzing", classes: "bg-indigo-100 text-indigo-700" },
-    complete: { label: "Finalizing", classes: "bg-teal-100 text-teal-700" },
-    processed: { label: "Processed", classes: "bg-green-100 text-green-700" },
+    uploading: { label: "Uploading...", classes: "bg-blue-100 text-blue-700" },
+    processing: {
+      label: "AI Processing...",
+      classes: "bg-purple-100 text-purple-700",
+    },
+    processed: { label: "Completed", classes: "bg-green-100 text-green-700" },
     error: { label: "Error", classes: "bg-red-100 text-red-700" },
-    duplicate: { label: "Duplicate", classes: "bg-yellow-100 text-yellow-700" },
   }[status] || { label: "Pending", classes: "bg-gray-100 text-gray-700" };
+
   return (
     <span
       className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${config.classes}`}
@@ -44,17 +40,39 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-// Removed local UploadLoader in favor of shared Loader component
-const ProgressBar = ({ progress }) => (
-  <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-    <motion.div
-      className="bg-blue-500 h-1.5 rounded-full"
-      initial={{ width: 0 }}
-      animate={{ width: `${progress}%` }}
-      transition={{ ease: "linear", duration: 0.2 }}
-    />
+const ProgressBar = ({ progress, status }) => (
+  <div className="w-full flex flex-col gap-1">
+    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+      <motion.div
+        className={`h-2 rounded-full ${
+          status === "error"
+            ? "bg-red-500"
+            : status === "processed"
+            ? "bg-green-500"
+            : status === "processing"
+            ? "bg-purple-500"
+            : "bg-blue-500"
+        }`}
+        initial={{ width: 0 }}
+        animate={{ width: `${progress}%` }}
+        transition={{ ease: "linear", duration: 0.2 }}
+      />
+    </div>
+    <div className="flex justify-between text-xs text-gray-500">
+      <span>
+        {status === "processing"
+          ? "AI analyzing content (Step 2/2)..."
+          : status === "uploading"
+          ? "Uploading to server (Step 1/2)..."
+          : status === "processed"
+          ? "Ready"
+          : ""}
+      </span>
+      <span>{Math.round(progress)}%</span>
+    </div>
   </div>
 );
+
 const FileUploader = ({ onFileSelect }) => {
   const [isDragging, setIsDragging] = useState(false);
   const handleDragEnter = (e) => {
@@ -91,7 +109,8 @@ const FileUploader = ({ onFileSelect }) => {
     >
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <Upload size={16} />
-        <span>Drag & Drop PDF or Click to Select</span>
+        <span className="hidden sm:inline">Drag PDF or Click</span>
+        <span className="sm:hidden">Select PDF</span>
       </div>
       <input
         type="file"
@@ -106,11 +125,7 @@ const FileUploader = ({ onFileSelect }) => {
 // --- Main Component ---
 const ExamPlatformUpload = () => {
   const [activeTab, setActiveTab] = useState("upload");
-  const [classes, setClasses] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-
   const [teacherAssignments, setTeacherAssignments] = useState([]);
-  // Store the unique list of classes for the dropdown
   const [uniqueClasses, setUniqueClasses] = useState([]);
 
   const [documentRows, setDocumentRows] = useState([
@@ -128,12 +143,6 @@ const ExamPlatformUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResults, setUploadResults] = useState([]);
 
-  // Enhanced loader states
-  const [showLoader, setShowLoader] = useState(false);
-  const [loaderProgress, setLoaderProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState("upload");
-  const [currentFileName, setCurrentFileName] = useState("");
-
   // States for fetching schoolId and handling profile loading
   const [schoolId, setSchoolId] = useState(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -144,11 +153,10 @@ const ExamPlatformUpload = () => {
   const [fetchError, setFetchError] = useState(null);
   const [fetchLoading, setFetchLoading] = useState(false);
 
-  // States for teacher assignments loading
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [assignmentsError, setAssignmentsError] = useState(null);
 
-  // Fetch Teacher Profile on component mount
+  // 1. Fetch Teacher Profile
   useEffect(() => {
     async function loadProfile() {
       try {
@@ -170,7 +178,7 @@ const ExamPlatformUpload = () => {
     loadProfile();
   }, []);
 
-  // Fetch teacher assignments (classes and subjects)
+  // 2. Fetch Teacher Assignments
   useEffect(() => {
     const loadTeacherAssignments = async () => {
       if (!schoolId) return;
@@ -182,19 +190,14 @@ const ExamPlatformUpload = () => {
         const currentUser = auth.currentUser;
         if (!currentUser) throw new Error("No current user found");
 
-        // Call the TEACHER assignment endpoint via bookAPI
         const response = await bookAPI.getTeacherAssignments(
           schoolId,
           currentUser.email
         );
 
-        // Expect backend response: { success: true, data: { assignments: [...] } }
         const fetchedAssignments = response.data?.data?.assignments || [];
-        console.log("Teacher assignments loaded:", fetchedAssignments);
+        setTeacherAssignments(fetchedAssignments);
 
-        setTeacherAssignments(fetchedAssignments); // Store the raw assignments
-
-        // Derive unique classes for the Class dropdown
         const uniqueClassMap = new Map();
         fetchedAssignments.forEach((a) => {
           if (
@@ -210,27 +213,15 @@ const ExamPlatformUpload = () => {
                 grade: a.classId.grade,
               });
             }
-          } else {
-            console.warn(
-              "Skipping assignment due to missing/invalid classId:",
-              a
-            );
           }
         });
         const sortedClasses = Array.from(uniqueClassMap.values()).sort(
           (a, b) => a.grade - b.grade
         );
-        // Set the state used by the Class dropdown
         setUniqueClasses(sortedClasses);
       } catch (error) {
         console.error("Failed to load teacher assignments:", error);
-        setAssignmentsError(
-          error.response?.data?.error ||
-            error.message ||
-            "Failed to load teacher assignments"
-        );
-        setTeacherAssignments([]);
-        setUniqueClasses([]);
+        setAssignmentsError("Failed to load teacher assignments");
       } finally {
         setAssignmentsLoading(false);
       }
@@ -239,66 +230,56 @@ const ExamPlatformUpload = () => {
     loadTeacherAssignments();
   }, [schoolId]);
 
+  // Handle Class Dropdown Change
   const handleClassChangeForRow = (rowId, selectedClassValue) => {
-    // Find the class object that matches the selected value (grade string)
     const selectedClassObj = uniqueClasses.find(
       (c) => c.value === selectedClassValue
     );
-    const selectedClassId = selectedClassObj?._id; // Get the MongoDB _id
+    const selectedClassId = selectedClassObj?._id;
 
     let filteredSubs = [];
     if (selectedClassId) {
-      // Find all assignments for this teacher matching the selected class _id
       const relevantAssignments = teacherAssignments.filter(
         (a) => a.classId?._id === selectedClassId && a.subjectId
       );
 
-      // Extract unique subjects from these relevant assignments
       const subjectMap = new Map();
       relevantAssignments.forEach((a) => {
         if (a.subjectId && !subjectMap.has(a.subjectId._id)) {
           subjectMap.set(a.subjectId._id, {
             _id: a.subjectId._id,
-            // Use subjectId (code like CS101) or a formatted name as value
-            value:
-              a.subjectId.subjectId ||
-              a.subjectId.name.toLowerCase().replace(/\s+/g, "_"),
-            label: a.subjectId.name, // Display name like "Computer Science"
-            name: a.subjectId.name, // Keep raw name
-            subjectId: a.subjectId.subjectId, // Keep raw code
+            value: a.subjectId.name.toLowerCase().replace(/\s+/g, "_"),
+            label: a.subjectId.name,
+            name: a.subjectId.name,
           });
         }
       });
       filteredSubs = Array.from(subjectMap.values()).sort((a, b) =>
         a.label.localeCompare(b.label)
-      ); // Sort alphabetically
+      );
     }
 
-    // Update the specific row in documentRows state
     setDocumentRows((rows) =>
       rows.map((r) =>
         r.id === rowId
           ? {
               ...r,
-              class: selectedClassValue, // Set the selected class value (e.g., "7")
-              subject: "", // Reset subject selection
-              filteredSubjects: filteredSubs, // Update the subjects available for this row
-              status: "pending", // Reset status
-              error: null, // Reset error
-              progress: 0, // Reset progress
+              class: selectedClassValue,
+              subject: "",
+              filteredSubjects: filteredSubs,
+              status: "pending",
+              error: null,
+              progress: 0,
             }
           : r
       )
     );
   };
 
-  // Row management functions
   const updateRow = (id, key, value) => {
     if (key === "class") {
-      // If the class dropdown changes, use the dedicated handler
       handleClassChangeForRow(id, value);
     } else {
-      // For any other field (like subject, file, etc.), update directly
       setDocumentRows((rows) =>
         rows.map((r) =>
           r.id === id
@@ -314,6 +295,7 @@ const ExamPlatformUpload = () => {
       );
     }
   };
+
   const addNewRow = () =>
     setDocumentRows((rows) => [
       ...rows,
@@ -327,10 +309,12 @@ const ExamPlatformUpload = () => {
         error: null,
       },
     ]);
+
   const removeRow = (id) => {
     if (documentRows.length > 1)
       setDocumentRows((rows) => rows.filter((r) => r.id !== id));
   };
+
   const clearProcessedRows = () => {
     const remaining = documentRows.filter((r) => r.status !== "processed");
     setUploadResults([]);
@@ -350,7 +334,7 @@ const ExamPlatformUpload = () => {
           ]
     );
   };
-  // Helper to reset a row to pending state so it can be re-uploaded
+
   const resetRow = (id) => {
     setDocumentRows((rows) =>
       rows.map((r) =>
@@ -362,10 +346,7 @@ const ExamPlatformUpload = () => {
   const handleFileSelect = (id, files) => {
     const file = files && files[0];
     if (!file) return;
-
-    // Reset status to pending immediately when a new file is chosen
     resetRow(id);
-
     if (!file.type.includes("pdf")) {
       updateRow(id, "error", "Invalid file type. Please select a PDF.");
       return;
@@ -374,11 +355,10 @@ const ExamPlatformUpload = () => {
     updateRow(id, "file", file);
   };
 
+  // --- CORE LOGIC: Upload with Real Progress Polling ---
   const uploadBooks = async () => {
     if (!schoolId) {
-      alert(
-        "Cannot upload: School information is missing or could not be loaded."
-      );
+      alert("Cannot upload: School information is missing.");
       return;
     }
     const validRows = documentRows.filter(
@@ -389,14 +369,26 @@ const ExamPlatformUpload = () => {
 
     setIsUploading(true);
     setUploadResults([]);
-    setShowLoader(true);
-    setLoaderProgress(0);
-    setCurrentStep("upload");
-    setCurrentFileName(validRows[0]?.file?.name || "");
 
-    validRows.forEach((r) => updateRow(r.id, "status", "uploading"));
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      alert("You must be logged in.");
+      setIsUploading(false);
+      return;
+    }
 
-    const promises = validRows.map(async (row, index) => {
+    // Loop through rows
+    const promises = validRows.map(async (row) => {
+      // 1. Initial State
+      updateRow(row.id, "status", "uploading");
+      updateRow(row.id, "progress", 0);
+
+      // 2. Generate Unique Progress ID (Trace ID)
+      // This is the key we use to connect Frontend -> Node -> Python
+      const progressId = `${
+        currentUser.uid
+      }_${Date.now()}_${row.file.name.replace(/\s/g, "_")}`;
+
       const formData = new FormData();
       const selectedClassObj = uniqueClasses.find((c) => c.value === row.class);
       const selectedSubjectObj = row.filteredSubjects.find(
@@ -404,19 +396,12 @@ const ExamPlatformUpload = () => {
       );
 
       if (!selectedClassObj || !selectedSubjectObj) {
-        console.error(
-          "Could not find selected class/subject object for row:",
-          row
-        );
         updateRow(row.id, "status", "error");
-        updateRow(row.id, "error", "Internal error: selection mismatch.");
-        return {
-          success: false,
-          filename: row.file?.name || "unknown",
-          error: "Selection mismatch",
-        };
+        updateRow(row.id, "error", "Selection mismatch");
+        return { success: false, filename: row.file?.name, error: "Mismatch" };
       }
 
+      // 3. Append Data
       formData.append("pdf", row.file);
       formData.append("classId", String(selectedClassObj.grade));
       formData.append("subject", selectedSubjectObj.name);
@@ -424,73 +409,85 @@ const ExamPlatformUpload = () => {
       formData.append("title", selectedSubjectObj.label);
       formData.append("author", "System");
       formData.append("year", new Date().getFullYear());
+      formData.append("teacherId", currentUser.uid);
 
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        formData.append("teacherId", currentUser.uid);
-      }
-      let apiResult;
-      let simulationInterval = null;
-      let currentSimulatedProgress = 0;
+      // ✅ VITAL: Send the progressId so Node can pass it to Python
+      formData.append("progressId", progressId);
 
-      simulationInterval = setInterval(() => {
-        currentSimulatedProgress += 1;
-        if (currentSimulatedProgress > 95) currentSimulatedProgress = 95;
-
-        let stepStatus = "uploading";
-
-        if (currentSimulatedProgress <= 10) {
-          setCurrentStep("upload");
-          stepStatus = "uploading";
-        } else if (currentSimulatedProgress <= 40) {
-          setCurrentStep("process");
-          stepStatus = "process";
-        } else if (currentSimulatedProgress <= 80) {
-          setCurrentStep("analyze");
-          stepStatus = "analyze";
-        } else {
-          setCurrentStep("complete");
-          stepStatus = "complete";
-        }
-        updateRow(row.id, "progress", currentSimulatedProgress);
-        updateRow(row.id, "status", stepStatus);
-        setLoaderProgress(currentSimulatedProgress);
-      }, 800);
+      // --- POLL TIMER REF ---
+      let pollInterval = null;
 
       try {
-        apiResult = await bookAPI.uploadBook(formData);
-        if (simulationInterval) clearInterval(simulationInterval);
+        // --- 4. Start Upload ---
+        const apiResult = await bookAPI.uploadBook(formData, {
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
 
+            // Update Upload Phase Progress
+            if (percentCompleted < 100) {
+              updateRow(row.id, "progress", percentCompleted);
+            } else {
+              // Upload Hit 100% -> Switch to Processing Phase
+              updateRow(row.id, "status", "processing");
+              updateRow(row.id, "progress", 0); // Start AI progress at 0
+
+              // ✅ 5. START REAL POLLING
+              // Only start polling if we haven't already
+              if (!pollInterval) {
+                pollInterval = setInterval(async () => {
+                  try {
+                    // Call the endpoint you configured in Node/Python
+                    const response = await bookAPI.getUploadProgress(
+                      progressId
+                    );
+
+                    if (
+                      response.data &&
+                      typeof response.data.progress === "number"
+                    ) {
+                      const realProgress = response.data.progress;
+                      // Update UI with REAL backend progress
+                      updateRow(row.id, "progress", realProgress);
+
+                      // Safety check: if backend says 100, we can stop polling potentially,
+                      // but usually we wait for the main request to finish.
+                    }
+                  } catch (pollErr) {
+                    console.warn(
+                      "Polling error (ignoring to keep UI alive):",
+                      pollErr
+                    );
+                  }
+                }, 1000); // Poll every 1 second
+              }
+            }
+          },
+        });
+
+        // --- 6. Success ---
+        clearInterval(pollInterval); // Stop polling
         updateRow(row.id, "status", "processed");
         updateRow(row.id, "progress", 100);
-        setLoaderProgress(100);
-        setCurrentStep("complete");
 
         const returnedBook = apiResult?.data;
-        const processedStatus = returnedBook?.processedStatus || "pending";
-        const chunks = returnedBook?.noOfChunks ?? null;
-
-        if (processedStatus === "processed") {
-          return {
-            success: true,
-            filename: row.file.name,
-            chunks,
-            status: processedStatus,
-          };
-        } else {
-          throw new Error("Processing failed. Content could not be extracted.");
-        }
+        return {
+          success: true,
+          filename: row.file.name,
+          chunks: returnedBook?.noOfChunks,
+          status: returnedBook?.processedStatus,
+        };
       } catch (err) {
-        if (simulationInterval) clearInterval(simulationInterval);
-
+        // --- 7. Failure ---
+        clearInterval(pollInterval);
         console.error("Upload error:", err);
         const errorMessage =
-          err.response?.data?.message ||
-          err.message ||
-          "An unknown error occurred.";
+          err.response?.data?.message || err.message || "Unknown error.";
 
         updateRow(row.id, "status", "error");
         updateRow(row.id, "error", errorMessage);
+        updateRow(row.id, "progress", 0);
 
         return {
           success: false,
@@ -501,18 +498,12 @@ const ExamPlatformUpload = () => {
     });
 
     const results = await Promise.all(promises);
-
     const finalResults = results.filter(
       (res) => res.error !== "Duplicate entry. User was notified."
     );
+
     setUploadResults(finalResults);
     setIsUploading(false);
-
-    setTimeout(() => {
-      setShowLoader(false);
-      setCurrentStep("upload");
-      setCurrentFileName("");
-    }, 1500);
   };
 
   const fetchBooksMetadata = async () => {
@@ -528,24 +519,22 @@ const ExamPlatformUpload = () => {
       }
     } catch (error) {
       setFetchError(error.response?.data?.message || "Failed to fetch books.");
-      setBooks([]);
     } finally {
       setFetchLoading(false);
     }
   };
 
-  // Auto-fetch when switching to Find tab
   useEffect(() => {
     if (activeTab === "find") {
       fetchBooksMetadata();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const hasPendingRows = documentRows.some(
     (r) => r.class && r.subject && r.file && r.status === "pending"
   );
   const hasProcessedRows = documentRows.some((r) => r.status === "processed");
+
   const TabButton = ({ id, label, icon: Icon }) => (
     <button
       onClick={() => setActiveTab(id)}
@@ -561,60 +550,7 @@ const ExamPlatformUpload = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
-      {/* Enhanced Upload Loader (shared) - render only when visible to avoid inline animation */}
-      {showLoader && (
-        <Loader
-          isVisible={showLoader}
-          title="Processing Your Book"
-          message={
-            currentStep === "upload"
-              ? "Uploading your PDF file to our secure servers..."
-              : currentStep === "process"
-              ? "Sending PDF to our AI processing engine..."
-              : currentStep === "analyze"
-              ? "Extracting and analyzing text content..."
-              : "Finalizing and saving processed data..."
-          }
-          progress={loaderProgress}
-          currentFile={currentFileName}
-          totalFiles={
-            documentRows.filter((r) => r.file && r.status === "pending").length
-          }
-          steps={[
-            {
-              id: "upload",
-              label: "Uploading PDF",
-              status: currentStep === "upload" ? "active" : "completed",
-            },
-            {
-              id: "process",
-              label: "Processing Content",
-              status:
-                currentStep === "process"
-                  ? "active"
-                  : currentStep === "upload"
-                  ? "pending"
-                  : "completed",
-            },
-            {
-              id: "analyze",
-              label: "Analyzing Text",
-              status:
-                currentStep === "analyze"
-                  ? "active"
-                  : ["upload", "process"].includes(currentStep)
-                  ? "pending"
-                  : "completed",
-            },
-            {
-              id: "complete",
-              label: "Finalizing",
-              status: currentStep === "complete" ? "active" : "pending",
-            },
-          ]}
-        />
-      )}
-
+      {/* --- Main Container --- */}
       <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
         <header className="p-6 border-b border-gray-200">
           <h1 className="text-2xl font-bold text-gray-900">Book Management</h1>
@@ -643,22 +579,13 @@ const ExamPlatformUpload = () => {
                     <div className="flex flex-col items-center justify-center p-8 text-center">
                       <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                       <p className="mt-4 font-semibold text-gray-700">
-                        {isProfileLoading
-                          ? "Loading Teacher Profile..."
-                          : "Loading Teacher Assignments..."}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Please wait, preparing the uploader.
+                        Loading Information...
                       </p>
                     </div>
                   ) : profileError || assignmentsError ? (
                     <div className="flex flex-col items-center justify-center p-8 text-center text-red-700 bg-red-50 rounded-lg">
                       <AlertCircle className="h-8 w-8" />
-                      <p className="mt-4 font-semibold">
-                        {profileError
-                          ? "Could not load profile"
-                          : "Could not load assignments"}
-                      </p>
+                      <p className="mt-4 font-semibold">Error Loading Data</p>
                       <p className="text-sm">
                         {profileError || assignmentsError}
                       </p>
@@ -677,13 +604,17 @@ const ExamPlatformUpload = () => {
                               className="p-4 bg-gray-50 rounded-lg border"
                             >
                               <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
+                                {/* Class Dropdown */}
                                 <select
                                   value={row.class}
                                   onChange={(e) =>
                                     updateRow(row.id, "class", e.target.value)
                                   }
-                                  className="md:col-span-1 h-11 border-gray-300 rounded-md shadow-sm w-full"
-                                  disabled={assignmentsLoading}
+                                  className="md:col-span-1 h-11 border-gray-300 rounded-md shadow-sm w-full bg-white"
+                                  disabled={
+                                    row.status === "uploading" ||
+                                    row.status === "processing"
+                                  }
                                 >
                                   <option value="">Class</option>
                                   {uniqueClasses.map((c) => (
@@ -692,12 +623,18 @@ const ExamPlatformUpload = () => {
                                     </option>
                                   ))}
                                 </select>
+
+                                {/* Subject Dropdown */}
                                 <select
                                   value={row.subject}
                                   onChange={(e) =>
                                     updateRow(row.id, "subject", e.target.value)
                                   }
-                                  className="md:col-span-1 h-11 border-gray-300 rounded-md shadow-sm w-full"
+                                  className="md:col-span-1 h-11 border-gray-300 rounded-md shadow-sm w-full bg-white"
+                                  disabled={
+                                    row.status === "uploading" ||
+                                    row.status === "processing"
+                                  }
                                 >
                                   <option value="">Subject</option>
                                   {row.filteredSubjects.map((s) => (
@@ -706,6 +643,8 @@ const ExamPlatformUpload = () => {
                                     </option>
                                   ))}
                                 </select>
+
+                                {/* File Input Area */}
                                 <div className="md:col-span-4">
                                   {row.file ? (
                                     <div className="flex items-center justify-between p-2 pl-3 border rounded-lg bg-white h-11">
@@ -714,18 +653,23 @@ const ExamPlatformUpload = () => {
                                           className="text-blue-500"
                                           size={18}
                                         />
-                                        <span className="text-sm font-medium text-gray-700 truncate">
+                                        <span className="text-sm font-medium text-gray-700 truncate max-w-[200px] sm:max-w-xs">
                                           {row.file.name}
                                         </span>
                                       </div>
-                                      <button
-                                        onClick={() =>
-                                          updateRow(row.id, "file", null)
-                                        }
-                                        className="p-1 text-gray-400 hover:text-red-500"
-                                      >
-                                        <X size={16} />
-                                      </button>
+
+                                      {/* Only show remove button if not uploading/processing */}
+                                      {row.status !== "uploading" &&
+                                        row.status !== "processing" && (
+                                          <button
+                                            onClick={() =>
+                                              updateRow(row.id, "file", null)
+                                            }
+                                            className="p-1 text-gray-400 hover:text-red-500"
+                                          >
+                                            <X size={16} />
+                                          </button>
+                                        )}
                                     </div>
                                   ) : (
                                     <FileUploader
@@ -736,33 +680,47 @@ const ExamPlatformUpload = () => {
                                   )}
                                 </div>
                               </div>
-                              <div className="mt-3 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
+
+                              {/* Progress & Status Bar Area */}
+                              <div className="mt-3 flex items-center justify-between gap-4">
+                                <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-3">
                                   <StatusBadge status={row.status} />
+
+                                  {/* Progress Bar Display */}
                                   {(row.status === "uploading" ||
+                                    row.status === "processing" ||
                                     row.status === "processed") && (
-                                    <div className="w-32">
-                                      <ProgressBar progress={row.progress} />
+                                    <div className="flex-1 max-w-sm">
+                                      <ProgressBar
+                                        progress={row.progress}
+                                        status={row.status}
+                                      />
                                     </div>
                                   )}
+
+                                  {/* Error Display */}
                                   {row.error && (
-                                    <div className="flex flex-col items-start gap-1">
+                                    <div className="flex items-center gap-3">
                                       <p className="text-xs text-red-600 flex items-center gap-1">
                                         <AlertCircle size={14} /> {row.error}
                                       </p>
-                                      {/* NEW RETRY BUTTON */}
                                       <button
                                         onClick={() => resetRow(row.id)}
-                                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 underline decoration-blue-300 hover:decoration-blue-800 underline-offset-2 flex items-center gap-1"
+                                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
                                       >
-                                        <Zap size={12} /> Retry Upload
+                                        <Zap size={12} /> Retry
                                       </button>
                                     </div>
                                   )}
                                 </div>
+
                                 <button
                                   onClick={() => removeRow(row.id)}
-                                  disabled={documentRows.length === 1}
+                                  disabled={
+                                    documentRows.length === 1 ||
+                                    row.status === "uploading" ||
+                                    row.status === "processing"
+                                  }
                                   className="p-1 text-gray-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
                                 >
                                   <Trash2 size={16} />
@@ -772,10 +730,13 @@ const ExamPlatformUpload = () => {
                           ))}
                         </AnimatePresence>
                       </div>
+
+                      {/* Main Action Buttons */}
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
                           onClick={addNewRow}
-                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg"
+                          disabled={isUploading}
+                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg disabled:opacity-50"
                         >
                           <Plus size={16} /> Add Another
                         </button>
@@ -786,7 +747,7 @@ const ExamPlatformUpload = () => {
                         >
                           {isUploading ? (
                             <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               Processing...
                             </>
                           ) : (
@@ -800,12 +761,15 @@ const ExamPlatformUpload = () => {
                         {hasProcessedRows && (
                           <button
                             onClick={clearProcessedRows}
-                            className="text-sm text-gray-500 hover:text-gray-700"
+                            disabled={isUploading}
+                            className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
                           >
                             Clear Processed
                           </button>
                         )}
                       </div>
+
+                      {/* Upload Summary */}
                       <AnimatePresence>
                         {uploadResults.length > 0 && (
                           <motion.div
@@ -855,6 +819,7 @@ const ExamPlatformUpload = () => {
                   )}
                 </div>
               )}
+
               {activeTab === "find" && (
                 <div>
                   {fetchError && (
@@ -869,7 +834,6 @@ const ExamPlatformUpload = () => {
                         <tr>
                           <th className="p-3">Subject</th>
                           <th className="p-3">Class</th>
-
                           <th className="p-3">Status</th>
                           <th className="p-3">Chunks</th>
                           <th className="p-3 text-right">Actions</th>
@@ -884,14 +848,11 @@ const ExamPlatformUpload = () => {
                             <td className="p-3 font-medium text-gray-900">
                               {book.title}
                             </td>
-
-                            {/* --- FIX: Display the populated class grade --- */}
                             <td className="p-3">
                               {book.classId
                                 ? `Class ${book.classId.grade}`
                                 : "N/A"}
                             </td>
-
                             <td className="p-3">
                               <StatusBadge status={book.processedStatus} />
                             </td>
@@ -957,4 +918,5 @@ const ExamPlatformUpload = () => {
     </div>
   );
 };
+
 export default ExamPlatformUpload;

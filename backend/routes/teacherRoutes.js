@@ -30,6 +30,7 @@ import {
   getFilteredQuestionPaperGroups,
   deleteQuestionPaper,
   regenerateQuestionImage,
+  getProcessingProgress,
 } from "../controllers/teacherController.js";
 import {
   authenticateFirebaseToken,
@@ -180,6 +181,13 @@ router.post(
   authenticateFirebaseToken,
   authorize("teacher", "principal"),
   regenerateQuestionImage
+);
+
+router.get(
+  "/upload-progress/:pdfName",
+  authenticateFirebaseToken,
+  authorize("teacher", "principal"),
+  getProcessingProgress
 );
 // --- MOST GENERIC PARAMETERIZED ROUTES LAST ---
 

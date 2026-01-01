@@ -280,8 +280,16 @@ export const getChaptersBySubjectAndClass = async (req, res) => {
 export const teacherUploadBook = async (req, res) => {
   let tempFilePath;
   try {
-    const { classId, subject, author, year, schoolId, teacherId, title } =
-      req.body;
+    const {
+      classId,
+      subject,
+      author,
+      year,
+      schoolId,
+      teacherId,
+      title,
+      progressId,
+    } = req.body;
 
     if (!req.file) {
       return res.status(400).json({ message: "PDF file is required." });
@@ -360,6 +368,7 @@ export const teacherUploadBook = async (req, res) => {
           class: classId,
           subject: subject,
           pdf_name: uniquePdfName,
+          progress_key: progressId,
         };
         form.append("subject_data", JSON.stringify(subjectData));
         form.append(fieldName, fileStream, {
@@ -1392,5 +1401,25 @@ export const deleteQuestionPaper = async (req, res) => {
       message: "Server error while deleting paper.",
       error: error.message,
     });
+  }
+};
+
+export const getProcessingProgress = async (req, res) => {
+  try {
+    const { pdfName } = req.params;
+
+    // Call the Python Service
+    const response = await axios.get(
+      `${process.env.PYTHON_SERVICE_URL}progress/${pdfName}`
+    );
+
+    return res.status(200).json({
+      success: true,
+      progress: response.data.progress || 0,
+    });
+  } catch (error) {
+    console.error("Error fetching progress:", error.message);
+    // Return 0 if error, so frontend keeps polling
+    return res.status(200).json({ success: true, progress: 0 });
   }
 };

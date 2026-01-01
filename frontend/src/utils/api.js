@@ -138,14 +138,12 @@ export const bookAPI = {
           headers: {
             "Content-Type": "multipart/form-data",
           },
-          ...options, // Spread the options, which includes onUploadProgress
+          onUploadProgress: options.onUploadProgress,
         }
       );
       return response.data;
     } catch (error) {
       console.error("Upload book error:", error);
-      // --- FIX: Re-throw the ORIGINAL error instead of creating a new one ---
-      // This preserves all details like response status, data, etc.
       throw error;
     }
   },
@@ -264,6 +262,16 @@ export const bookAPI = {
       console.error("Error fetching chapters:", error);
       // Return a safe fallback object so the UI doesn't crash
       return { success: false, message: error.message };
+    }
+  },
+  getUploadProgress: async (progressId) => {
+    try {
+      const response = await api.get(`teachers/upload-progress/${progressId}`);
+      return response.data; // Expected: { success: true, progress: number }
+    } catch (error) {
+      // Return a safe fallback so polling doesn't crash the UI
+      console.warn("Progress poll failed:", error.message);
+      return { success: false, progress: 0 };
     }
   },
 };
