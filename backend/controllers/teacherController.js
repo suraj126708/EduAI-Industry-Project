@@ -1008,22 +1008,34 @@ export const updateQuestionPaper = async (req, res) => {
 
 export const regenerateQuestionImage = async (req, res) => {
   try {
-    const { prompt } = req.body;
+    console.log("CONTENT-TYPE:", req.headers["content-type"]);
+    console.log("BODY:", req.body);
 
-    if (!prompt) {
+    const { question, prompt, type } = req.body;
+
+    if (!question || !prompt || !type) {
       return res.status(400).json({
         success: false,
-        message: "Prompt is required",
+        message: "question, prompt, and type are required",
       });
     }
 
-    console.log(
-      `🎨 Requesting image generation for: "${prompt.substring(0, 50)}..."`
-    );
+    const formData = new FormData();
+    formData.append("question", question);
+    formData.append("prompt", prompt);
+    formData.append("type", type);
 
-    const response = await axios.post(deplyed_url + "regenerate_image/", {
-      prompt: prompt,
-    });
+    console.log(`🎨 Regenerating ${question} image for question`);
+    console.log(`🎨 Regenerating ${prompt} image for question`);
+    console.log(`🎨 Regenerating ${type} image for question`);
+
+    const response = await axios.post(
+      deplyed_url + "regenerate_image/",
+      formData,
+      {
+        headers: formData.getHeaders(),
+      }
+    );
 
     const data = response.data;
 
@@ -1031,20 +1043,21 @@ export const regenerateQuestionImage = async (req, res) => {
       throw new Error("AI Service returned invalid data.");
     }
 
-    // 3. Return the result to the Frontend
     return res.status(200).json({
       success: true,
       imageUrl: data.imageUrl || data.image_url,
     });
+
   } catch (error) {
     console.error("❌ Image Regeneration Error:", error.message);
-    // Handle case where Python server is down
+
     if (error.code === "ECONNREFUSED") {
       return res.status(503).json({
         success: false,
         message: "AI Service is currently unavailable.",
       });
     }
+
     return res.status(500).json({
       success: false,
       message: "Failed to generate image",
@@ -1052,6 +1065,52 @@ export const regenerateQuestionImage = async (req, res) => {
     });
   }
 };
+// export const regenerateQuestionImage = async (req, res) => {
+//   try {
+//     const { question, prompt, type } = req.body;
+
+//     if (!question || !prompt || !type) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "question, prompt, and type are required",
+//       });
+//     }
+
+//     console.log(
+//       `🎨 Requesting image generation for: "${prompt}..."`
+//     );
+
+//     const response = await axios.post(deplyed_url + "regenerate_image/", {
+//       prompt: prompt,
+//     });
+
+//     const data = response.data;
+
+//     if (!data || (!data.imageUrl && !data.image_url)) {
+//       throw new Error("AI Service returned invalid data.");
+//     }
+
+//     // 3. Return the result to the Frontend
+//     return res.status(200).json({
+//       success: true,
+//       imageUrl: data.imageUrl || data.image_url,
+//     });
+//   } catch (error) {
+//     console.error("❌ Image Regeneration Error:", error.message);
+//     // Handle case where Python server is down
+//     if (error.code === "ECONNREFUSED") {
+//       return res.status(503).json({
+//         success: false,
+//         message: "AI Service is currently unavailable.",
+//       });
+//     }
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to generate image",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // @desc    Get question papers created by the authenticated teacher
 // @route   GET /api/teachers/my-question-papers

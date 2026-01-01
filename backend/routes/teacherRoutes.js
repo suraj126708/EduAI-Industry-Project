@@ -9,6 +9,7 @@
  */
 
 import express from "express";
+import multer from "multer";
 import { body, param } from "express-validator";
 import {
   getAllTeachers,
@@ -37,6 +38,7 @@ import {
 import { pdfUpload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
+const upload = multer(); // memory storage
 
 // Validation middleware
 const teacherIdValidation = [
@@ -174,6 +176,7 @@ router.post(
 
 router.post(
   "/question-paper/regenerate-image",
+  upload.none(),
   authenticateFirebaseToken,
   authorize("teacher", "principal"),
   regenerateQuestionImage

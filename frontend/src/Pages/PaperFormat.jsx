@@ -458,7 +458,7 @@ const EditView = ({
                         handleRegenerateImage(
                           sectionIndex,
                           questionIndex,
-                          question.question
+                          // question.question
                         )
                       }
                       disabled={
@@ -854,7 +854,7 @@ function ExamPaperGenerator() {
   const handleRegenerateImage = async (
     sectionIndex,
     questionIndex,
-    questionText
+    // questionText
   ) => {
     const uniqueKey = `${sectionIndex}-${questionIndex}`;
 
@@ -862,7 +862,19 @@ function ExamPaperGenerator() {
     setRegeneratingIds((prev) => ({ ...prev, [uniqueKey]: true }));
 
     try {
-      const response = await paperAPI.regenerateQuestionImage(questionText);
+      // const response = await paperAPI.regenerateQuestionImage(questionText);
+      const questionObj = paperData.sections[sectionIndex].questions[questionIndex];
+
+      const payload = {
+        question: questionObj.question,
+        prompt:
+          questionObj.visual_annotation?.prompt ||
+          questionObj.question, // fallback
+        type:
+          questionObj.visual_annotation?.type || "image",
+      };
+
+      const response = await paperAPI.regenerateQuestionImage(payload);
 
       if (response.success && response.imageUrl) {
         // Backend can return a URL or Base64 string; both work here.

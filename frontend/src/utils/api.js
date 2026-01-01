@@ -327,13 +327,16 @@ export const paperAPI = {
     }
   },
 
-  regenerateQuestionImage: async (questionText) => {
+  regenerateQuestionImage: async (payload) => {
     const response = await api.post(
       "teachers/question-paper/regenerate-image",
       {
-        prompt: questionText,
+        question: payload.question,
+        prompt: payload.prompt,
+        type: payload.type,
       }
     );
+
     return response.data;
   },
 };
