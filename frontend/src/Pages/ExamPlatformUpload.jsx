@@ -40,38 +40,57 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const ProgressBar = ({ progress, status }) => (
-  <div className="w-full flex flex-col gap-1">
-    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-      <motion.div
-        className={`h-2 rounded-full ${
-          status === "error"
-            ? "bg-red-500"
-            : status === "processed"
-            ? "bg-green-500"
-            : status === "processing"
-            ? "bg-purple-500"
-            : "bg-blue-500"
-        }`}
-        initial={{ width: 0 }}
-        animate={{ width: `${progress}%` }}
-        transition={{ ease: "linear", duration: 0.2 }}
-      />
+const ProgressBar = ({ progress, status, message }) => {
+  // Determine stage message based on progress
+  // Note: Backend sends messages dynamically, these are fallbacks only
+  const getStageMessage = () => {
+    if (message) return message; // Always use backend message if available
+    if (progress <= 5) return "Uploading Book...";
+    if (progress <= 33) return "Extracting Chapters...";
+    if (progress <= 66) return "Elements Extracting (Images/Tables)...";
+    if (progress <= 85) return "Storing Vectors in Database...";
+    if (progress >= 100) return "Upload Complete! Redirecting...";
+    return "Processing...";
+  };
+
+  const stageMessage = getStageMessage();
+
+  return (
+    <div className="w-full flex flex-col gap-1">
+      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+        <motion.div
+          className={`h-2 rounded-full ${
+            status === "error"
+              ? "bg-red-500"
+              : status === "processed"
+              ? "bg-green-500"
+              : status === "processing"
+              ? "bg-purple-500"
+              : "bg-blue-500"
+          }`}
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ ease: "linear", duration: 0.2 }}
+        />
+      </div>
+      <div className="flex justify-between items-center text-xs text-gray-500">
+        <span className="flex items-center gap-2">
+          {status === "processed" && progress >= 100 && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            >
+              <CheckCircle className="text-green-500" size={14} />
+            </motion.div>
+          )}
+          {stageMessage}
+        </span>
+        <span>{Math.round(progress)}%</span>
+      </div>
     </div>
-    <div className="flex justify-between text-xs text-gray-500">
-      <span>
-        {status === "processing"
-          ? "AI analyzing content (Step 2/2)..."
-          : status === "uploading"
-          ? "Uploading to server (Step 1/2)..."
-          : status === "processed"
-          ? "Ready"
-          : ""}
-      </span>
-      <span>{Math.round(progress)}%</span>
-    </div>
-  </div>
-);
+  );
+};
 
 const FileUploader = ({ onFileSelect }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -138,6 +157,7 @@ const ExamPlatformUpload = () => {
       progress: 0,
       error: null,
       filteredSubjects: [],
+      progressMessage: "",
     },
   ]);
   const [isUploading, setIsUploading] = useState(false);
@@ -287,7 +307,12 @@ const ExamPlatformUpload = () => {
                 ...r,
                 [key]: value,
                 ...(key === "subject" && r.status === "error"
-                  ? { status: "pending", error: null, progress: 0 }
+                  ? {
+                      status: "pending",
+                      error: null,
+                      progress: 0,
+                      progressMessage: "",
+                    }
                   : {}),
               }
             : r
@@ -307,6 +332,7 @@ const ExamPlatformUpload = () => {
         status: "pending",
         progress: 0,
         error: null,
+        progressMessage: "",
       },
     ]);
 
@@ -330,6 +356,7 @@ const ExamPlatformUpload = () => {
               status: "pending",
               progress: 0,
               error: null,
+              progressMessage: "",
             },
           ]
     );
@@ -338,7 +365,15 @@ const ExamPlatformUpload = () => {
   const resetRow = (id) => {
     setDocumentRows((rows) =>
       rows.map((r) =>
-        r.id === id ? { ...r, status: "pending", error: null, progress: 0 } : r
+        r.id === id
+          ? {
+              ...r,
+              status: "pending",
+              error: null,
+              progress: 0,
+              progressMessage: "",
+            }
+          : r
       )
     );
   };
@@ -355,7 +390,7 @@ const ExamPlatformUpload = () => {
     updateRow(id, "file", file);
   };
 
-  // --- CORE LOGIC: Upload with Real Progress Polling ---
+  // --- CORE LOGIC: Upload with SSE Progress Streaming ---
   const uploadBooks = async () => {
     if (!schoolId) {
       alert("Cannot upload: School information is missing.");
@@ -377,14 +412,17 @@ const ExamPlatformUpload = () => {
       return;
     }
 
+    // Get auth token for SSE request
+    const idToken = await currentUser.getIdToken();
+
     // Loop through rows
     const promises = validRows.map(async (row) => {
       // 1. Initial State
       updateRow(row.id, "status", "uploading");
       updateRow(row.id, "progress", 0);
+      updateRow(row.id, "progressMessage", "Uploading Book...");
 
       // 2. Generate Unique Progress ID (Trace ID)
-      // This is the key we use to connect Frontend -> Node -> Python
       const progressId = `${
         currentUser.uid
       }_${Date.now()}_${row.file.name.replace(/\s/g, "_")}`;
@@ -410,91 +448,136 @@ const ExamPlatformUpload = () => {
       formData.append("author", "System");
       formData.append("year", new Date().getFullYear());
       formData.append("teacherId", currentUser.uid);
-
-      // ✅ VITAL: Send the progressId so Node can pass it to Python
       formData.append("progressId", progressId);
 
-      // --- POLL TIMER REF ---
-      let pollInterval = null;
+      return new Promise(async (resolve) => {
+        try {
+          console.log(`[FRONTEND] Starting upload for ${row.file.name}`);
+          // Use the same base URL as the api instance
+          const apiUrl = `http://localhost:5001/api/teachers/upload-book?sse=true`;
 
-      try {
-        // --- 4. Start Upload ---
-        const apiResult = await bookAPI.uploadBook(formData, {
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
+          // Use fetch with streaming response for SSE
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: formData,
+          });
 
-            // Update Upload Phase Progress
-            if (percentCompleted < 100) {
-              updateRow(row.id, "progress", percentCompleted);
-            } else {
-              // Upload Hit 100% -> Switch to Processing Phase
-              updateRow(row.id, "status", "processing");
-              updateRow(row.id, "progress", 0); // Start AI progress at 0
+          if (
+            !response.ok &&
+            !response.headers.get("content-type")?.includes("text/event-stream")
+          ) {
+            // Not SSE response, handle as regular error
+            const errorData = await response.json();
+            updateRow(row.id, "status", "error");
+            updateRow(row.id, "error", errorData.message || "Upload failed");
+            updateRow(row.id, "progress", 0);
+            resolve({
+              success: false,
+              filename: row.file.name,
+              error: errorData.message || "Upload failed",
+            });
+            return;
+          }
 
-              // ✅ 5. START REAL POLLING
-              // Only start polling if we haven't already
-              if (!pollInterval) {
-                pollInterval = setInterval(async () => {
-                  try {
-                    // Call the endpoint you configured in Node/Python
-                    const response = await bookAPI.getUploadProgress(
-                      progressId
+          // Read SSE stream
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                try {
+                  const data = JSON.parse(line.substring(6));
+
+                  if (data.progress !== undefined) {
+                    console.log(
+                      `[FRONTEND] Progress update for ${row.file.name}: ${
+                        data.progress
+                      }% - ${data.message || data.stage || ""}`
                     );
-
-                    if (
-                      response.data &&
-                      typeof response.data.progress === "number"
-                    ) {
-                      const realProgress = response.data.progress;
-                      // Update UI with REAL backend progress
-                      updateRow(row.id, "progress", realProgress);
-
-                      // Safety check: if backend says 100, we can stop polling potentially,
-                      // but usually we wait for the main request to finish.
+                    updateRow(row.id, "progress", data.progress);
+                    if (data.message) {
+                      updateRow(row.id, "progressMessage", data.message);
                     }
-                  } catch (pollErr) {
-                    console.warn(
-                      "Polling error (ignoring to keep UI alive):",
-                      pollErr
-                    );
+                    if (data.stage) {
+                      updateRow(row.id, "status", data.stage);
+                    }
                   }
-                }, 1000); // Poll every 1 second
+
+                  if (data.error || data.stage === "error") {
+                    console.error(
+                      `[FRONTEND] Error for ${row.file.name}:`,
+                      data.message || data.error
+                    );
+                    updateRow(row.id, "status", "error");
+                    updateRow(
+                      row.id,
+                      "error",
+                      data.message || data.error || "Upload failed"
+                    );
+                    updateRow(row.id, "progress", 0);
+                    resolve({
+                      success: false,
+                      filename: row.file.name,
+                      error: data.message || data.error || "Upload failed",
+                    });
+                    return;
+                  }
+
+                  if (data.progress >= 100 || data.success) {
+                    console.log(
+                      `[FRONTEND] Upload complete for ${
+                        row.file.name
+                      } - Chunks: ${data.data?.noOfChunks || "N/A"}`
+                    );
+                    updateRow(row.id, "status", "processed");
+                    updateRow(row.id, "progress", 100);
+                    updateRow(
+                      row.id,
+                      "progressMessage",
+                      "Upload Complete! Redirecting..."
+                    );
+                    resolve({
+                      success: true,
+                      filename: row.file.name,
+                      chunks: data.data?.noOfChunks,
+                      status: data.data?.processedStatus,
+                    });
+                    return;
+                  }
+                } catch (e) {
+                  console.warn("[FRONTEND] Failed to parse SSE data:", e);
+                }
               }
             }
-          },
-        });
+          }
+        } catch (err) {
+          console.error("Upload error:", err);
+          const errorMessage =
+            err.response?.data?.message || err.message || "Unknown error.";
 
-        // --- 6. Success ---
-        clearInterval(pollInterval); // Stop polling
-        updateRow(row.id, "status", "processed");
-        updateRow(row.id, "progress", 100);
+          updateRow(row.id, "status", "error");
+          updateRow(row.id, "error", errorMessage);
+          updateRow(row.id, "progress", 0);
 
-        const returnedBook = apiResult?.data;
-        return {
-          success: true,
-          filename: row.file.name,
-          chunks: returnedBook?.noOfChunks,
-          status: returnedBook?.processedStatus,
-        };
-      } catch (err) {
-        // --- 7. Failure ---
-        clearInterval(pollInterval);
-        console.error("Upload error:", err);
-        const errorMessage =
-          err.response?.data?.message || err.message || "Unknown error.";
-
-        updateRow(row.id, "status", "error");
-        updateRow(row.id, "error", errorMessage);
-        updateRow(row.id, "progress", 0);
-
-        return {
-          success: false,
-          filename: row.file.name,
-          error: errorMessage,
-        };
-      }
+          resolve({
+            success: false,
+            filename: row.file.name,
+            error: errorMessage,
+          });
+        }
+      });
     });
 
     const results = await Promise.all(promises);
@@ -694,6 +777,7 @@ const ExamPlatformUpload = () => {
                                       <ProgressBar
                                         progress={row.progress}
                                         status={row.status}
+                                        message={row.progressMessage}
                                       />
                                     </div>
                                   )}
