@@ -4,6 +4,7 @@ import { saveAs } from "file-saver";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { paperAPI } from "../utils/api";
+import SafeMath from "../components/SafeMath";
 
 // --- COMPONENT: VISUAL RENDERER ---
 const VisualRenderer = ({ imageUrl, svgContent, altText }) => {
@@ -30,6 +31,37 @@ const VisualRenderer = ({ imageUrl, svgContent, altText }) => {
   }
 
   return null;
+};
+
+const sanitizeLatex = (text = "") => {
+  if (!text) return "";
+
+  let sanitized = String(text)
+    .replace(/\u000c/g, "\\") // FIX: form-feed → backslash
+    .replace(/\u000b/g, "") // vertical tab
+    .replace(/\u0000/g, ""); // null character
+
+  // Fix common LaTeX typos: \rac → \frac (most common issue)
+  sanitized = sanitized.replace(/\\rac\b/g, "\\frac");
+
+  // Fix other common typos
+  sanitized = sanitized.replace(/\\sqr\b/g, "\\sqrt");
+  sanitized = sanitized.replace(/\\sqr\{/g, "\\sqrt{");
+  sanitized = sanitized.replace(/\\sqr\(/g, "\\sqrt(");
+
+  // Fix double backslashes
+  sanitized = sanitized.replace(/\\\\frac/g, "\\frac");
+  sanitized = sanitized.replace(/\\\\rac/g, "\\frac");
+
+  // Fix form-feed before braces/parens
+  sanitized = sanitized.replace(/\u000c{/g, "\\frac{");
+  sanitized = sanitized.replace(/\u000c\(/g, "\\frac(");
+
+  // Fix cases in $ delimiters
+  sanitized = sanitized.replace(/\$rac\{/g, "$\\frac{");
+  sanitized = sanitized.replace(/\$frac\{/g, "$\\frac{");
+
+  return sanitized;
 };
 
 // --- COMPONENT: SMART QUESTION RENDERER (Match Columns logic) ---
@@ -92,16 +124,28 @@ const SmartQuestionRenderer = ({ text }) => {
     );
   }
 
-  return <div className="whitespace-pre-wrap leading-relaxed">{text}</div>;
+  return (
+    <div className="whitespace-pre-wrap leading-relaxed">
+      <SafeMath latex={text} />
+    </div>
+  );
 };
 
 // --- COMPONENT: PAPER VIEW (Read Only) ---
 const PaperView = ({ paperData, calculateTotalMarks }) => {
   useEffect(() => {
     if (typeof window?.MathJax !== "undefined" && paperData) {
-      window.MathJax.typesetPromise()
-        .then(() => console.log("MathJax typesetting complete"))
-        .catch((err) => console.log("MathJax error:", err));
+      // Wait a bit for DOM to be ready
+      setTimeout(() => {
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise()
+            .then(() => console.log("MathJax typesetting complete"))
+            .catch((err) => {
+              console.warn("MathJax typesetting error (non-critical):", err);
+              // Don't show error to user - SafeMath component will handle fallback
+            });
+        }
+      }, 100);
     }
   }, [paperData]);
 
@@ -207,7 +251,9 @@ const PaperView = ({ paperData, calculateTotalMarks }) => {
                         </td>
                         <td className="question-cell border border-gray-400 px-3 py-3">
                           <div className="text-gray-800">
-                            <SmartQuestionRenderer text={question.question} />
+                            <SmartQuestionRenderer
+                              text={sanitizeLatex(question.question)}
+                            />
                           </div>
 
                           {/* Visuals */}
@@ -223,7 +269,7 @@ const PaperView = ({ paperData, calculateTotalMarks }) => {
                               <div className="options mt-2 text-sm text-gray-700">
                                 {question.options.map((option, oIndex) => (
                                   <div key={oIndex} className="ml-4">
-                                    {option}
+                                    <SafeMath latex={sanitizeLatex(option)} />
                                   </div>
                                 ))}
                               </div>
@@ -457,7 +503,7 @@ const EditView = ({
                       onClick={() =>
                         handleRegenerateImage(
                           sectionIndex,
-                          questionIndex,
+                          questionIndex
                           // question.question
                         )
                       }
@@ -853,7 +899,7 @@ function ExamPaperGenerator() {
   // 3. Add this Handler for AI Regeneration
   const handleRegenerateImage = async (
     sectionIndex,
-    questionIndex,
+    questionIndex
     // questionText
   ) => {
     const uniqueKey = `${sectionIndex}-${questionIndex}`;
@@ -863,15 +909,13 @@ function ExamPaperGenerator() {
 
     try {
       // const response = await paperAPI.regenerateQuestionImage(questionText);
-      const questionObj = paperData.sections[sectionIndex].questions[questionIndex];
+      const questionObj =
+        paperData.sections[sectionIndex].questions[questionIndex];
 
       const payload = {
         question: questionObj.question,
-        prompt:
-          questionObj.visual_annotation?.prompt ||
-          questionObj.question, // fallback
-        type:
-          questionObj.visual_annotation?.type || "image",
+        prompt: questionObj.visual_annotation?.prompt || questionObj.question, // fallback
+        type: questionObj.visual_annotation?.type || "image",
       };
 
       const response = await paperAPI.regenerateQuestionImage(payload);
