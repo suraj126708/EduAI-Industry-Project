@@ -332,9 +332,9 @@ export const teacherUploadBook = async (req, res) => {
       author,
       year,
       schoolId,
-      teacherId,
       title,
     };
+    // Note: teacherId is no longer required as we use req.user from auth middleware
     for (const [field, value] of Object.entries(requiredFields)) {
       if (!value) {
         await fs.promises.unlink(req.file.path);
@@ -355,24 +355,23 @@ export const teacherUploadBook = async (req, res) => {
       sendProgressUpdate(res, 5, "Uploading Book...", "uploading");
     }
 
-    const teacher = await User.findOne({
-      firebaseUid: teacherId,
-      //role: "teacher",
-    });
-    if (!teacher) {
+    // Use req.user from authenticateFirebaseToken middleware instead of looking up again
+    // This ensures consistency with getMyUploadedBooks which uses req.user._id
+    const teacher = req.user;
+    if (!teacher || !teacher._id) {
       await fs.promises.unlink(req.file.path);
       if (useSSE) {
         sendProgressUpdate(
           res,
           0,
-          `Teacher with ID '${teacherId}' not found.`,
+          "Teacher authentication failed. Please try again.",
           "error"
         );
         res.end();
       } else {
         return res
-          .status(404)
-          .json({ message: `Teacher with ID '${teacherId}' not found.` });
+          .status(401)
+          .json({ message: "Teacher authentication failed. Please try again." });
       }
       return;
     }
@@ -585,23 +584,63 @@ export const teacherUploadBook = async (req, res) => {
       }
 
       // SUCCESS: Processing worked, now we create the database record.
-      const book = new Book({
-        _id: bookId,
-        schoolId,
-        classId: classDoc._id,
-        uploadedBy: teacher._id,
-        title,
-        subject,
-        author,
-        year,
-        fileUrl: tempFilePath,
-        processedStatus: "processed",
-        noOfChunks: chunks,
-        uniqueName: uniquePdfName,
-        chapters: chapters && Array.isArray(chapters) ? chapters : [],
-      });
-      await book.save();
-      console.log(`[UPLOAD] Book saved successfully - ID: ${book._id}, Chunks: ${book.noOfChunks}`);
+      try {
+        // Sanitize chapters array to ensure all required fields are present
+        const sanitizedChapters = (chapters && Array.isArray(chapters) ? chapters : []).map((chap, index) => ({
+          chapter_no: chap.chapter_no || chap.chapterNo || String(index + 1) || "",
+          chapter_title: chap.chapter_title || chap.chapterTitle || `Chapter ${index + 1}`,
+          start_page: chap.start_page || chap.startPage || 0,
+        }));
+
+        const book = new Book({
+          _id: bookId,
+          schoolId,
+          classId: classDoc._id,
+          uploadedBy: teacher._id, // Using req.user._id ensures consistency with getMyUploadedBooks
+          title,
+          subject,
+          author,
+          year,
+          fileUrl: tempFilePath,
+          processedStatus: "processed",
+          noOfChunks: chunks,
+          uniqueName: uniquePdfName,
+          chapters: sanitizedChapters,
+        });
+        
+        console.log(`[UPLOAD] Attempting to save book - ID: ${book._id}, UploadedBy: ${book.uploadedBy}, SchoolId: ${book.schoolId}, ClassId: ${book.classId}`);
+        
+        await book.save();
+        console.log(`[UPLOAD] Book saved successfully - ID: ${book._id}, Chunks: ${book.noOfChunks}, UploadedBy: ${book.uploadedBy}, Teacher ID: ${teacher._id}`);
+      } catch (saveError) {
+        console.error(`[UPLOAD] Error saving book to database:`, saveError);
+        console.error(`[UPLOAD] Error details:`, {
+          message: saveError.message,
+          name: saveError.name,
+          errors: saveError.errors,
+          stack: saveError.stack
+        });
+        
+        // Clean up the uploaded file since save failed
+        if (tempFilePath) {
+          await fs.promises.unlink(tempFilePath).catch((err) => {
+            console.error("[UPLOAD] Error cleaning up file after save failure:", err.message);
+          });
+        }
+        
+        if (useSSE) {
+          sendProgressUpdate(
+            res,
+            0,
+            `Failed to save book to database: ${saveError.message}`,
+            "error"
+          );
+          res.end();
+        } else {
+          throw new Error(`Failed to save book to database: ${saveError.message}`);
+        }
+        return;
+      }
 
       // Final stage: Upload Complete (100%)
       if (useSSE) {
@@ -660,7 +699,11 @@ export const teacherUploadBook = async (req, res) => {
       });
     }
 
-    //console.error("Teacher Error - Book upload:", error.message);
+    console.error("[UPLOAD] Teacher Error - Book upload:", error.message);
+    console.error("[UPLOAD] Error stack:", error.stack);
+    if (error.errors) {
+      console.error("[UPLOAD] Validation errors:", JSON.stringify(error.errors, null, 2));
+    }
 
     if (!res.headersSent) {
       if (useSSE) {
@@ -807,6 +850,11 @@ export const getMyUploadedBooks = async (req, res) => {
       .populate("classId", "grade division")
       .populate("schoolId", "name")
       .sort({ createdAt: -1 });
+
+    // Set cache-control headers to prevent 304 responses and ensure fresh data
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
 
     return res.status(200).json({ success: true, data: books });
   } catch (error) {

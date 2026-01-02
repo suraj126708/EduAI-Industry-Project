@@ -587,6 +587,15 @@ const ExamPlatformUpload = () => {
 
     setUploadResults(finalResults);
     setIsUploading(false);
+
+    // If any uploads were successful and user is on the "find" tab, refresh the books list
+    const hasSuccessfulUploads = finalResults.some((res) => res.success);
+    if (hasSuccessfulUploads && activeTab === "find") {
+      console.log(
+        "[FRONTEND] Refreshing books list after successful upload..."
+      );
+      fetchBooksMetadata();
+    }
   };
 
   const fetchBooksMetadata = async () => {

@@ -21,6 +21,13 @@ const BookSchema = new mongoose.Schema(
       required: true,
     },
 
+    subject: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 100,
+    },
+
     title: {
       type: String,
       required: false,
@@ -74,11 +81,16 @@ const BookSchema = new mongoose.Schema(
       {
         chapter_no: {
           type: String,
-          required: true,
+          required: false, // Allow empty chapter numbers (e.g., "Answers" section)
+          default: "",
         },
         chapter_title: {
           type: String,
           required: true,
+        },
+        start_page: {
+          type: Number,
+          required: false,
         },
       },
     ],
