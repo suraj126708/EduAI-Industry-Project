@@ -350,47 +350,47 @@ export const paperAPI = {
 };
 
 // --- NEW SCHOOL MANAGEMENT API FUNCTIONS ---
-export const schoolService = {
-  /**
-   * Public endpoint for a principal to register their school.
-   * @param {object} schoolData - { schoolName, schoolAddress, principalName, principalEmail, password }
-   */
-  registerSchool: async (schoolData) => {
+export const schoolAPI = {
+  registerSchool: async (payload) => {
     try {
-      // This is a public route, so no auth token is needed.
-      const response = await axios.post(
-        `${local_api}schools/register`,
-        schoolData
-      );
-      return response.data;
+      const response = await api.post("superadmin/register", payload);
+      return response.data; // { success: true, message: "..." }
     } catch (error) {
-      // Re-throw to be caught by the component
-      throw error.response?.data || error;
+      console.error("Register school error:", error);
+      throw error;
     }
   },
 
-  /**
-   * Superadmin gets a list of all schools pending verification.
-   */
-  getPendingSchools: async () => {
+  getSchools: async (status = "") => {
     try {
-      const response = await api.get("/admin/schools?status=pending");
-      return response.data; // { success, data: [...] }
+      const params = {};
+      if (status) params.status = status;
+
+      const response = await api.get("superadmin/schools", { params });
+      return response.data; // { success: true, data: [...] }
     } catch (error) {
-      throw error.response?.data || error;
+      console.error("Get schools error:", error);
+      throw error;
     }
   },
 
-  /**
-   * Superadmin verifies a school.
-   * @param {string} schoolId - The ID of the school to verify.
-   */
+  createSchool: async (payload) => {
+    try {
+      const response = await api.post("superadmin/schools", payload);
+      return response.data; // { success: true, data: { school, principal, ... } }
+    } catch (error) {
+      console.error("Create school error:", error);
+      throw error;
+    }
+  },
+
   verifySchool: async (schoolId) => {
     try {
-      const response = await api.put(`/admin/schools/verify/${schoolId}`);
-      return response.data;
+      const response = await api.put(`superadmin/schools/${schoolId}/verify`);
+      return response.data; // { success: true, message: "..." }
     } catch (error) {
-      throw error.response?.data || error;
+      console.error("Verify school error:", error);
+      throw error;
     }
   },
 };
@@ -648,6 +648,17 @@ export const adminService = {
     } catch (error) {
       console.error("Error fetching students:", error);
       throw error.response?.data || error;
+    }
+  },
+
+  getDashboardSuperAdmin: async () => {
+    try {
+      // Adjust the URL if your backend route is different (e.g., 'admin/stats')
+      const response = await api.get("/admin/dashboard-stats");
+      return response.data; // Expected: { success: true, data: { statistics: { ... } } }
+    } catch (error) {
+      console.error("Get dashboard stats error:", error);
+      throw error;
     }
   },
 };

@@ -23,7 +23,7 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const res = await adminService.getDashboardStats();
+        const res = await adminService.getDashboardSuperAdmin();
         if (res.success) {
           setStats(res.data.statistics);
         } else {

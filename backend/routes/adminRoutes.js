@@ -26,7 +26,6 @@ import {
   uploadStudentExcel,
   bulkPromoteStudents,
   dedupeStudents,
-  createSchool,
   addOrUpdateClass,
   deleteClass,
   addOrUpdateSubject,
@@ -34,12 +33,12 @@ import {
   assignTeacher,
   removeAssignment,
   getAssignments,
-  getSchools,
   getClasses,
   getSubjects,
   createTeacher,
   getAllPapersForSchool,
   getBooksByClass,
+  getDashboardStats,
 } from "../controllers/adminController.js";
 import {
   authenticateFirebaseToken,
@@ -301,6 +300,13 @@ router.get(
  *               $ref: '#/components/schemas/Error'
  */
 router.get(
+  "/dashboard-stats",
+  authenticateFirebaseToken,
+  authorize("superadmin"),
+  getDashboardStats
+);
+
+router.get(
   "/teachers",
   authenticateFirebaseToken,
   /*authorizeMultiple({
@@ -465,22 +471,6 @@ router.post(
   authenticateFirebaseToken,
   //authorize("admin"),
   dedupeStudents
-);
-
-/*--------------New Routes added here-----------*/
-// Schools
-router.post(
-  "/schools",
-  authenticateFirebaseToken,
-  //authorize("admin"),
-  createSchool
-);
-
-router.get(
-  "/schools",
-  authenticateFirebaseToken,
-  //authorize("admin"),
-  getSchools
 );
 
 // Classes

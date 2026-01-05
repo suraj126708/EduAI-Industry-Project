@@ -2,9 +2,11 @@
 
 import express from "express";
 import {
-  createSchool, // Assuming this is in adminController.js
-  getSchools, // Assuming this is in adminController.js
-} from "../controllers/adminController.js";
+  createSchool,
+  getSchools,
+  registerSchool,
+  verifySchool,
+} from "../controllers/schoolController.js";
 import {
   authenticateFirebaseToken,
   authorize,
@@ -12,11 +14,8 @@ import {
 
 const router = express.Router();
 
-// This file will handle routes prefixed with /api/superadmin
+router.post("/register", authenticateFirebaseToken, registerSchool);
 
-// @route   GET /api/superadmin/schools
-// @desc    Get all schools (Superadmin only)
-// @access  Private (Superadmin)
 router.get(
   "/schools",
   authenticateFirebaseToken,
@@ -24,14 +23,18 @@ router.get(
   getSchools
 );
 
-// @route   POST /api/superadmin/schools
-// @desc    Create a school and its principal (Superadmin only)
-// @access  Private (Superadmin)
 router.post(
   "/schools",
   authenticateFirebaseToken,
   authorize("superadmin"),
-  createSchool // The controller that creates the school and principal
+  createSchool
+);
+
+router.put(
+  "/schools/:id/verify",
+  authenticateFirebaseToken,
+  authorize("superadmin"),
+  verifySchool
 );
 
 export default router;
