@@ -13,7 +13,7 @@ import Home from "./Pages/Home";
 import Unauthorized from "./components/Unauthorized";
 import { Navbar } from "./components";
 import QuestionPaperForm from "./Pages/QuestionPaperGeneration";
-import ExamPlatformUpload from "./Pages/ExamPlatformUpload";
+import BookUpload from "./Pages/BookUpload";
 import AnswerSheetUpload from "./Pages/AnswerSheetUpload";
 import PaperFormat from "./Pages/PaperFormat";
 import ReportGeneration from "./Pages/Report";
@@ -90,9 +90,7 @@ function App() {
             />
             <Route
               path="/upload"
-              element={
-                <ProtectedRoute>{<ExamPlatformUpload />}</ProtectedRoute>
-              }
+              element={<ProtectedRoute>{<BookUpload />}</ProtectedRoute>}
             />
             <Route
               path="/answer-sheet-upload"
