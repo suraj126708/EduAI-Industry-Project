@@ -285,7 +285,9 @@ const sendProgressUpdate = (res, progress, message, stage) => {
   if (typeof res.flush === "function") {
     res.flush();
   }
-  console.log(`[PROGRESS UPDATE] Progress: ${progress}%, Stage: ${stage}, Message: ${message}`);
+  console.log(
+    `[PROGRESS UPDATE] Progress: ${progress}%, Stage: ${stage}, Message: ${message}`
+  );
 };
 
 export const teacherUploadBook = async (req, res) => {
@@ -369,9 +371,9 @@ export const teacherUploadBook = async (req, res) => {
         );
         res.end();
       } else {
-        return res
-          .status(401)
-          .json({ message: "Teacher authentication failed. Please try again." });
+        return res.status(401).json({
+          message: "Teacher authentication failed. Please try again.",
+        });
       }
       return;
     }
@@ -444,7 +446,7 @@ export const teacherUploadBook = async (req, res) => {
       if (useSSE) {
         sendProgressUpdate(res, 5, "Processing...", "processing");
       }
-      
+
       // Stream AI service response in real-time using axios with responseType: 'stream'
       const streamProcessorResponse = async (fieldName) => {
         const fileStream = fs.createReadStream(tempFilePath);
@@ -469,7 +471,7 @@ export const teacherUploadBook = async (req, res) => {
           timeout: 15 * 60 * 1000,
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
-          responseType: 'stream',
+          responseType: "stream",
           validateStatus: (s) => s >= 200 && s < 500,
         });
       };
@@ -485,44 +487,67 @@ export const teacherUploadBook = async (req, res) => {
           responseStream = await streamProcessorResponse("pdf");
         }
 
-        console.log("[UPLOAD] Streaming response from AI service in real-time...");
-        
+        console.log(
+          "[UPLOAD] Streaming response from AI service in real-time..."
+        );
+
         // Wait for stream to complete and process all data in real-time
         processingResult = await new Promise((resolve, reject) => {
           let buffer = "";
-          
-          responseStream.data.on('data', (chunk) => {
+
+          responseStream.data.on("data", (chunk) => {
             buffer += chunk.toString();
-            const lines = buffer.split('\n');
+            const lines = buffer.split("\n");
             buffer = lines.pop() || ""; // Keep incomplete line
 
             for (const line of lines) {
-              if (line.trim() && line.startsWith('data: ')) {
+              if (line.trim() && line.startsWith("data: ")) {
                 const dataLine = line.substring(6).trim();
-                if (dataLine && dataLine !== 'null') {
+                if (dataLine && dataLine !== "null") {
                   try {
                     const parsed = JSON.parse(dataLine);
-                    
+
                     if (parsed.progress !== undefined) {
                       latestProgress = parsed;
-                      console.log(`[UPLOAD] Real-time progress: ${parsed.progress}% - ${parsed.status || parsed.message || ''}`);
-                      
+                      console.log(
+                        `[UPLOAD] Real-time progress: ${parsed.progress}% - ${
+                          parsed.status || parsed.message || ""
+                        }`
+                      );
+
                       // Forward progress updates to frontend in real-time
                       if (useSSE) {
-                        const message = parsed.status || parsed.message || "Processing...";
-                        const stage = (parsed.status?.toLowerCase() === "error" || parsed.error) ? "error" : "processing";
-                        sendProgressUpdate(res, parsed.progress, message, stage);
+                        const message =
+                          parsed.status || parsed.message || "Processing...";
+                        const stage =
+                          parsed.status?.toLowerCase() === "error" ||
+                          parsed.error
+                            ? "error"
+                            : "processing";
+                        sendProgressUpdate(
+                          res,
+                          parsed.progress,
+                          message,
+                          stage
+                        );
                       }
-                      
+
                       // Keep track of final result
-                      if (parsed.progress === 100 || parsed.status === "Success" || parsed.success) {
+                      if (
+                        parsed.progress === 100 ||
+                        parsed.status === "Success" ||
+                        parsed.success
+                      ) {
                         finalResult = parsed;
                       }
                     }
                   } catch (e) {
                     // Silently ignore parse errors for empty/invalid messages
                     if (dataLine.length > 10) {
-                      console.warn("[UPLOAD] Failed to parse SSE message:", dataLine.substring(0, 100));
+                      console.warn(
+                        "[UPLOAD] Failed to parse SSE message:",
+                        dataLine.substring(0, 100)
+                      );
                     }
                   }
                 }
@@ -530,20 +555,25 @@ export const teacherUploadBook = async (req, res) => {
             }
           });
 
-          responseStream.data.on('end', () => {
+          responseStream.data.on("end", () => {
             const result = finalResult || latestProgress || {};
-            console.log("[UPLOAD] Streaming complete, final result:", JSON.stringify(result).substring(0, 200));
+            console.log(
+              "[UPLOAD] Streaming complete, final result:",
+              JSON.stringify(result).substring(0, 200)
+            );
             resolve(result);
           });
 
-          responseStream.data.on('error', (err) => {
+          responseStream.data.on("error", (err) => {
             console.error("[UPLOAD] Stream error:", err.message);
             reject(err);
           });
         });
-        
       } catch (streamErr) {
-        console.error("[UPLOAD] Error streaming from AI service:", streamErr.message);
+        console.error(
+          "[UPLOAD] Error streaming from AI service:",
+          streamErr.message
+        );
         throw streamErr;
       }
     } catch (procErr) {
@@ -567,11 +597,20 @@ export const teacherUploadBook = async (req, res) => {
     // Extract status (case-insensitive), chunks from data.chunks, and chapters from data.chapters
     const status = processingResult.status;
     const chunks = processingResult.data?.chunks || processingResult.chunks;
-    const chapters = processingResult.data?.chapters || processingResult.chapters;
+    const chapters =
+      processingResult.data?.chapters || processingResult.chapters;
 
-    console.log(`[UPLOAD] Processing result - Status: ${status}, Chunks: ${chunks}, Chapters: ${chapters ? chapters.length : 0}`);
+    console.log(
+      `[UPLOAD] Processing result - Status: ${status}, Chunks: ${chunks}, Chapters: ${
+        chapters ? chapters.length : 0
+      }`
+    );
 
-    if ((status === "success" || status === "Success") && Number.isFinite(chunks) && chunks > 0) {
+    if (
+      (status === "success" || status === "Success") &&
+      Number.isFinite(chunks) &&
+      chunks > 0
+    ) {
       console.log("[UPLOAD] Processing successful, saving book to database...");
       // Stage 3: Storing Vectors in Database (85%)
       if (useSSE) {
@@ -586,9 +625,13 @@ export const teacherUploadBook = async (req, res) => {
       // SUCCESS: Processing worked, now we create the database record.
       try {
         // Sanitize chapters array to ensure all required fields are present
-        const sanitizedChapters = (chapters && Array.isArray(chapters) ? chapters : []).map((chap, index) => ({
-          chapter_no: chap.chapter_no || chap.chapterNo || String(index + 1) || "",
-          chapter_title: chap.chapter_title || chap.chapterTitle || `Chapter ${index + 1}`,
+        const sanitizedChapters = (
+          chapters && Array.isArray(chapters) ? chapters : []
+        ).map((chap, index) => ({
+          chapter_no:
+            chap.chapter_no || chap.chapterNo || String(index + 1) || "",
+          chapter_title:
+            chap.chapter_title || chap.chapterTitle || `Chapter ${index + 1}`,
           start_page: chap.start_page || chap.startPage || 0,
         }));
 
@@ -607,27 +650,34 @@ export const teacherUploadBook = async (req, res) => {
           uniqueName: uniquePdfName,
           chapters: sanitizedChapters,
         });
-        
-        console.log(`[UPLOAD] Attempting to save book - ID: ${book._id}, UploadedBy: ${book.uploadedBy}, SchoolId: ${book.schoolId}, ClassId: ${book.classId}`);
-        
+
+        console.log(
+          `[UPLOAD] Attempting to save book - ID: ${book._id}, UploadedBy: ${book.uploadedBy}, SchoolId: ${book.schoolId}, ClassId: ${book.classId}`
+        );
+
         await book.save();
-        console.log(`[UPLOAD] Book saved successfully - ID: ${book._id}, Chunks: ${book.noOfChunks}, UploadedBy: ${book.uploadedBy}, Teacher ID: ${teacher._id}`);
+        console.log(
+          `[UPLOAD] Book saved successfully - ID: ${book._id}, Chunks: ${book.noOfChunks}, UploadedBy: ${book.uploadedBy}, Teacher ID: ${teacher._id}`
+        );
       } catch (saveError) {
         console.error(`[UPLOAD] Error saving book to database:`, saveError);
         console.error(`[UPLOAD] Error details:`, {
           message: saveError.message,
           name: saveError.name,
           errors: saveError.errors,
-          stack: saveError.stack
+          stack: saveError.stack,
         });
-        
+
         // Clean up the uploaded file since save failed
         if (tempFilePath) {
           await fs.promises.unlink(tempFilePath).catch((err) => {
-            console.error("[UPLOAD] Error cleaning up file after save failure:", err.message);
+            console.error(
+              "[UPLOAD] Error cleaning up file after save failure:",
+              err.message
+            );
           });
         }
-        
+
         if (useSSE) {
           sendProgressUpdate(
             res,
@@ -637,7 +687,9 @@ export const teacherUploadBook = async (req, res) => {
           );
           res.end();
         } else {
-          throw new Error(`Failed to save book to database: ${saveError.message}`);
+          throw new Error(
+            `Failed to save book to database: ${saveError.message}`
+          );
         }
         return;
       }
@@ -678,7 +730,9 @@ export const teacherUploadBook = async (req, res) => {
       }
     } else {
       // FAILURE: Processing failed.
-      console.error(`[UPLOAD] Processing failed - Status: ${status}, Chunks: ${chunks}`);
+      console.error(
+        `[UPLOAD] Processing failed - Status: ${status}, Chunks: ${chunks}`
+      );
       const errorMsg =
         "Failed to extract content from the PDF. It may be empty or corrupted.";
       if (useSSE) {
@@ -702,7 +756,10 @@ export const teacherUploadBook = async (req, res) => {
     console.error("[UPLOAD] Teacher Error - Book upload:", error.message);
     console.error("[UPLOAD] Error stack:", error.stack);
     if (error.errors) {
-      console.error("[UPLOAD] Validation errors:", JSON.stringify(error.errors, null, 2));
+      console.error(
+        "[UPLOAD] Validation errors:",
+        JSON.stringify(error.errors, null, 2)
+      );
     }
 
     if (!res.headersSent) {
@@ -1191,16 +1248,6 @@ export const updateQuestionPaper = async (req, res) => {
     const { id } = req.params;
     const incoming = req.body || {};
 
-    console.log("--- DEBUG UPDATE REQUEST ---");
-    console.log("Content-Type Header:", req.headers["content-type"]);
-    console.log("Req Body Keys:", Object.keys(incoming));
-
-    if (incoming.paper) {
-      console.log("Paper sections count:", incoming.paper.sections?.length);
-    } else {
-      console.log("❌ incoming.paper is UNDEFINED");
-    }
-
     // --- 1. Validate the incoming request ---
     if (!id) {
       return res
@@ -1215,12 +1262,13 @@ export const updateQuestionPaper = async (req, res) => {
       typeof newPaperContent !== "object" ||
       !Array.isArray(newPaperContent.sections)
     ) {
-      console.log(
-        "Validation failed: The 'paper' object in the request body is missing or invalid."
-      );
       return res
         .status(400)
-        .json({ success: false, message: "Valid paper content is required" });
+        .json({
+          success: false,
+          message:
+            "Validation failed: The 'paper' object in the request body is missing or invalid.",
+        });
     }
 
     // --- 2. Verify the document exists and the user has permission ---
@@ -1250,11 +1298,6 @@ export const updateQuestionPaper = async (req, res) => {
       updatePayload.status = incoming.status;
     }
 
-    console.log(
-      "Updating question paper with payload:",
-      JSON.stringify(updatePayload, null, 2)
-    );
-
     // --- 4. Use findByIdAndUpdate for a direct, atomic update ---
     const updatedPaper = await QuestionPaper.findByIdAndUpdate(
       id,
@@ -1267,9 +1310,6 @@ export const updateQuestionPaper = async (req, res) => {
         "Failed to find and update the document after validation."
       );
     }
-
-    console.log("Question paper updated successfully");
-
     // --- 5. Return the NEW, updated document ---
     return res.status(200).json({
       success: true,
