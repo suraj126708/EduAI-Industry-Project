@@ -699,7 +699,7 @@ const SaveConfirmationModal = ({
   handleSavePaper,
   isSaving,
 }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">Confirm Save</h3>
       <p className="text-gray-600 mb-6">
@@ -735,7 +735,15 @@ function ExamPaperGenerator() {
   // Data Normalization Logic
   const normalizePaper = useCallback((incoming, fallback = {}) => {
     const topLevelData = incoming || {};
-    let paperObjectData = incoming?.paper || {};
+    let paperObjectData = {};
+
+    if (incoming && Array.isArray(incoming.sections)) {
+      paperObjectData = incoming;
+    } else if (incoming && incoming.paper) {
+      paperObjectData = incoming.paper;
+    } else {
+      paperObjectData = {};
+    }
 
     const safeString = (v, fb = "") =>
       v !== null && v !== undefined ? String(v).trim() || fb : fb;
@@ -941,6 +949,8 @@ function ExamPaperGenerator() {
     }
   };
 
+  // Inside ExamPaperGenerator function
+
   useEffect(() => {
     const loadPaperData = async () => {
       setIsLoading(true);
@@ -950,41 +960,71 @@ function ExamPaperGenerator() {
         let batchPapers = [];
         let initialPaperToView = null;
 
+        // 1. Try loading from Session Storage (for newly generated papers)
         if (batchDataString) {
-          batchPapers = JSON.parse(batchDataString);
-          setGeneratedPapers(batchPapers);
-          initialPaperToView =
-            batchPapers.find((p) => p._id === paperIdFromUrl) || batchPapers[0];
-          if (initialPaperToView) {
-            const initialIndex = batchPapers.findIndex(
-              (p) => p._id === initialPaperToView._id
-            );
-            setSelectedPaperIndex(initialIndex >= 0 ? initialIndex : 0);
-          }
-        }
+          try {
+            batchPapers = JSON.parse(batchDataString);
+            setGeneratedPapers(batchPapers);
 
-        if (paperIdFromUrl) {
-          const response = await paperAPI.getPaperById(paperIdFromUrl);
-          if (response.data && response.data.success) {
-            const fetchedDoc = response.data.data;
-            initialPaperToView = fetchedDoc;
-            if (batchPapers.length > 0) {
-              const paperIndex = batchPapers.findIndex(
-                (p) => p._id === fetchedDoc._id
+            // If we have an ID in the URL, try to find it in the batch first
+            if (paperIdFromUrl) {
+              initialPaperToView = batchPapers.find(
+                (p) => p._id === paperIdFromUrl
               );
-              if (paperIndex !== -1) {
-                batchPapers[paperIndex] = fetchedDoc;
-                setGeneratedPapers([...batchPapers]);
-              }
-            } else {
-              setGeneratedPapers([fetchedDoc]);
             }
+            // If no ID (or not found), default to the first one in batch
+            if (!initialPaperToView && batchPapers.length > 0) {
+              initialPaperToView = batchPapers[0];
+            }
+          } catch (e) {
+            console.error("Error parsing session data", e);
           }
         }
 
+        // 2. If we have a URL ID, try fetching from API (Database)
+        // This overrides session data if found, ensuring we get the latest saved version
+        if (paperIdFromUrl) {
+          try {
+            const response = await paperAPI.getPaperById(paperIdFromUrl);
+
+            // 🛑 FIX 1: Check 'response.success' directly
+            // (response IS the payload, not the axios object)
+            if (response && response.success) {
+              const fetchedDoc = response.data; // This is the paper object
+              initialPaperToView = fetchedDoc;
+
+              // Update the batch list with this fresh data if it exists there
+              if (batchPapers.length > 0) {
+                const paperIndex = batchPapers.findIndex(
+                  (p) => p._id === fetchedDoc._id
+                );
+                if (paperIndex !== -1) {
+                  batchPapers[paperIndex] = fetchedDoc;
+                  setGeneratedPapers([...batchPapers]);
+                }
+              } else {
+                // If no batch exists (direct link access), set this as the single paper
+                setGeneratedPapers([fetchedDoc]);
+              }
+            }
+          } catch (apiErr) {
+            console.error("API Fetch Error:", apiErr);
+            // Don't set global error yet; we might still have session data to show
+          }
+        }
+
+        // 3. Finalize Data Setting
         if (initialPaperToView) {
           setPaperData(normalizePaper(initialPaperToView, {}));
           setPaperId(initialPaperToView._id);
+
+          // Set selected index based on the found paper
+          if (batchPapers.length > 0) {
+            const idx = batchPapers.findIndex(
+              (p) => p._id === initialPaperToView._id
+            );
+            setSelectedPaperIndex(idx >= 0 ? idx : 0);
+          }
         } else {
           setError("No paper data could be found or loaded.");
         }
@@ -993,9 +1033,9 @@ function ExamPaperGenerator() {
         setError(err.message || "An unknown error occurred.");
       } finally {
         setIsLoading(false);
-        sessionStorage.removeItem("paperBatchData");
       }
     };
+
     loadPaperData();
   }, [paperIdFromUrl, normalizePaper]);
 
