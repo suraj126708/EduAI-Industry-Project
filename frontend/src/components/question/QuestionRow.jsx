@@ -1,154 +1,212 @@
-import React from "react";
-import { X } from "lucide-react";
-import QuestionTypeInput from "./QuestionTypeInput";
-import TopicsSelector from "./TopicsSelector";
-import ErrorMessage from "../ErrorMessage";
+import React, { useMemo } from "react";
+import {
+  Card,
+  CardContent,
+  Grid,
+  TextField,
+  Autocomplete,
+  IconButton,
+  MenuItem,
+  Box,
+  Typography,
+  Tooltip,
+} from "@mui/material";
+import { DeleteOutline, Bolt } from "@mui/icons-material";
+import questionTypesData from "../../assets/QuestionType.json";
 
-const QuestionRow = ({
-  questionIndex,
-  question,
-  errors,
-  onUpdateQuestion,
-  onRemoveQuestion,
-  onQuestionTypeInput,
-  onSelectQuestionType,
-  questionTypeInputs,
-  questionTypeSuggestions,
-  onToggleDropdown,
-  onToggleUnit,
-  onToggleTopic,
-  getSubjectTopics,
-  openDropdowns,
-  dropdownRefs,
-  questionsLength,
-}) => {
+const QuestionRow = ({ index, question, onUpdate, onRemove, error }) => {
+  const uniqueQuestionTypes = useMemo(() => {
+    const seen = new Set();
+    return questionTypesData.filter((item) => {
+      const label = typeof item === "string" ? item : item.label;
+      if (seen.has(label)) return false;
+      seen.add(label);
+      return true;
+    });
+  }, []);
+
   return (
-    <div className="px-6 py-5 hover:bg-gray-50 transition-colors">
-      <div className="grid grid-cols-12 gap-4 items-center">
-        {/* Row Number */}
-        <div className="col-span-1">
-          <span className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-bold rounded-full shadow-md">
-            {questionIndex + 1}
-          </span>
-        </div>
+    <Card
+      variant="outlined"
+      sx={{
+        position: "relative",
+        overflow: "visible",
+        borderColor: error ? "error.main" : "divider",
+        mb: 2,
+        "&:hover": { borderColor: "primary.main", boxShadow: 2 },
+      }}
+    >
+      <Box
+        sx={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 4,
+          bgcolor: "primary.main",
+          borderTopLeftRadius: 4,
+          borderBottomLeftRadius: 4,
+        }}
+      />
 
-        {/* Question Type */}
-        <div className="col-span-3 relative">
-          <QuestionTypeInput
-            questionIndex={questionIndex}
-            value={questionTypeInputs[questionIndex] || ""}
-            onChange={onQuestionTypeInput}
-            suggestions={questionTypeSuggestions[questionIndex]}
-            onSelectType={onSelectQuestionType}
-            error={errors[`question_${questionIndex}`]?.type}
-          />
-        </div>
+      <CardContent sx={{ pl: 2.5, pr: 1, py: "12px !important" }}>
+        <Grid container spacing={1.5} alignItems="center">
+          {/* Index */}
+          <Grid size="auto">
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              fontWeight={700}
+              sx={{ width: 20 }}
+            >
+              {index + 1}.
+            </Typography>
+          </Grid>
 
-        {/* Topics Selector */}
-        <div className="col-span-2">
-          <TopicsSelector
-            questionIndex={questionIndex}
-            question={question}
-            isOpen={openDropdowns[questionIndex]}
-            onToggleDropdown={onToggleDropdown}
-            onToggleUnit={onToggleUnit}
-            onToggleTopic={onToggleTopic}
-            getSubjectTopics={getSubjectTopics}
-            error={errors[`question_${questionIndex}`]?.topics}
-            dropdownRef={(el) => (dropdownRefs.current[questionIndex] = el)}
-          />
-        </div>
+          {/* Question Type */}
+          <Grid size={{ xs: 12, md: 3, lg: 2.5 }}>
+            <Autocomplete
+              freeSolo
+              options={uniqueQuestionTypes}
+              getOptionLabel={(option) =>
+                typeof option === "string" ? option : option.label
+              }
+              value={question.type || null}
+              onChange={(_, newValue) => {
+                const val =
+                  (typeof newValue === "string" ? newValue : newValue?.value) ||
+                  "";
+                onUpdate(index, "type", val);
+              }}
+              onInputChange={(_, newInputValue) => {
+                onUpdate(index, "type", newInputValue || "");
+              }}
+              // Custom dropdown width & style
+              slotProps={{
+                paper: {
+                  sx: {
+                    width: 320,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                    mt: 1,
+                  },
+                },
+              }}
+              renderOption={(props, option) => {
+                const { key, ...optionProps } = props;
+                const label =
+                  typeof option === "string" ? option : option.label;
+                return (
+                  <Box
+                    key={key}
+                    component="li"
+                    {...optionProps}
+                    sx={{
+                      borderBottom: "1px solid",
+                      borderColor: "grey.100",
+                      py: 1.5,
+                      px: 2,
+                      "&:last-child": { borderBottom: "none" },
+                      "&:hover": { bgcolor: "grey.50" },
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ whiteSpace: "normal", lineHeight: 1.5 }}
+                    >
+                      {label}
+                    </Typography>
+                  </Box>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Question Type"
+                  placeholder="MCQ"
+                  size="small"
+                  error={!!error?.type}
+                />
+              )}
+            />
+          </Grid>
 
-        {/* Difficulty */}
-        <div className="col-span-1">
-          <select
-            value={question.difficulty || "medium"}
-            onChange={(e) =>
-              onUpdateQuestion(questionIndex, "difficulty", e.target.value)
-            }
-            className="w-full p-2 border rounded-md min-h-[48px] focus:ring-2 focus:ring-blue-500 text-sm text-left border-gray-300 focus:border-transparent"
-          >
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-        </div>
+          {/* Difficulty */}
+          <Grid size={{ xs: 6, md: 2, lg: 1.5 }}>
+            <TextField
+              select
+              fullWidth
+              label="Level"
+              value={question.difficulty || "medium"}
+              onChange={(e) => onUpdate(index, "difficulty", e.target.value)}
+              size="small"
+            >
+              <MenuItem value="easy">Easy</MenuItem>
+              <MenuItem value="medium">Medium</MenuItem>
+              <MenuItem value="hard">Hard</MenuItem>
+            </TextField>
+          </Grid>
 
-        {/* Number of Questions */}
-        <div className="col-span-1">
-          <input
-            type="number"
-            min="1"
-            value={question.numQuestions}
-            onChange={(e) =>
-              onUpdateQuestion(questionIndex, "numQuestions", +e.target.value)
-            }
-            className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm text-center ${
-              errors[`question_${questionIndex}`]?.numQuestions
-                ? "border-red-300 focus:border-red-500"
-                : "border-gray-300 focus:border-transparent"
-            }`}
-          />
-          <ErrorMessage
-            error={errors[`question_${questionIndex}`]?.numQuestions}
-          />
-        </div>
+          {/* Qty */}
+          <Grid size={{ xs: 3, md: 1.5, lg: 1 }}>
+            <TextField
+              type="number"
+              label="Qty"
+              value={question.numQuestions}
+              onChange={(e) => onUpdate(index, "numQuestions", e.target.value)}
+              size="small"
+            />
+          </Grid>
 
-        {/* Marks per Question */}
-        <div className="col-span-1">
-          <input
-            type="number"
-            min="1"
-            value={question.marksPerQuestion}
-            onChange={(e) =>
-              onUpdateQuestion(
-                questionIndex,
-                "marksPerQuestion",
-                +e.target.value
-              )
-            }
-            className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm text-center ${
-              errors[`question_${questionIndex}`]?.marksPerQuestion
-                ? "border-red-300 focus:border-red-500"
-                : "border-gray-300 focus:border-transparent"
-            }`}
-          />
-          <ErrorMessage
-            error={errors[`question_${questionIndex}`]?.marksPerQuestion}
-          />
-        </div>
+          {/* Marks */}
+          <Grid size={{ xs: 3, md: 1.5, lg: 1 }}>
+            <TextField
+              type="number"
+              label="Marks"
+              value={question.marksPerQuestion}
+              onChange={(e) =>
+                onUpdate(index, "marksPerQuestion", e.target.value)
+              }
+              size="small"
+            />
+          </Grid>
 
-        {/* Per-row subtopics (LLM note) input */}
-        <div className="col-span-2">
-          <input
-            type="text"
-            placeholder="Subtopics for AI (comma-separated)"
-            value={question.subtopicsInput || ""}
-            onChange={(e) =>
-              onUpdateQuestion(questionIndex, "subtopicsInput", e.target.value)
-            }
-            className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm border-gray-300 focus:border-transparent"
-          />
-        </div>
+          {/* AI Instructions */}
+          <Grid size={{ xs: 12, md: 3, lg: 4.5 }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Instructions for AI (Optional)"
+              value={question.subtopicsInput || ""}
+              onChange={(e) =>
+                onUpdate(index, "subtopicsInput", e.target.value)
+              }
+              InputProps={{
+                startAdornment: (
+                  <Bolt fontSize="small" sx={{ color: "orange", mr: 1 }} />
+                ),
+                style: { fontSize: "0.9rem" },
+              }}
+            />
+          </Grid>
 
-        {/* Total Marks */}
-        <div className="col-span-1 text-center">
-          <div className="flex flex-col items-center gap-2">
-            <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 text-sm font-medium rounded-md">
-              {question.numQuestions * question.marksPerQuestion}
-            </span>
-            {questionsLength > 1 && (
-              <button
-                onClick={() => onRemoveQuestion(questionIndex)}
-                className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50"
+          {/* Delete */}
+          <Grid size="auto" sx={{ ml: "auto" }}>
+            <Tooltip title="Remove">
+              <IconButton
+                onClick={() => onRemove(index)}
+                size="small"
+                color="error"
               >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+                <DeleteOutline fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
   );
 };
 

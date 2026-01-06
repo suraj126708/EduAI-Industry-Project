@@ -9,13 +9,9 @@ export { default as CustomDropdown } from "./CustomDropdown";
 
 // Question Components
 export {
-  QuestionTypeInput,
   QuestionRow,
   QuestionsTable,
-  TopicsSelector,
   PaperDetailsForm,
-  TopicsDropdown,
-  SuccessModal,
   DurationPickerModal,
 } from "./question";
 
