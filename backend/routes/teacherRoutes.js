@@ -12,9 +12,6 @@ import express from "express";
 import multer from "multer";
 import { body, param } from "express-validator";
 import {
-  getAllTeachers,
-  getTeacherById,
-  updateTeacher,
   getTeacherAssignments,
   generateQuestionPaper,
   teacherUploadBook,
@@ -68,10 +65,6 @@ const updateTeacherValidation = [
 ];
 
 // --- START OF ROUTE DEFINITIONS ---
-
-// --- MOST SPECIFIC ROUTES FIRST ---
-
-router.get("/", authenticateFirebaseToken, authorize("admin"), getAllTeachers);
 
 router.get(
   "/assignments",
@@ -190,20 +183,5 @@ router.get(
   getProcessingProgress
 );
 // --- MOST GENERIC PARAMETERIZED ROUTES LAST ---
-
-router.get(
-  "/:id",
-  authenticateFirebaseToken,
-  teacherIdValidation,
-  getTeacherById
-);
-
-router.put(
-  "/:id",
-  authenticateFirebaseToken,
-  teacherIdValidation,
-  updateTeacherValidation,
-  updateTeacher
-);
 
 export default router;

@@ -650,6 +650,16 @@ export const adminService = {
       throw error.response?.data || error;
     }
   },
+  getDashboardSuperAdmin: async () => {
+    try {
+      // Adjust the URL if your backend route is different (e.g., 'admin/stats')
+      const response = await api.get("/admin/dashboard-stats");
+      return response.data; // Expected: { success: true, data: { statistics: { ... } } }
+    } catch (error) {
+      console.error("Get dashboard stats error:", error);
+      throw error;
+    }
+  },
 };
 
 export const teacherAPI = {
