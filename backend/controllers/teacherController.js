@@ -144,326 +144,169 @@ const sendProgressUpdate = (res, progress, message, stage) => {
 export const teacherUploadBook = async (req, res) => {
   let tempFilePath;
 
-  // Check if client wants SSE (via query param or header)
   const useSSE =
     req.query.sse === "true" ||
     req.headers.accept?.includes("text/event-stream");
 
   if (useSSE) {
-    // Set SSE headers
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no"); // Disable nginx buffering
+    res.setHeader("X-Accel-Buffering", "no");
   }
 
   try {
-    const {
-      classId,
-      subject,
-      author,
-      year,
-      schoolId,
-      teacherId,
-      title,
-      progressId,
-    } = req.body;
+    const { classId, subject, author, year, schoolId, title, progressId } =
+      req.body;
 
     if (!req.file) {
       if (useSSE) {
         sendProgressUpdate(res, 0, "PDF file is required.", "error");
-        res.end();
-      } else {
-        return res.status(400).json({ message: "PDF file is required." });
+        return res.end();
       }
-      return;
+      return res.status(400).json({ message: "PDF file is required." });
     }
+
     tempFilePath = req.file.path;
-    const requiredFields = {
-      classId,
-      subject,
-      author,
-      year,
-      schoolId,
-      title,
-    };
-    // Note: teacherId is no longer required as we use req.user from auth middleware
+
+    const requiredFields = { classId, subject, author, year, schoolId, title };
     for (const [field, value] of Object.entries(requiredFields)) {
       if (!value) {
-        await fs.promises.unlink(req.file.path);
+        await fs.promises.unlink(tempFilePath);
         if (useSSE) {
-          sendProgressUpdate(res, 0, `${field} is a required field.`, "error");
-          res.end();
-        } else {
-          return res
-            .status(400)
-            .json({ message: `${field} is a required field.` });
+          sendProgressUpdate(res, 0, `${field} is required.`, "error");
+          return res.end();
         }
-        return;
+        return res.status(400).json({ message: `${field} is required.` });
       }
     }
 
-    // Send initial progress: Uploading Book (1-10%)
-    if (useSSE) {
-      sendProgressUpdate(res, 5, "Uploading Book...", "uploading");
-    }
-
-    // Use req.user from authenticateFirebaseToken middleware instead of looking up again
-    // This ensures consistency with getMyUploadedBooks which uses req.user._id
     const teacher = req.user;
-    if (!teacher || !teacher._id) {
-      await fs.promises.unlink(req.file.path);
+    if (!teacher?._id) {
+      await fs.promises.unlink(tempFilePath);
       if (useSSE) {
-        sendProgressUpdate(
-          res,
-          0,
-          "Teacher authentication failed. Please try again.",
-          "error"
-        );
-        res.end();
-      } else {
-        return res.status(401).json({
-          message: "Teacher authentication failed. Please try again.",
-        });
+        sendProgressUpdate(res, 0, "Authentication failed.", "error");
+        return res.end();
       }
-      return;
+      return res.status(401).json({ message: "Authentication failed." });
     }
 
     const classDoc = await Class.findOne({ grade: classId });
     if (!classDoc) {
-      await fs.promises.unlink(req.file.path);
+      await fs.promises.unlink(tempFilePath);
       if (useSSE) {
-        sendProgressUpdate(
-          res,
-          0,
-          `Class with ID '${classId}' not found.`,
-          "error"
-        );
-        res.end();
-      } else {
-        return res
-          .status(404)
-          .json({ message: `Class with ID '${classId}' not found.` });
+        sendProgressUpdate(res, 0, "Class not found.", "error");
+        return res.end();
       }
-      return;
+      return res.status(404).json({ message: "Class not found." });
     }
 
-    const duplicateBook = await Book.findOne({
+    const normalizedTitle = title.trim().toLowerCase();
+
+    const existingBook = await Book.findOne({
       classId: classDoc._id,
-      title: title,
-      schoolId: schoolId,
-      uploadedBy: teacher._id,
+      title: normalizedTitle,
+      schoolId,
     });
 
-    if (duplicateBook) {
-      // Clean up orphaned file
-      try {
-        await fs.promises.unlink(req.file.path);
-      } catch (err) {
-        console.error("Error deleting orphaned file:", err.message);
-      }
+    if (existingBook) {
+      await fs.promises.unlink(tempFilePath).catch(() => {});
       if (useSSE) {
         sendProgressUpdate(
           res,
           0,
-          "A book already exists for this class and subject in your school",
+          "Book already exists in this school for this class.",
           "error"
         );
-        res.end();
-      } else {
-        return res.status(409).json({
-          success: false,
-          message:
-            "A book already exists for this class and subject in your school",
-        });
+        return res.end();
       }
-      return;
+      return res.status(409).json({
+        success: false,
+        message: "Book already exists in this school for this class.",
+      });
     }
-    const bookId = new mongoose.Types.ObjectId();
-    const sanitizedTitle = title
-      .trim()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-zA-Z0-9_]/g, "");
-    const uniquePdfName = `${sanitizedTitle}_${bookId}.pdf`; // Result example: "Physics_Concept_Vol1_654321098765432109876543.pdf"
 
-    // Update progress: Upload complete, starting processing (5%)
     if (useSSE) {
       sendProgressUpdate(res, 5, "Uploading Book...", "uploading");
     }
 
-    let processingResult;
-    try {
-      console.log("[UPLOAD] Sending PDF to AI processing service...");
-      if (useSSE) {
-        sendProgressUpdate(res, 5, "Processing...", "processing");
-      }
+    const bookId = new mongoose.Types.ObjectId();
+    const sanitizedTitle = normalizedTitle
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "");
+    const uniquePdfName = `${sanitizedTitle}_${bookId}.pdf`;
 
-      // Stream AI service response in real-time using axios with responseType: 'stream'
-      const streamProcessorResponse = async (fieldName) => {
-        const fileStream = fs.createReadStream(tempFilePath);
-        const form = new FormData();
-        const subjectData = {
+    let processingResult;
+
+    try {
+      const fileStream = fs.createReadStream(tempFilePath);
+      const form = new FormData();
+      form.append(
+        "subject_data",
+        JSON.stringify({
           class: classId,
-          subject: subject,
+          subject,
           pdf_name: uniquePdfName,
           progress_key: progressId,
-        };
-        form.append("subject_data", JSON.stringify(subjectData));
-        form.append(fieldName, fileStream, {
-          filename: path.basename(uniquePdfName),
-          contentType: "application/pdf",
-        });
+        })
+      );
+      form.append("file", fileStream);
 
-        return axios.post(deplyed_url + "process_pdf/", form, {
-          headers: {
-            ...form.getHeaders(),
-            "X-User-ID": teacher._id.toString(),
-          },
-          timeout: 15 * 60 * 1000,
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          responseType: "stream",
-          validateStatus: (s) => s >= 200 && s < 500,
-        });
-      };
+      const response = await axios.post(deplyed_url + "process_pdf/", form, {
+        headers: { ...form.getHeaders(), "X-User-ID": teacher._id.toString() },
+        responseType: "stream",
+        timeout: 15 * 60 * 1000,
+      });
 
-      let finalResult = null;
-      let latestProgress = null;
-      let responseStream;
+      processingResult = await new Promise((resolve, reject) => {
+        let buffer = "";
+        let finalData = null;
 
-      try {
-        responseStream = await streamProcessorResponse("file");
-        if (responseStream.status === 422) {
-          console.log("[UPLOAD] Retrying with 'pdf' field name...");
-          responseStream = await streamProcessorResponse("pdf");
-        }
+        response.data.on("data", (chunk) => {
+          buffer += chunk.toString();
+          const lines = buffer.split("\n");
+          buffer = lines.pop();
 
-        console.log(
-          "[UPLOAD] Streaming response from AI service in real-time..."
-        );
-
-        // Wait for stream to complete and process all data in real-time
-        processingResult = await new Promise((resolve, reject) => {
-          let buffer = "";
-
-          responseStream.data.on("data", (chunk) => {
-            buffer += chunk.toString();
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || ""; // Keep incomplete line
-
-            for (const line of lines) {
-              if (line.trim() && line.startsWith("data: ")) {
-                const dataLine = line.substring(6).trim();
-                if (dataLine && dataLine !== "null") {
-                  try {
-                    const parsed = JSON.parse(dataLine);
-
-                    if (parsed.progress !== undefined) {
-                      latestProgress = parsed;
-                      console.log(
-                        `[UPLOAD] Real-time progress: ${parsed.progress}% - ${
-                          parsed.status || parsed.message || ""
-                        }`
-                      );
-
-                      // Forward progress updates to frontend in real-time
-                      if (useSSE) {
-                        const message =
-                          parsed.status || parsed.message || "Processing...";
-                        const stage =
-                          parsed.status?.toLowerCase() === "error" ||
-                          parsed.error
-                            ? "error"
-                            : "processing";
-                        sendProgressUpdate(
-                          res,
-                          parsed.progress,
-                          message,
-                          stage
-                        );
-                      }
-
-                      // Keep track of final result
-                      if (
-                        parsed.progress === 100 ||
-                        parsed.status === "Success" ||
-                        parsed.success
-                      ) {
-                        finalResult = parsed;
-                      }
-                    }
-                  } catch (e) {
-                    // Silently ignore parse errors for empty/invalid messages
-                    if (dataLine.length > 10) {
-                      console.warn(
-                        "[UPLOAD] Failed to parse SSE message:",
-                        dataLine.substring(0, 100)
-                      );
-                    }
-                  }
-                }
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const parsed = JSON.parse(line.replace("data: ", ""));
+              if (useSSE && parsed.progress !== undefined) {
+                sendProgressUpdate(
+                  res,
+                  parsed.progress,
+                  parsed.message || parsed.status || "Processing",
+                  "processing"
+                );
+              }
+              if (parsed.progress === 100 || parsed.status === "Success") {
+                finalData = parsed;
               }
             }
-          });
-
-          responseStream.data.on("end", () => {
-            const result = finalResult || latestProgress || {};
-            console.log(
-              "[UPLOAD] Streaming complete, final result:",
-              JSON.stringify(result).substring(0, 200)
-            );
-            resolve(result);
-          });
-
-          responseStream.data.on("error", (err) => {
-            console.error("[UPLOAD] Stream error:", err.message);
-            reject(err);
-          });
+          }
         });
-      } catch (streamErr) {
-        console.error(
-          "[UPLOAD] Error streaming from AI service:",
-          streamErr.message
-        );
-        throw streamErr;
-      }
-    } catch (procErr) {
-      console.error("[UPLOAD] PDF processing service error:", procErr.message);
+
+        response.data.on("end", () => resolve(finalData));
+        response.data.on("error", reject);
+      });
+    } catch {
+      await fs.promises.unlink(tempFilePath);
       if (useSSE) {
-        sendProgressUpdate(
-          res,
-          0,
-          "Could not connect to the book processing service.",
-          "error"
-        );
-        console.log("[UPLOAD] Error sent to frontend");
-        res.end();
-      } else {
-        throw new Error("Could not connect to the book processing service.");
+        sendProgressUpdate(res, 0, "PDF processing service failed.", "error");
+        return res.end();
       }
-      return;
+      throw new Error("PDF processing service failed.");
     }
 
-    // --- 3. Conditionally Save Based on Processing Result ---
-    // Extract status (case-insensitive), chunks from data.chunks, and chapters from data.chapters
-    const status = processingResult.status;
-    const chunks = processingResult.data?.chunks || processingResult.chunks;
+    const status = processingResult?.status;
+    const chunks = processingResult?.data?.chunks || processingResult?.chunks;
     const chapters =
-      processingResult.data?.chapters || processingResult.chapters;
-
-    console.log(
-      `[UPLOAD] Processing result - Status: ${status}, Chunks: ${chunks}, Chapters: ${
-        chapters ? chapters.length : 0
-      }`
-    );
+      processingResult?.data?.chapters || processingResult?.chapters;
 
     if (
-      (status === "success" || status === "Success") &&
+      (status === "Success" || status === "success") &&
       Number.isFinite(chunks) &&
       chunks > 0
     ) {
-      console.log("[UPLOAD] Processing successful, saving book to database...");
-      // Stage 3: Storing Vectors in Database (85%)
       if (useSSE) {
         sendProgressUpdate(
           res,
@@ -473,25 +316,13 @@ export const teacherUploadBook = async (req, res) => {
         );
       }
 
-      // SUCCESS: Processing worked, now we create the database record.
       try {
-        // Sanitize chapters array to ensure all required fields are present
-        const sanitizedChapters = (
-          chapters && Array.isArray(chapters) ? chapters : []
-        ).map((chap, index) => ({
-          chapter_no:
-            chap.chapter_no || chap.chapterNo || String(index + 1) || "",
-          chapter_title:
-            chap.chapter_title || chap.chapterTitle || `Chapter ${index + 1}`,
-          start_page: chap.start_page || chap.startPage || 0,
-        }));
-
         const book = new Book({
           _id: bookId,
           schoolId,
           classId: classDoc._id,
-          uploadedBy: teacher._id, // Using req.user._id ensures consistency with getMyUploadedBooks
-          title,
+          uploadedBy: teacher._id,
+          title: normalizedTitle,
           subject,
           author,
           year,
@@ -499,137 +330,66 @@ export const teacherUploadBook = async (req, res) => {
           processedStatus: "processed",
           noOfChunks: chunks,
           uniqueName: uniquePdfName,
-          chapters: sanitizedChapters,
+          chapters: (chapters || []).map((c, i) => ({
+            chapter_no: c.chapter_no || String(i + 1),
+            chapter_title: c.chapter_title || `Chapter ${i + 1}`,
+            start_page: c.start_page || 0,
+          })),
         });
-
-        console.log(
-          `[UPLOAD] Attempting to save book - ID: ${book._id}, UploadedBy: ${book.uploadedBy}, SchoolId: ${book.schoolId}, ClassId: ${book.classId}`
-        );
 
         await book.save();
-        console.log(
-          `[UPLOAD] Book saved successfully - ID: ${book._id}, Chunks: ${book.noOfChunks}, UploadedBy: ${book.uploadedBy}, Teacher ID: ${teacher._id}`
-        );
-      } catch (saveError) {
-        console.error(`[UPLOAD] Error saving book to database:`, saveError);
-        console.error(`[UPLOAD] Error details:`, {
-          message: saveError.message,
-          name: saveError.name,
-          errors: saveError.errors,
-          stack: saveError.stack,
-        });
-
-        // Clean up the uploaded file since save failed
-        if (tempFilePath) {
-          await fs.promises.unlink(tempFilePath).catch((err) => {
-            console.error(
-              "[UPLOAD] Error cleaning up file after save failure:",
-              err.message
-            );
-          });
-        }
-
+      } catch (err) {
+        await fs.promises.unlink(tempFilePath).catch(() => {});
         if (useSSE) {
           sendProgressUpdate(
             res,
             0,
-            `Failed to save book to database: ${saveError.message}`,
+            "Failed to save book to database.",
             "error"
           );
-          res.end();
-        } else {
-          throw new Error(
-            `Failed to save book to database: ${saveError.message}`
-          );
+          return res.end();
         }
-        return;
+        throw err;
       }
 
-      // Final stage: Upload Complete (100%)
       if (useSSE) {
-        sendProgressUpdate(
-          res,
-          100,
-          "Upload Complete! Redirecting...",
-          "processed"
+        sendProgressUpdate(res, 100, "Upload Complete!", "processed");
+        res.write(
+          `data: ${JSON.stringify({
+            success: true,
+            message: "Book uploaded successfully.",
+          })}\n\n`
         );
-        // Send final data
-        const finalData = JSON.stringify({
-          success: true,
-          message: "Book uploaded and processed successfully.",
-          data: {
-            _id: book._id,
-            processedStatus: book.processedStatus,
-            noOfChunks: book.noOfChunks,
-          },
-        });
-        res.write(`data: ${finalData}\n\n`);
-        console.log("[UPLOAD] Final success message sent to frontend");
-        res.end();
-      } else {
-        // Send the final success response. The temporary file is now permanent.
-        return res.status(201).json({
-          success: true,
-          message: "Book uploaded and processed successfully.",
-          data: {
-            // Send a smaller object
-            _id: book._id,
-            processedStatus: book.processedStatus,
-            noOfChunks: book.noOfChunks,
-          },
-        });
+        return res.end();
       }
-    } else {
-      // FAILURE: Processing failed.
-      console.error(
-        `[UPLOAD] Processing failed - Status: ${status}, Chunks: ${chunks}`
-      );
-      const errorMsg =
-        "Failed to extract content from the PDF. It may be empty or corrupted.";
-      if (useSSE) {
-        sendProgressUpdate(res, 0, errorMsg, "error");
-        console.log("[UPLOAD] Error message sent to frontend");
-        res.end();
-      } else {
-        throw new Error(errorMsg);
-      }
-    }
-  } catch (error) {
-    // --- 4. Centralized Error Handling & Cleanup ---
-    if (tempFilePath) {
-      await fs.promises.unlink(tempFilePath).catch((err) => {
-        if (err.code !== "ENOENT") {
-          console.error("Error cleaning up failed upload file:", err.message);
-        }
+
+      return res.status(201).json({
+        success: true,
+        message: "Book uploaded successfully.",
       });
     }
 
-    console.error("[UPLOAD] Teacher Error - Book upload:", error.message);
-    console.error("[UPLOAD] Error stack:", error.stack);
-    if (error.errors) {
-      console.error(
-        "[UPLOAD] Validation errors:",
-        JSON.stringify(error.errors, null, 2)
+    await fs.promises.unlink(tempFilePath);
+    if (useSSE) {
+      sendProgressUpdate(
+        res,
+        0,
+        "Failed to extract content from PDF.",
+        "error"
       );
+      return res.end();
     }
-
+    throw new Error("Failed to extract content from PDF.");
+  } catch (error) {
+    if (tempFilePath) {
+      await fs.promises.unlink(tempFilePath).catch(() => {});
+    }
     if (!res.headersSent) {
       if (useSSE) {
-        const statusCode = error.message.includes("not found") ? 404 : 400;
-        sendProgressUpdate(
-          res,
-          0,
-          error.message || "Failed to upload book.",
-          "error"
-        );
-        res.end();
-      } else {
-        // Use the appropriate status code for the error type
-        const statusCode = error.message.includes("not found") ? 404 : 400;
-        return res.status(statusCode).json({
-          message: error.message || "Failed to upload book.",
-        });
+        sendProgressUpdate(res, 0, error.message, "error");
+        return res.end();
       }
+      return res.status(400).json({ message: error.message });
     }
   }
 };
