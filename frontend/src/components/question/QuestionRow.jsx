@@ -15,6 +15,7 @@ import { DeleteOutline, Bolt } from "@mui/icons-material";
 import questionTypesData from "../../assets/QuestionType.json";
 
 const QuestionRow = ({ index, question, onUpdate, onRemove, error }) => {
+  // 1. Memoize unique options
   const uniqueQuestionTypes = useMemo(() => {
     const seen = new Set();
     return questionTypesData.filter((item) => {
@@ -24,6 +25,16 @@ const QuestionRow = ({ index, question, onUpdate, onRemove, error }) => {
       return true;
     });
   }, []);
+
+  // 2. Find the selected object based on the stored 'value' string
+  // This ensures the Autocomplete displays the 'Label' instead of the 'Value'
+  const selectedTypeOption = useMemo(() => {
+    if (!question.type) return null;
+    return (
+      uniqueQuestionTypes.find((t) => t.value === question.type) ||
+      question.type
+    );
+  }, [question.type, uniqueQuestionTypes]);
 
   return (
     <Card
@@ -68,20 +79,33 @@ const QuestionRow = ({ index, question, onUpdate, onRemove, error }) => {
             <Autocomplete
               freeSolo
               options={uniqueQuestionTypes}
-              getOptionLabel={(option) =>
-                typeof option === "string" ? option : option.label
-              }
-              value={question.type || null}
+              // Tells MUI what text to display in the input box
+              getOptionLabel={(option) => {
+                // If it's a string (custom type), return it as is
+                if (typeof option === "string") return option;
+                // If it's an object, return the Label
+                return option.label || "";
+              }}
+              // ✅ FIX: Pass the full object (if found) so MUI sees the label
+              value={selectedTypeOption}
               onChange={(_, newValue) => {
+                // If user selects an option from list, newValue is an object -> save .value
+                // If user types a custom string, newValue is a string -> save string
                 const val =
                   (typeof newValue === "string" ? newValue : newValue?.value) ||
                   "";
                 onUpdate(index, "type", val);
               }}
               onInputChange={(_, newInputValue) => {
-                onUpdate(index, "type", newInputValue || "");
+                // Only update if it's a manual type (clearing or typing new)
+                // This prevents conflicts when selecting from dropdown
+                if (
+                  !uniqueQuestionTypes.find((t) => t.label === newInputValue)
+                ) {
+                  onUpdate(index, "type", newInputValue || "");
+                }
               }}
-              // Custom dropdown width & style
+              // Custom dropdown styling
               slotProps={{
                 paper: {
                   sx: {
@@ -125,7 +149,7 @@ const QuestionRow = ({ index, question, onUpdate, onRemove, error }) => {
                 <TextField
                   {...params}
                   label="Question Type"
-                  placeholder="MCQ"
+                  placeholder="Choose the correct alternative"
                   size="small"
                   error={!!error?.type}
                 />
