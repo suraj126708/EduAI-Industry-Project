@@ -289,7 +289,7 @@ export default function QuestionPaperGeneration() {
           marksPerQuestion: q.marksPerQuestion,
         })),
       };
-
+      console.log(payload);
       const res = await paperAPI.generateQuestionPaper(payload);
       if (res.success) {
         sessionStorage.setItem(
